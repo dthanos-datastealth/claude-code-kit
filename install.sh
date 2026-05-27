@@ -46,6 +46,14 @@ copy_templates() {
     log "  CLAUDE.md installed"
 }
 
+merge_settings() {
+    log "Merging settings.json (preserving your env block)..."
+    python3 "${REPO_DIR}/scripts/merge-settings.py" \
+        "${REPO_DIR}/claude/settings.json" \
+        "${CLAUDE_HOME}/settings.json"
+    log "  settings.json merged"
+}
+
 preflight() {
     log "Preflight: checking required tools..."
     require claude
@@ -60,6 +68,7 @@ main() {
     preflight
     backup_existing
     copy_templates
+    merge_settings
     # Subsequent steps added in later tasks.
 }
 
