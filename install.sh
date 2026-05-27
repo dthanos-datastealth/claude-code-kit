@@ -66,6 +66,29 @@ install_memory_index() {
     fi
 }
 
+MARKETPLACES=(
+    "anthropics/claude-plugins-official"
+    "leochlon/hallbayes"
+    "multica-ai/andrej-karpathy-skills"
+)
+
+register_marketplaces() {
+    log "Registering plugin marketplaces..."
+    for mp in "${MARKETPLACES[@]}"; do
+        if claude plugin marketplace add "${mp}" 2>&1; then
+            log "  + ${mp}"
+        else
+            # Retry once on network blip
+            warn "  retry ${mp}"
+            if ! claude plugin marketplace add "${mp}" 2>&1; then
+                err "  failed: claude plugin marketplace add ${mp}"
+                err "  Re-run manually after resolving network issue."
+                return 1
+            fi
+        fi
+    done
+}
+
 preflight() {
     log "Preflight: checking required tools..."
     require claude
@@ -82,6 +105,7 @@ main() {
     copy_templates
     merge_settings
     install_memory_index
+    register_marketplaces
     # Subsequent steps added in later tasks.
 }
 
