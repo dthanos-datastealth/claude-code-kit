@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Editor
+.DS_Store
+.vscode/
+.idea/
+
+# Test artifacts
+tests/.tmp/
+tests/.fake-home/
+
+# Don't accidentally commit live config
+.claude/
