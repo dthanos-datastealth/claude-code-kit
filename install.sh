@@ -19,6 +19,26 @@ require() {
     fi
 }
 
+backup_existing() {
+    local ts
+    ts="$(date -u +'%Y-%m-%dT%H-%M-%SZ')"
+    local backup_dir="${CLAUDE_HOME}/backups/${ts}"
+    local backed_up_anything=0
+
+    for f in CLAUDE.md settings.json; do
+        if [ -f "${CLAUDE_HOME}/${f}" ]; then
+            mkdir -p "${backup_dir}"
+            cp "${CLAUDE_HOME}/${f}" "${backup_dir}/${f}"
+            log "  Backed up ${f} -> ${backup_dir}/${f}"
+            backed_up_anything=1
+        fi
+    done
+
+    if [ "${backed_up_anything}" -eq 0 ]; then
+        log "Backup: nothing to back up (fresh install)"
+    fi
+}
+
 preflight() {
     log "Preflight: checking required tools..."
     require claude
@@ -31,6 +51,7 @@ preflight() {
 
 main() {
     preflight
+    backup_existing
     # Subsequent steps added in later tasks.
 }
 
