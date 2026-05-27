@@ -7,3 +7,4 @@ contract changes; untagged for CLAUDE.md/docs edits.
 ## [Unreleased]
 ### Added
 - Initial repo skeleton.
+- Source snapshot taken: ~/.claude/CLAUDE.md (~lines: 210), ~/.claude/settings.json (20 plugins).
