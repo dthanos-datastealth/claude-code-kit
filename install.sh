@@ -39,6 +39,13 @@ backup_existing() {
     fi
 }
 
+copy_templates() {
+    log "Copying templates into ${CLAUDE_HOME}/..."
+    mkdir -p "${CLAUDE_HOME}"
+    cp "${REPO_DIR}/claude/CLAUDE.md" "${CLAUDE_HOME}/CLAUDE.md"
+    log "  CLAUDE.md installed"
+}
+
 preflight() {
     log "Preflight: checking required tools..."
     require claude
@@ -52,6 +59,7 @@ preflight() {
 main() {
     preflight
     backup_existing
+    copy_templates
     # Subsequent steps added in later tasks.
 }
 
