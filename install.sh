@@ -89,6 +89,30 @@ register_marketplaces() {
     done
 }
 
+install_plugins() {
+    log "Installing plugins (reads enabledPlugins from settings.json)..."
+    local plugins
+    plugins=$(python3 -c "
+import json, sys
+d = json.load(open('${CLAUDE_HOME}/settings.json'))
+for k, v in (d.get('enabledPlugins') or {}).items():
+    if v is True:
+        print(k)
+")
+    while IFS= read -r plugin; do
+        [ -z "${plugin}" ] && continue
+        if claude plugin install "${plugin}" 2>&1; then
+            log "  + ${plugin}"
+        else
+            warn "  retry ${plugin}"
+            if ! claude plugin install "${plugin}" 2>&1; then
+                err "  failed: claude plugin install ${plugin}"
+                err "  Continuing; re-run install.sh later to retry."
+            fi
+        fi
+    done <<< "${plugins}"
+}
+
 preflight() {
     log "Preflight: checking required tools..."
     require claude
@@ -106,7 +130,8 @@ main() {
     merge_settings
     install_memory_index
     register_marketplaces
-    # Subsequent steps added in later tasks.
+    install_plugins
+    log "Done. Restart Claude Code. See docs/workflow.md for next steps."
 }
 
 main "$@"
