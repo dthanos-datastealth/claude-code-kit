@@ -54,6 +54,18 @@ merge_settings() {
     log "  settings.json merged"
 }
 
+install_memory_index() {
+    local mem_dir="${CLAUDE_HOME}/memory"
+    local mem_file="${mem_dir}/MEMORY.md"
+    mkdir -p "${mem_dir}"
+    if [ -f "${mem_file}" ]; then
+        log "Memory: MEMORY.md already exists, leaving untouched"
+    else
+        cp "${REPO_DIR}/claude/memory/MEMORY.md" "${mem_file}"
+        log "Memory: installed MEMORY.md template at ${mem_file}"
+    fi
+}
+
 preflight() {
     log "Preflight: checking required tools..."
     require claude
@@ -69,6 +81,7 @@ main() {
     backup_existing
     copy_templates
     merge_settings
+    install_memory_index
     # Subsequent steps added in later tasks.
 }
 
