@@ -1,0 +1,36 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest
+        run: pip install pytest
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: shellcheck install.sh + uninstall.sh + scripts
+        run: |
+          shellcheck install.sh uninstall.sh scripts/*.sh
+
+      - name: Run scrubbing lint on claude/CLAUDE.md
+        run: python3 scripts/lint-scrubbing.py claude/CLAUDE.md
+
+      - name: Run tools-docs schema lint
+        run: python3 scripts/lint-tools-docs.py docs/tools/*.md
+
+      - name: Run pytest suite
+        run: python3 -m pytest tests/ -v
