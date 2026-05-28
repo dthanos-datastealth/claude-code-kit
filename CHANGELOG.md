@@ -6,6 +6,18 @@ contract changes; untagged for CLAUDE.md/docs edits.
 
 ## [Unreleased]
 ### Added
+- **`scripts/test-install-isolated.sh`** — parallel-test the kit
+  against the real `claude` CLI without clobbering your real
+  `~/.claude/`. Pattern: capture mtimes of `~/.claude/CLAUDE.md` and
+  `~/.claude/settings.json` BEFORE, run `HOME=<tempdir> ./install.sh`,
+  assert isolated artifacts landed correctly (CLAUDE.md, settings.json,
+  MEMORY.md, docs/tools/, plugin count), then re-capture real mtimes
+  and **fail loudly if either changed** — so the script actively proves
+  no leak, not just hopes. Useful any time you change `install.sh`,
+  the plugin set, or docs-shipping logic and want to confirm the kit
+  installs cleanly without touching your working setup. Documented
+  with a new "Testing the kit in parallel" section in the README;
+  also listed in the layout tree under `scripts/`.
 - **`install.sh copy_docs` step** ships kit reference docs to
   `~/.claude/docs/` (top-level: `philosophy.md`, `workflow.md`,
   `prereqs.md`, `corporate-tls.md`, `memory-system.md`; plus

@@ -374,6 +374,47 @@ any drift. Use it to decide what to PR back into the kit.
 
 ---
 
+## Testing the kit in parallel (without clobbering your real `~/.claude/`)
+
+The kit ships an isolation helper that runs `install.sh` against a
+temporary `$HOME`, exercises the **real** `claude` CLI (so real plugin
+installs happen), and then *proves* your real `~/.claude/` is untouched
+by comparing mtimes of `~/.claude/CLAUDE.md` and `~/.claude/settings.json`
+before and after.
+
+```bash
+# Keep the tempdir for inspection (default)
+./scripts/test-install-isolated.sh
+
+# Or auto-clean on success
+./scripts/test-install-isolated.sh --clean
+```
+
+**What it does:**
+
+1. Captures `mtime` of your real `~/.claude/CLAUDE.md` and `~/.claude/settings.json`.
+2. Creates `$(mktemp -d -t cck-test-XXXXXX)` and runs `HOME="$TEST_HOME" ./install.sh`.
+3. Asserts every expected artifact landed in the isolated HOME
+   (`CLAUDE.md`, `settings.json`, `memory/MEMORY.md`, `docs/tools/`,
+   the expected plugin count).
+4. **Leak check** — re-captures the real `~/.claude/` mtimes and exits
+   non-zero if either changed. If a future kit change accidentally
+   writes outside `$HOME`, this catches it.
+5. Prints a summary and tells you how to poke around the tempdir (or
+   cleans it up if you passed `--clean`).
+
+**What it can't isolate** (these are global by design and the kit doesn't
+clone them either): the `claude` CLI binary itself, LSP server binaries
+(`gopls`, `tsserver`, `jdtls`), and `gh`'s auth token. The test uses
+those globals, which is what you want — you're testing the *kit* against
+the real toolchain.
+
+Use this any time you've changed `install.sh`, the plugin set, or the
+docs-shipping logic and want to confirm the kit installs cleanly without
+touching your working setup.
+
+---
+
 ## Layout
 
 ```
@@ -425,7 +466,8 @@ claude-code-kit/
 │   ├── diff-against-live.sh           Drift detector
 │   ├── diff-settings.py               Settings delta (JSON)
 │   ├── lint-scrubbing.py              Catches owner paths / company names
-│   └── lint-tools-docs.py             Enforces 5-section schema
+│   ├── lint-tools-docs.py             Enforces 5-section schema
+│   └── test-install-isolated.sh       Parallel-test install.sh in a temp HOME with leak check
 └── tests/                             pytest with isolated-HOME harness
 ```
 
