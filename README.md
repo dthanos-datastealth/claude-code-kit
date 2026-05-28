@@ -32,7 +32,7 @@ flowchart LR
     tmpl[claude/CLAUDE.md<br/>scrubbed template]
     sets[claude/settings.json<br/>21 plugins · 5 marketplaces<br/>effortLevel: max]
     mem[claude/memory/MEMORY.md<br/>auto-memory index]
-    docs[docs/<br/>philosophy · workflow ·<br/>prereqs · corporate-tls ·<br/>memory-system · tools/ ×23]
+    docs[docs/<br/>philosophy · workflow · prereqs ·<br/>corporate-tls · memory-system ·<br/>tracker-system · tools/ ×23]
     sc[scripts/<br/>merge-settings · lint-scrubbing · lint-tools-docs ·<br/>lint-plugin-marketplaces · lint-mcp-hardcoded-paths ·<br/>diff-against-live · test-install-isolated]
     tests[tests/<br/>34 pytest cases ·<br/>isolated-HOME harness]
   end
@@ -221,6 +221,7 @@ local spec or the diff.
 | **Plugins (21)** | 17 from `anthropics/claude-plugins-official`: superpowers, feature-dev, code-simplifier, context7, claude-md-management, frontend-design, explanatory-output-style, notion, gopls-lsp, typescript-lsp, **jdtls-lsp** (Java), playwright, chrome-devtools-mcp, microsoft-docs, huggingface-skills, security-guidance, remember. 1 from `Optimal-AI/optibot-skill`: optibot (performance review). 1 from `dthanos-datastealth/hallbayes`: berry (evidence verifier; this is a Claude-Code-packaged fork of upstream `leochlon/hallbayes`). 1 from `multica-ai/andrej-karpathy-skills`. 1 from `JuliusBrussee/caveman`: caveman (token-savings terse-output mode). |
 | **Berry verifier** | Defaults to OpenRouter `openai/gpt-4o-mini` (configured via `~/.berry/config.json` + `~/.berry/mcp_env.json`); self-hosted `llama.cpp` remains supported as the offline alternative. |
 | **Memory system** | `MEMORY.md` index template at `~/.claude/memory/`, plus `docs/memory-system.md` explaining the 4 memory types (user, feedback, project, reference), the index format, and the 200-line cap. |
+| **Tracker discipline** | The kit's quality loop runs on a coupled `Task` tool + `docs/TRACKER.md` substrate: agents claim work, surface findings as new tasks, and update `docs/TRACKER.md` in lockstep so any human reads one file to see full multi-iteration state. `claude/CLAUDE.md` ships the Phase Start Protocol (EnterPlanMode → approval → execute), Pre-Dispatch Protocol (coordinator creates Dev + V + O tasks upfront), Verification Agent Protocol (steps A–G including hot-path `[WIRE-PATH MISS]` check), and Optimization Agent Protocol (dual-graph + LSP redundancy check). `docs/tracker-system.md` is the full schema + examples. |
 | **Per-tool rationale** | 23 markdown files under `docs/tools/` (one per plugin / MCP / skill / external dependency) following a strict 5-section schema enforced by `scripts/lint-tools-docs.py`. |
 | **Settings** | `effortLevel: max` merged in; your existing `env` block (including any corporate-CA bundle vars) preserved byte-for-byte. |
 
@@ -498,6 +499,7 @@ claude-code-kit/
 │   ├── prereqs.md                     Install steps per OS
 │   ├── corporate-tls.md               CA bundle setup for intercepted networks
 │   ├── memory-system.md               Auto-memory schema and conventions
+│   ├── tracker-system.md              docs/TRACKER.md schema + agent dispatch + V/O protocols
 │   └── tools/                         23 per-tool rationale docs (5-section schema)
 │       ├── superpowers.md             Workflow-discipline skills
 │       ├── berry.md                   Evidence verifier (OpenRouter default)

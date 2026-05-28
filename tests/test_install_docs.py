@@ -12,6 +12,7 @@ def test_top_level_docs_copied():
         "prereqs.md",
         "corporate-tls.md",
         "memory-system.md",
+        "tracker-system.md",
     ):
         assert (dst / f).exists(), f"{f} should be installed at ~/.claude/docs/"
 

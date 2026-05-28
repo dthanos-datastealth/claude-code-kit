@@ -76,6 +76,102 @@ The kit's `superpowers:requesting-code-review` skill, `feature-dev:code-reviewer
 
 ---
 
+## MANDATORY: TRACKER.md + Task tool — the collaboration substrate
+
+The quality loop above does not run on agent memory or chat scrollback. It runs on **two coupled artifacts**:
+
+1. **Claude Code `Task` tool** — `TaskCreate` / `TaskUpdate` / `TaskList` / `TaskGet` for live, machine-readable task state every agent reads and writes.
+2. **`docs/TRACKER.md`** (per project) — the durable Markdown record of what happened, what's in flight, what's open, what V/O produced. Single source of truth for any human or future agent reviewing the project.
+
+Full reference doc: [`~/.claude/docs/tracker-system.md`](docs/tracker-system.md) (installed by `install.sh`). What follows is the agent-side rule set Claude reads every session.
+
+### Phase Start Protocol (coordinator)
+
+Before starting any new phase, the coordinator MUST:
+
+1. **`EnterPlanMode`** and produce a detailed technical plan for the phase — discrete testable sub-tasks; every file to create or modify; TDD sequence (what fails first, what makes it pass); integration points; known risks.
+2. **Get explicit user approval** of the plan.
+3. **`ExitPlanMode`** only after approval.
+4. **Execute against the plan** — every dev agent prompt must reference the plan and implement exactly what it specifies.
+
+This is what keeps the discipline from sliding into ad-hoc development. The plan is the contract dev + V + O agents all measure against.
+
+### Pre-Dispatch Protocol (coordinator)
+
+Before dispatching any dev agent, the coordinator MUST create all three quality-loop tasks UPFRONT:
+
+```
+1. TaskCreate("Dev: Phase X — <description>")    → dev agent claims/works/completes
+2. TaskCreate("Verification: Phase X")           → V agent claims/works/completes
+3. TaskCreate("Optimization: Phase X")           → O agent claims/works/completes
+```
+
+All three exist in the tracker BEFORE dev is dispatched. This makes the quality loop visible and prevents skipping it — the tracker enforces the loop, not coordinator memory.
+
+After dev completes: dispatch V agent → dispatch O agent → if findings exist → dispatch fix agents per finding → re-run V + O. Phase closes ONLY when V reports `VERIFICATION: PASS` and O reports `OPTIMIZATION: APPROVED` on the SAME code revision.
+
+### What every agent MUST do (Dev, V, O, Fix — all of them)
+
+**At start of work:**
+```
+1. TaskList                         # find the assigned task
+2. TaskUpdate(taskId, in_progress)  # claim it
+3. Read docs/TRACKER.md             # understand current phase state
+4. Read the relevant plan section
+5. Do the work
+```
+
+**During work — for every finding produced:**
+```
+TaskCreate("Fix V-N1: <finding summary>")
+```
+Each finding = one new task. Findings are NOT logged only in chat and hoped-to-be-actioned — they enter the tracker as concrete units of work.
+
+**At end of work:**
+```
+1. TaskUpdate(taskId, completed)
+2. Update docs/TRACKER.md:
+   - Closed a finding → update the V/O Findings Tracker row
+   - Completed a stage → update the Quality Loop State row
+   - Completed an iteration → append a new "## YYYY-MM-DD Iter-N" section
+3. If new follow-up items surfaced → append to the section's "Open issues"
+```
+
+### Coordinator hard prohibitions
+
+- **Coordinators do not update the tracker on behalf of agents.** If an agent finished work without calling `TaskUpdate` or editing `docs/TRACKER.md`, that's evidence the agent didn't have the task context it needed. Fix the agent's prompt — do NOT paper over the missing context by patching the tracker yourself.
+- **No phase closes without V + O on the same revision.** If V finds something, the fix lands as a new task, V and O re-run on the new revision, then the phase closes.
+
+### Verification Agent Protocol (mandatory Steps A-G)
+
+Skipping any step is a verification failure.
+
+- **Step A — Identify the real target function.** Read the implementation; note every exported symbol and its signature.
+- **Step B — Trace the test's call path.** Confirm tests import the real module, use the real exported symbol, with the real package import path (not a test double).
+- **Step C — Verify input → output tracing.** Does the assertion test the REAL function's REAL output, or a mock response independent of the real code path? Mock-only assertions are `[SHALLOW TEST]`.
+- **Step D — Check for stub/duplicate anti-patterns.** Local function with the same logic, test-only wrapper, or different file compiled = `[STUB TEST]`.
+- **Step E — Behavioral coverage gap check.** Map tests to requirements; flag uncovered branches (errors, edges, negatives) as `[TEST MISSING]` with file:line.
+- **Step F — Test result validity.** Run tests with verbose output. Confirm every test passes (not skipped), assertions are real, nothing passes vacuously.
+- **Step G — Hot-path call-site verification (`[WIRE-PATH MISS]`).** For every new exported helper / setter / primitive in the diff: grep/LSP-search for callers. Callers must include the request handler, a `main.go` startup block, or an existing pipeline-pass file. **If the only callers are TEST files, that is a `[WIRE-PATH MISS]` finding and is BLOCKING.** Tests prove the primitive works in isolation; they do NOT prove the pipeline uses it.
+
+For every finding the V agent produces, call `TaskCreate`. On its own task, call `TaskUpdate(status="completed")` at the end. Do NOT mark the development task complete — that is the coordinator's job after all findings close.
+
+### Optimization Agent Protocol
+
+- **Linter sweep:** project's linter on changed code only; 0 NEW issues required. Pre-existing issues in unrelated files = flag-don't-fix.
+- **Mandatory redundancy + duplication check (dual-graph driven):** for every new function/struct/regex/helper/test fixture in the diff: (1) call `graph_continue` with the new symbol name and surrounding terms; (2) `workspaceSymbol` + `findReferences` via LSP to confirm; (3) flag `[REDUNDANT FUNCTION]` if equivalent behavior already exists; `[REDUNDANT CODE PATH]` if logic re-implements another path; `[REDUNDANT TEST]` if invariant already covered by an existing test. The O agent's report MUST show evidence of the dual-graph + LSP search (which symbols, what returned). An O report lacking this evidence is itself a finding.
+- **Best-practice sweep on changed code:** allocation patterns, naming, comment quality (no temporal/phase labels — those belong in TRACKER.md), idiomatic error wrapping.
+- **Tracker updates:** `TaskCreate` for every finding; `TaskUpdate(status="completed")` on own task. Verdict: `APPROVED` or `CHANGES-RECOMMENDED`. Phase closes only when V says PASS AND O says APPROVED on the SAME revision.
+
+### Hard rules around the tracker
+
+- **`docs/TRACKER.md` must never be more than one step out of date.** Anything not in the tracker is unknown to anyone who didn't run the session.
+- **Phase/iteration labels (`Iter-46`, `Phase 29`, etc.) belong in tracker / commit messages / PR descriptions / plan files — NEVER in source code comments, log strings, test assertion messages, or error strings.** Code is self-contained + functionally descriptive.
+- **`Task` tool and `docs/TRACKER.md` are kept in lockstep.** Every `TaskUpdate` pairs with a `docs/TRACKER.md` edit in the same logical step.
+- **Findings become tasks.** A finding logged only in chat is a comment, not a finding. Every V/O finding materializes as a `TaskCreate` AND appears in the Findings Tracker table in `docs/TRACKER.md`.
+
+---
+
 ## Installed Plugins & When to Use Them
 
 For each plugin, MCP, or skill listed below, the kit ships a **per-tool depth-reference document** at `~/.claude/docs/tools/<name>.md` (installed there by the kit's `install.sh`). Each follows a strict 5-section schema — *What it does · Why it's in this kit · When you'd disable it · Source · Cost / footprint*. **Consult the depth-reference when:**

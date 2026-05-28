@@ -56,6 +56,7 @@ TOP_LEVEL_DOCS=(
     "prereqs.md"
     "corporate-tls.md"
     "memory-system.md"
+    "tracker-system.md"
 )
 
 copy_docs() {

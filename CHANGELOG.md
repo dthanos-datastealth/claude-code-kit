@@ -5,6 +5,42 @@ Format: Keep a Changelog. Versioning: `vYYYY.MM.DD` when `install.sh`
 contract changes; untagged for CLAUDE.md/docs edits.
 
 ## [Unreleased]
+### Added
+- **TRACKER.md + Task tool discipline** — full schema, dispatch protocol,
+  and V/O agent protocols captured at the kit level for the first time.
+  User noted that their real workflow has a sophisticated tracker system
+  that wasn't in the kit: project CLAUDE.md declaring the Task tool flow
+  + Phase Start Protocol (EnterPlanMode → approval) + Pre-Dispatch
+  Protocol (coordinator creates Dev/V/O tasks upfront) + extended
+  Verification Agent Protocol (Steps A–G including `[WIRE-PATH MISS]`
+  hot-path check) + Optimization Agent Protocol (dual-graph + LSP
+  redundancy check); per-project `docs/TRACKER.md` with header
+  (`Last Updated:` cumulative summary + `Earlier:` lines), per-iteration
+  sections with aspect tables + Quality Loop State + V/O Findings
+  Tracker + Open issues; hard rule that agents update tracker themselves
+  and coordinators never patch the tracker on agents' behalf. None of
+  this was in the kit. This commit adds:
+  - **`docs/tracker-system.md`** (NEW) — comprehensive human-readable
+    reference: why two layers (Task tool + tracker), the full schema,
+    the dispatch protocols, both agent protocols, hard rules, and the
+    plan-vs-tracker distinction. Shipped via `install.sh copy_docs` to
+    `~/.claude/docs/tracker-system.md`.
+  - **`claude/CLAUDE.md` `## MANDATORY: TRACKER.md + Task tool` section**
+    inserted between MANDATORY Quality Loop and Installed Plugins.
+    Agent-side reference: Phase Start Protocol, Pre-Dispatch Protocol,
+    what every agent MUST do at start/during/end of work, coordinator
+    hard prohibitions, the full Verification Agent Protocol Steps A–G,
+    Optimization Agent Protocol, and tracker hard rules.
+  - **`install.sh TOP_LEVEL_DOCS`** includes the new `tracker-system.md`.
+  - **`tests/test_install_docs.py::test_top_level_docs_copied`** updated
+    to assert `tracker-system.md` lands at `~/.claude/docs/`.
+  - **README** gains a "Tracker discipline" row in the "What you get"
+    table + lists `tracker-system.md` in the layout tree + the
+    architecture Mermaid label.
+  This makes the kit's quality loop discipline self-contained: every
+  adopter inherits the same tracker schema and the same dispatch
+  protocols, not just the same plugin list.
+
 ### Changed
 - **Settings merge contract: kit env defaults now layer UNDER user env
   overrides** (user always wins on conflict). Previously the user's env
