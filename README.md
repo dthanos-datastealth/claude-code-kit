@@ -37,20 +37,20 @@ flowchart LR
     tests[tests/<br/>29 pytest cases ·<br/>isolated-HOME harness]
   end
 
-  cmd -->|preflight| pre{All prereqs<br/>on PATH?}
-  pre -->|no| fail[exit 1 +<br/>remediation msg]
-  pre -->|yes| backup[Backup existing<br/>~/.claude/CLAUDE.md<br/>~/.claude/settings.json<br/>to backups/timestamp/]
+  cmd -->|preflight| pre{All prereqs on PATH?}
+  pre -->|no| fail[exit 1 + remediation msg]
+  pre -->|yes| backup[Backup existing CLAUDE.md and settings.json to backups timestamp dir]
   backup --> copy[Copy CLAUDE.md template]
-  copy --> merge[Merge settings.json<br/>preserve user env block]
-  merge --> memi[Install MEMORY.md<br/>never overwrites]
+  copy --> merge[Merge settings.json preserving user env block]
+  merge --> memi[Install MEMORY.md never overwrites]
   memi --> mp[Register 3 marketplaces]
-  mp --> pl[Install 20 plugins<br/>via claude plugin install]
+  mp --> pl[Install 20 plugins via claude plugin install]
   pl --> ready[Restart Claude Code]
 
-  tmpl -.copied to.-> claudeHome[(~/.claude/<br/>CLAUDE.md)]
-  sets -.merged to.-> settingsHome[(~/.claude/<br/>settings.json)]
-  mem -.copied if absent.-> memHome[(~/.claude/memory/<br/>MEMORY.md)]
-  pl -.installed.-> pluginsHome[(~/.claude/plugins/<br/>20 plugins)]
+  tmpl -.copied to.-> claudeHome[(.claude/CLAUDE.md)]
+  sets -.merged to.-> settingsHome[(.claude/settings.json)]
+  mem -.copied if absent.-> memHome[(.claude/memory/MEMORY.md)]
+  pl -.installed.-> pluginsHome[(.claude/plugins/ - 20 plugins)]
 
   classDef store fill:#1f2937,stroke:#9ca3af,color:#f3f4f6
   classDef action fill:#0f766e,stroke:#5eead4,color:#f0fdfa
@@ -133,6 +133,83 @@ Three load-bearing rules behind the diagram:
 See `docs/workflow.md` for the full 10-step procedure, `docs/philosophy.md`
 for the reasoning, and `claude/CLAUDE.md` for the exact rules Claude reads
 every session.
+
+---
+
+## The MANDATORY Quality Loop (TDD → Berry → V+O)
+
+The workflow diagram above shows *which steps run*. The quality loop
+diagram below shows the *unconditional discipline that wraps every
+substantive change*, regardless of which workflow framed it. The
+kit's `claude/CLAUDE.md` codifies this as a top-level MANDATORY
+section so every session reads it before the plugin tour.
+
+```mermaid
+flowchart TD
+  start([Substantive change ready]) --> tdd[TDD: RED test first, then GREEN minimal impl, then REFACTOR]
+  tdd --> capture[Capture test output as Berry span via berry-search-and-learn]
+  capture --> bgate{Berry audit_trace_budget passes?}
+  bgate -->|no, 3-strike rule| stop[STOP: surface what passed and flagged, wait for user]
+  bgate -->|yes| vo[Dispatch V and O subagents in parallel against the same revision]
+  vo --> v[V: Verification agent - cites authoritative external sources upstream READMEs, official docs]
+  vo --> o[O: Optimization agent - finds simplification, clarity, consistency wins]
+  v --> vv{V verdict}
+  o --> ov{O verdict}
+  vv -->|CONCERN or BLOCKER| fix[Apply fix, re-cycle]
+  vv -->|OK| vpass[V pass]
+  ov -->|worth-fixing| fix
+  ov -->|trivial or clean| opass[O pass]
+  fix --> tdd
+  vpass --> done
+  opass --> done
+  done([Change accepted - ready to ship])
+
+  classDef gate fill:#7c2d12,stroke:#fed7aa,color:#fff7ed
+  classDef stop fill:#7f1d1d,stroke:#fecaca,color:#fef2f2
+  classDef terminal fill:#064e3b,stroke:#6ee7b7,color:#ecfdf5
+  class bgate,vv,ov gate
+  class stop stop
+  class start,done terminal
+```
+
+Three layers, all mandatory:
+
+- **TDD discipline.** Write the failing test first; confirm it fails
+  for the right reason (not from missing imports or fixture gaps).
+  Implement the minimum that turns it green. REFACTOR only with the
+  test green. **Lifecycle tests, not just function-centric ones** —
+  for anything stateful (sessions, caches, queues, write paths),
+  assert on the full create → use → close → reopen → cleanup cycle.
+- **Berry verification.** Every completion claim ("tests pass", "the
+  bug is fixed", "the spec is complete") must be backed by a Berry
+  span citing the actual evidence. Test output is the canonical
+  evidence form: capture it via `berry-search-and-learn` and cite it
+  before any "tests pass" assertion. The kit's Berry plugin enforces
+  this with `audit_trace_budget` as the gate — see
+  [`docs/tools/berry.md`](docs/tools/berry.md).
+- **V+O loop.** After any code, doc, or config change with behavioral
+  impact, dispatch a **Verification agent** (cites authoritative
+  external sources — upstream READMEs, official docs, vendor API
+  references; output: `[OK]` / `[CONCERN]` / `[BLOCKER]`) and an
+  **Optimization agent** (finds simplification, clarity, and
+  consistency wins; output: `[trivial]` / `[worth-considering]` /
+  `[worth-fixing]`) in parallel against the same revision. Verdicts
+  of either block "done" — `[CONCERN]` / `[BLOCKER]` requires a
+  correctness fix; `[worth-fixing]` requires a follow-up commit
+  before the next substantive change.
+
+Hard prohibitions: no "tests pass" claim without a Berry span;
+no skipping V+O on the grounds that "the change is small" (small
+changes are exactly where unaudited drift accumulates); no inventing
+answers when V flags a concern; if Berry audits fail three times on
+the same claim set, STOP and surface partial results.
+
+The kit's `requesting-code-review`, `code-quality-reviewer`, and
+`code-simplifier` plugins implement V- and O-style passes inside
+`superpowers:subagent-driven-development`. The V+O loop above sits
+**on top** of that, with one explicit difference: V+O verifies
+against **external authoritative sources**, not just against the
+local spec or the diff.
 
 ---
 
