@@ -343,7 +343,59 @@ curl -s http://127.0.0.1:8080/v1/models | jq .
 
 ---
 
-## 11. `shellcheck` (kit-development only)
+## 11. `specify` CLI (spec-kit — optional, per-project)
+
+**Why this kit needs it:** Spec-kit provides an optional spec-driven
+alternative to the kit's default brainstorm → plan → TDD flow. See
+[`docs/tools/spec-kit.md`](tools/spec-kit.md) for when to choose it
+over `/superpowers:brainstorming`. The CLI is not installed by the
+kit's `install.sh` because it is per-developer tooling, not part of
+the Claude Code surface itself.
+
+**Version requirement:** This kit was last verified against
+spec-kit `v0.8.15`. Newer tags should work but the slash-command
+names occasionally evolve; pin the version in your install command.
+
+**Install (all platforms, requires `uv` from section 5):**
+
+```sh
+uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.8.15
+```
+
+For corporate-TLS environments, prepend the env vars from
+[`docs/corporate-tls.md`](corporate-tls.md):
+
+```sh
+SSL_CERT_FILE=/path/to/corporate-ca.pem \
+GIT_SSL_CAINFO=/path/to/corporate-ca.pem \
+uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.8.15
+```
+
+**Per-project init (one-time, in the project directory you want
+spec-driven flows in):**
+
+```sh
+specify init --here --integration claude
+```
+
+This writes `.claude/skills/speckit-*/` and `.specify/` into the
+current directory. Restart Claude Code in that directory for the
+`/speckit-*` slash commands to register.
+
+**Verification:**
+
+```sh
+specify --version       # should print: specify 0.8.15 (or your pinned version)
+```
+
+After init, `ls .claude/skills/ | grep speckit` should list nine
+directories (`speckit-constitution`, `speckit-specify`, `speckit-clarify`,
+`speckit-plan`, `speckit-tasks`, `speckit-analyze`, `speckit-checklist`,
+`speckit-implement`, `speckit-taskstoissues`).
+
+---
+
+## 12. `shellcheck` (kit-development only)
 
 **Why this kit needs it:** `shellcheck` is used to lint `install.sh`,
 `uninstall.sh`, and `scripts/*.sh` during development of the kit itself.

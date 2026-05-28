@@ -185,6 +185,70 @@ If verification calls start failing, first check that the OpenRouter key is stil
 
 ---
 
+### Spec-Kit (`specify` CLI) — optional spec-driven alternative
+
+[GitHub `spec-kit`](https://github.com/github/spec-kit) is a CLI (`specify`) that installs a set of `/speckit-*` agent skills into a project's `.claude/skills/` directory and scaffolds a `.specify/` working area. It gives you a more formal spec-first workflow than the kit's default brainstorm → plan → TDD path: a project Constitution at the top, then per-feature Specify → Clarify → Plan → Tasks → Analyze → Implement.
+
+**When to use spec-kit instead of `/superpowers:brainstorming` + `/superpowers:writing-plans`:**
+- New greenfield project where a written Constitution + governance is the bigger win than fast iteration.
+- Multi-contributor work where the specs/plans need to be artifacts other people read.
+- Any feature where stakeholder review of `spec.md` will happen before implementation starts.
+
+**When to stick with the default workflow:**
+- Bugfixes, refactors, single-session changes — spec-kit's ceremony overhead doesn't pay back at small scale.
+- Anything that's already mid-flight in a `/feature-dev` run.
+
+**Setup (per project, one-time):**
+```sh
+specify init --here --integration claude   # writes .claude/skills/speckit-* + .specify/
+```
+
+After init, the slash commands appear after a Claude Code restart:
+- `/speckit-constitution` — project principles (run first, once)
+- `/speckit-specify` — feature spec from a natural-language description
+- `/speckit-clarify` (optional) — drive out ambiguities before planning
+- `/speckit-plan` — tech stack + implementation plan
+- `/speckit-tasks` — actionable task list
+- `/speckit-analyze` (optional) — cross-artifact consistency check
+- `/speckit-implement` — execute all tasks
+
+Berry rules still apply on top: every spec-kit-driven plan step routes through `berry-plan-and-execute` for verification before implementation lands.
+
+#### How Claude drives spec-kit on the user's behalf (SDD playbook)
+
+When the user asks for something that fits a spec-driven flow (new feature, greenfield project, multi-step work that will outlive this session), follow this playbook **before** writing any code:
+
+**1. Detect the project's spec-kit state.** Check if `.specify/` exists at the project root.
+- **Exists** → existing spec-kit project; check `.specify/memory/constitution.md` to see if the Constitution is filled in. If not, the user is mid-setup; offer to run `/speckit-constitution`.
+- **Does not exist** → ask the user before running `specify init --here --integration claude`. Initialization writes files into their project, so it needs explicit consent — but once consented, do it via the shell yourself; do not ask the user to run the command. After init, remind the user a Claude Code restart is required for the `/speckit-*` slash commands to register, **then stop and wait** — you cannot use the new skills until the session restarts.
+
+**2. Constitution before first spec.** If `.specify/memory/constitution.md` is empty or placeholder-only, you MUST run `/speckit-constitution` first (or ask the user to) before any `/speckit-specify`. The Constitution is the project's governing principles document — every later spec and plan is checked against it by `/speckit-analyze`. Skipping it means you have no consistency gate.
+
+**3. Spec describes WHAT and WHY, not HOW.** In `/speckit-specify`, focus on user goals, acceptance criteria, and constraints. Do not name a tech stack, framework, or library — those belong in `/speckit-plan`. If the user describes the request in tech-stack terms ("build a React app with..."), separate the WHAT from the HOW: capture WHAT in spec, defer HOW to plan.
+
+**4. Clarify when ambiguous.** After `/speckit-specify`, scan the produced `spec.md` for open questions, vague requirements, or unstated assumptions. If you find any, run `/speckit-clarify` before proceeding. **Do not invent answers** — clarify gets the user to commit to a single interpretation. The cost of one clarification round is far smaller than the cost of implementing the wrong interpretation.
+
+**5. Plan establishes the HOW.** Run `/speckit-plan` with the chosen tech stack and architectural decisions. Cite the relevant `docs/tools/*.md` entries for any plugin/MCP/LSP the plan depends on.
+
+**6. Tasks decompose the plan.** Run `/speckit-tasks` to break the plan into 2–5 minute units, exactly as the kit's existing TDD discipline requires. Each task should be independently testable.
+
+**7. Analyze before implementing.** Run `/speckit-analyze` after `/speckit-tasks`. It cross-checks Constitution ↔ spec ↔ plan ↔ tasks for consistency. **Do not skip this** — drift between these artifacts is the most common spec-driven failure mode, and analyze catches it for the cost of one query.
+
+**8. Implement under Berry.** Run `/speckit-implement` to execute the task list. Every step routes through `berry-plan-and-execute` per the Berry hard rules — no shortcuts. Test output is always captured as a Berry span (`berry-search-and-learn`) before any "tests pass" claim.
+
+**9. Update spec when intent changes.** If the user changes their mind mid-implementation, **update the spec first** (re-run `/speckit-specify` or edit `spec.md` directly), then re-run `/speckit-analyze` to surface what else needs to change. Never silently let the implementation drift from the spec — that destroys the value of having a spec at all.
+
+**Hard prohibitions for spec-driven mode:**
+- Do not start implementation before the spec is approved by the user.
+- Do not skip `/speckit-analyze` because "the plan looks fine to me."
+- Do not run `/speckit-implement` if the Constitution is empty.
+- Do not invent answers to spec ambiguities — always `/speckit-clarify`.
+- Do not bypass Berry gates by switching to spec-driven mode; both layers stack.
+
+If spec-kit isn't initialized and the user's request is small (bugfix, refactor, single-session task), use the default brainstorm → plan → TDD flow instead. Spec-kit overhead does not pay back at small scope.
+
+---
+
 ## Workflow Order (For Any Non-Trivial Task)
 
 **For new features → use `/feature-dev` (handles phases 1–7 automatically)**
