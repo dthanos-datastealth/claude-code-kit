@@ -39,3 +39,10 @@ jobs:
 
       - name: Run pytest suite
         run: python3 -m pytest tests/ -v
+
+      # NOTE: lint-mcp-hardcoded-paths.py needs a populated plugin cache
+      # (an actual install) to scan. CI doesn't run install.sh against the
+      # real claude CLI, so the scan runs against the test harness's
+      # cached state — which is empty. The lint runs locally via
+      # scripts/test-install-isolated.sh after a real install populates
+      # the cache. Documenting here so the gap is visible.

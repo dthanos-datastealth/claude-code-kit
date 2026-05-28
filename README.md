@@ -33,7 +33,7 @@ flowchart LR
     sets[claude/settings.json<br/>21 plugins · 5 marketplaces<br/>effortLevel: max]
     mem[claude/memory/MEMORY.md<br/>auto-memory index]
     docs[docs/<br/>philosophy · workflow ·<br/>prereqs · corporate-tls ·<br/>memory-system · tools/ ×23]
-    sc[scripts/<br/>merge-settings · lint-scrubbing · lint-tools-docs ·<br/>lint-plugin-marketplaces · diff-against-live ·<br/>test-install-isolated]
+    sc[scripts/<br/>merge-settings · lint-scrubbing · lint-tools-docs ·<br/>lint-plugin-marketplaces · lint-mcp-hardcoded-paths ·<br/>diff-against-live · test-install-isolated]
     tests[tests/<br/>29 pytest cases ·<br/>isolated-HOME harness]
   end
 
@@ -397,6 +397,10 @@ before and after.
 3. Asserts every expected artifact landed in the isolated HOME
    (`CLAUDE.md`, `settings.json`, `memory/MEMORY.md`, `docs/tools/`,
    the expected plugin count, and the expected per-tool docs count).
+   Also runs `lint-mcp-hardcoded-paths.py` against the populated
+   plugin cache — fails the test if any installed plugin's `.mcp.json`
+   contains an owner-specific absolute path (`/Users/<x>`, `/home/<x>`,
+   etc.) that would break the plugin on other users' machines.
 4. **Leak check** — re-captures the real `~/.claude/CLAUDE.md`,
    `~/.claude/settings.json`, and `~/.claude.json` (MCP server config,
    sibling dot-file) mtimes and exits non-zero if any of the three
@@ -470,7 +474,8 @@ claude-code-kit/
 │   ├── lint-scrubbing.py              Catches owner paths / company names
 │   ├── lint-tools-docs.py             Enforces 5-section schema
 │   ├── lint-plugin-marketplaces.py    Verifies every plugin resolves against its upstream marketplace.json
-│   └── test-install-isolated.sh       Parallel-test install.sh in a temp HOME with leak check
+│   ├── lint-mcp-hardcoded-paths.py    Scans installed plugins' .mcp.json for owner-specific paths
+│   └── test-install-isolated.sh       Parallel-test install.sh in a temp HOME with leak check + post-install lints
 └── tests/                             pytest with isolated-HOME harness
 ```
 

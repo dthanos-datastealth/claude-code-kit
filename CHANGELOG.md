@@ -6,6 +6,26 @@ contract changes; untagged for CLAUDE.md/docs edits.
 
 ## [Unreleased]
 ### Added
+- **`scripts/lint-mcp-hardcoded-paths.py`** — scans every installed
+  plugin's `.mcp.json` for owner-specific absolute paths (`/Users/<x>`,
+  `/home/<x>`, `/var/folders/<x>`, `C:\Users\<x>`). Catches the failure
+  mode where a plugin ships an MCP config that only works on the
+  plugin author's machine — exactly what bit the kit when Berry's
+  cached `.mcp.json` had `/Users/<owner>/.claude/certs/corporate-ca-bundle.pem`
+  baked in. Wired into `scripts/test-install-isolated.sh` (which has
+  a populated cache to scan against) as a fail-loudly step. Has an
+  ALLOWED_SUBSTRINGS list for legitimate template placeholders
+  (`${HOME}`, `${CLAUDE_PLUGIN_ROOT}`, doc examples like `/Users/example`,
+  `/home/alice`).
+- **`install.sh prewarm_npx_mcps` step** — runs `npx -y <pkg> --version`
+  in parallel for the three npx-based MCP packages shipped via the
+  kit's plugins (`@playwright/mcp@latest`, `chrome-devtools-mcp@latest`,
+  `@upstash/context7-mcp`). Populates the npm cache during install so
+  those MCPs don't show `✘ failed` on first Claude Code launch while
+  npm downloads in the background. Soft-fail: if `npx` isn't on PATH
+  the step prints a warning and skips; install.sh still succeeds.
+  Two new pytest cases (`test_install_prewarm.py`) cover the
+  step's ordering and the no-npx graceful-skip path.
 - **`scripts/test-install-isolated.sh`** — parallel-test the kit
   against the real `claude` CLI without clobbering your real
   `~/.claude/`. Pattern: capture mtimes of `~/.claude/CLAUDE.md` and

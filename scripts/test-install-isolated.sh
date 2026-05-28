@@ -84,6 +84,20 @@ plugin_count=$(python3 -c "import json; d=json.load(open('${TEST_HOME}/.claude/s
 docs_count=$(find "${TEST_HOME}/.claude/docs/tools" -maxdepth 1 -type f -name '*.md' | wc -l | tr -d ' ')
 ok "  ${plugin_count} plugins enabled; ${docs_count} per-tool docs shipped"
 
+# Hardcoded-path lint: scan every installed plugin's .mcp.json for
+# owner-specific absolute paths. Catches the failure mode where a
+# plugin ships a .mcp.json that only works on the author's machine
+# (e.g. /Users/<owner>/...). If any are found, the lint exits 1 and
+# this test fails.
+log "Scanning installed .mcp.json files for hardcoded owner-specific paths..."
+if python3 "${REPO_DIR}/scripts/lint-mcp-hardcoded-paths.py" "${TEST_HOME}/.claude"; then
+    ok "  No hardcoded paths in any installed plugin's .mcp.json"
+else
+    err "  Hardcoded-path lint failed (see output above)"
+    err "  Tempdir kept at ${TEST_HOME} for diagnosis"
+    exit 3
+fi
+
 log "Leak check: verifying real ~/.claude/ is untouched..."
 REAL_CLAUDE_MD_AFTER=$(file_mtime "${REAL_CLAUDE_HOME}/CLAUDE.md")
 REAL_SETTINGS_AFTER=$(file_mtime "${REAL_CLAUDE_HOME}/settings.json")

@@ -120,6 +120,41 @@ register_marketplaces() {
     done
 }
 
+# Pre-warm npm cache for npx-based MCP servers (playwright, chrome-devtools,
+# context7) so they don't fail on first MCP-server startup waiting for npm
+# to download. Without this, a fresh Claude Code session shows those MCPs
+# as ✘ failed for the first 30-60s after install while npx downloads in
+# the background.
+NPX_MCP_PACKAGES=(
+    "@playwright/mcp@latest"
+    "chrome-devtools-mcp@latest"
+    "@upstash/context7-mcp"
+)
+
+prewarm_npx_mcps() {
+    if ! command -v npx >/dev/null 2>&1; then
+        warn "  npx not on PATH; skipping npx-MCP pre-warm (playwright,"
+        warn "  chrome-devtools, context7 will cold-start on first session)"
+        return 0
+    fi
+    log "Pre-warming npm cache for npx-based MCP servers (parallel)..."
+    local pids=()
+    for pkg in "${NPX_MCP_PACKAGES[@]}"; do
+        (
+            if npx -y "${pkg}" --version >/dev/null 2>&1; then
+                log "  + ${pkg}"
+            else
+                warn "  ${pkg}: pre-warm failed (non-fatal)"
+            fi
+        ) &
+        pids+=($!)
+    done
+    for pid in "${pids[@]}"; do
+        wait "${pid}" || true
+    done
+    log "Pre-warm complete"
+}
+
 install_plugins() {
     log "Installing plugins (reads enabledPlugins from settings.json)..."
     local plugins
@@ -163,6 +198,7 @@ main() {
     install_memory_index
     register_marketplaces
     install_plugins
+    prewarm_npx_mcps
     log "Done. Restart Claude Code. See ~/.claude/docs/workflow.md for next steps."
 }
 
