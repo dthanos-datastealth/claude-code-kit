@@ -12,6 +12,7 @@ EXPECTED_PLUGINS = {
     "notion@claude-plugins-official",
     "gopls-lsp@claude-plugins-official",
     "typescript-lsp@claude-plugins-official",
+    "jdtls-lsp@claude-plugins-official",
     "feature-dev@claude-plugins-official",
     "security-guidance@claude-plugins-official",
     "huggingface-skills@claude-plugins-official",
