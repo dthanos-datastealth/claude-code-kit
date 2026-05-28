@@ -1,6 +1,6 @@
 # claude-code-kit
 
-Opinionated bootstrap kit for replicating a complete, evidence-first Claude
+Opinionated bootstrap kit for creating a complete, evidence-first Claude
 Code development environment on a clean macOS or Linux machine.
 
 The kit ships three things together so a new machine reaches a working,
@@ -34,7 +34,7 @@ flowchart LR
     mem[claude/memory/MEMORY.md<br/>auto-memory index]
     docs[docs/<br/>philosophy · workflow ·<br/>prereqs · corporate-tls ·<br/>memory-system · tools/ ×23]
     sc[scripts/<br/>merge-settings · lint-scrubbing · lint-tools-docs ·<br/>lint-plugin-marketplaces · lint-mcp-hardcoded-paths ·<br/>diff-against-live · test-install-isolated]
-    tests[tests/<br/>29 pytest cases ·<br/>isolated-HOME harness]
+    tests[tests/<br/>34 pytest cases ·<br/>isolated-HOME harness]
   end
 
   cmd -->|preflight| pre{All prereqs on PATH?}
@@ -432,7 +432,7 @@ claude-code-kit/
 ├── install.sh                         Bootstrap entry point
 ├── uninstall.sh                       Restore from latest backup
 ├── pyproject.toml                     pytest config
-├── .github/workflows/ci.yml           shellcheck + lints + 29 pytest cases
+├── .github/workflows/ci.yml           shellcheck + lints + 34 pytest cases
 ├── claude/                            Files copied/merged into ~/.claude/
 │   ├── CLAUDE.md                      Scrubbed opinionated template
 │   ├── settings.json                  21 plugins, 5 marketplaces, effortLevel: max

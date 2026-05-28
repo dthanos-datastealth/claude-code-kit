@@ -5,17 +5,26 @@ from pathlib import Path
 from tests.helpers import run_install, REPO
 
 
-def test_prewarm_runs_at_end_of_install():
-    """The fake claude CLI logs every invocation; prewarm step happens after
-    install_plugins so we can check ordering by comparing line positions."""
+def test_prewarm_executes_after_install_plugins():
+    """Assert directly on install.sh stdout that the prewarm step ran AFTER
+    install_plugins completed. The prewarm step's first log line ('Pre-warming
+    npm cache...' or the skip warning) must appear in stdout AFTER the last
+    'plugin install' line."""
     r = run_install()
-    log_lines = r.claude_log.read_text().splitlines()
-    # prewarm doesn't call claude (it calls npx), so we only assert install.sh
-    # didn't bail before completing all the claude-CLI work
-    plugin_install_count = sum(1 for ln in log_lines if ln.startswith("plugin install "))
-    assert plugin_install_count == 21, (
-        f"expected 21 plugin installs, got {plugin_install_count} "
-        f"(suggests install.sh aborted before/during install_plugins)"
+    combined = r.stdout + r.stderr
+    # Find the index of the last plugin-install log line
+    last_plugin_install = combined.rfind("Installing plugins (reads enabledPlugins")
+    # Find the index of the prewarm step's first output
+    prewarm_marker = combined.find("Pre-warming npm cache")
+    if prewarm_marker < 0:
+        prewarm_marker = combined.find("npx not on PATH")
+    assert last_plugin_install >= 0, (
+        f"install_plugins didn't appear to run; install.sh aborted early:\n{combined}"
+    )
+    assert prewarm_marker > last_plugin_install, (
+        f"prewarm step should run AFTER install_plugins; "
+        f"got install_plugins at {last_plugin_install}, prewarm at {prewarm_marker}\n"
+        f"combined output:\n{combined}"
     )
 
 

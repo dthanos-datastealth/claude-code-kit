@@ -33,7 +33,14 @@ SUSPICIOUS_PATTERNS = [
     (re.compile(r"/Users/[^/\s\"']+"), "macOS user home"),
     (re.compile(r"/home/[^/\s\"']+"), "Linux user home"),
     (re.compile(r"/var/folders/[^/\s\"']+"), "macOS per-user temp"),
-    (re.compile(r"C:\\Users\\[^/\\\s\"']+"), "Windows user home"),
+    # Windows paths in JSON files are double-escaped: literal `C:\Users\bob`
+    # appears on disk as the bytes `C:\\Users\\bob`. The raw-string form
+    # below matches FOUR backslashes (two escaped pairs) followed by `Users`
+    # then another escaped pair and the user name.
+    (re.compile(r"C:\\\\Users\\\\[^/\\\s\"']+"), "Windows user home (JSON-encoded)"),
+    # And the unencoded form too, in case a .mcp.json ever ships a Windows
+    # path that wasn't JSON-escaped (e.g. authored in a tool that didn't escape).
+    (re.compile(r"C:\\Users\\[^/\\\s\"']+"), "Windows user home (raw)"),
 ]
 
 # Allow-list: substrings that, if matched, indicate a legitimate use
@@ -68,10 +75,10 @@ def main() -> int:
         return 0
 
     mcp_files = sorted(plugins_cache.rglob(".mcp.json"))
-    print(f"Scanning {len(mcp_files)} .mcp.json files under {plugins_cache}/...")
     if not mcp_files:
-        print("OK: no .mcp.json files found in plugin cache")
+        print(f"OK: no .mcp.json files found in {plugins_cache}/")
         return 0
+    print(f"Scanning {len(mcp_files)} .mcp.json files under {plugins_cache}/...")
 
     errors: list[str] = []
     for mcp in mcp_files:
