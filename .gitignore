@@ -14,3 +14,8 @@ tests/.fake-home/
 
 # Don't accidentally commit live config
 .claude/
+
+# Internal design artifacts (contain unscrubbed source-of-truth paths
+# and the scrubbing-rules table itself, which enumerates company names).
+# Keep these local-only.
+docs/superpowers/
