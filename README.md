@@ -396,10 +396,12 @@ before and after.
 2. Creates `$(mktemp -d -t cck-test-XXXXXX)` and runs `HOME="$TEST_HOME" ./install.sh`.
 3. Asserts every expected artifact landed in the isolated HOME
    (`CLAUDE.md`, `settings.json`, `memory/MEMORY.md`, `docs/tools/`,
-   the expected plugin count).
-4. **Leak check** — re-captures the real `~/.claude/` mtimes and exits
-   non-zero if either changed. If a future kit change accidentally
-   writes outside `$HOME`, this catches it.
+   the expected plugin count, and the expected per-tool docs count).
+4. **Leak check** — re-captures the real `~/.claude/CLAUDE.md`,
+   `~/.claude/settings.json`, and `~/.claude.json` (MCP server config,
+   sibling dot-file) mtimes and exits non-zero if any of the three
+   changed. If a future kit change accidentally writes outside the
+   isolated HOME, this catches it.
 5. Prints a summary and tells you how to poke around the tempdir (or
    cleans it up if you passed `--clean`).
 

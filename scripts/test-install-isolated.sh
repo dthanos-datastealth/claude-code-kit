@@ -27,6 +27,9 @@ ok()   { printf '\033[1;32m[cck-test]\033[0m %s\n' "$*"; }
 err()  { printf '\033[1;31m[cck-test]\033[0m %s\n' "$*" >&2; }
 
 # Portable mtime: macOS uses stat -f, Linux uses stat -c.
+# Returns the literal string "absent" when the file doesn't exist;
+# leak-check below compares with == so "absent" == "absent" passes
+# correctly when the user has no prior install.
 file_mtime() {
     local f="$1"
     if [ ! -f "$f" ]; then
@@ -38,9 +41,15 @@ file_mtime() {
 
 REAL_CLAUDE_MD_BEFORE=$(file_mtime "${REAL_CLAUDE_HOME}/CLAUDE.md")
 REAL_SETTINGS_BEFORE=$(file_mtime "${REAL_CLAUDE_HOME}/settings.json")
+# ~/.claude.json is the MCP server config (sibling dot-file, NOT under
+# ~/.claude/). HOME-override still isolates it, but track its mtime so
+# this script's leak check catches a regression if a future kit change
+# ever writes to that path outside of HOME-redirection.
+REAL_CLAUDE_DOTJSON_BEFORE=$(file_mtime "${HOME}/.claude.json")
 log "Captured real-HOME mtimes (will verify UNCHANGED after the test):"
 log "  ~/.claude/CLAUDE.md     : ${REAL_CLAUDE_MD_BEFORE}"
 log "  ~/.claude/settings.json : ${REAL_SETTINGS_BEFORE}"
+log "  ~/.claude.json          : ${REAL_CLAUDE_DOTJSON_BEFORE}"
 
 TEST_HOME=$(mktemp -d -t cck-test-XXXXXX)
 log "Isolated HOME: ${TEST_HOME}"
@@ -78,6 +87,7 @@ ok "  ${plugin_count} plugins enabled; ${docs_count} per-tool docs shipped"
 log "Leak check: verifying real ~/.claude/ is untouched..."
 REAL_CLAUDE_MD_AFTER=$(file_mtime "${REAL_CLAUDE_HOME}/CLAUDE.md")
 REAL_SETTINGS_AFTER=$(file_mtime "${REAL_CLAUDE_HOME}/settings.json")
+REAL_CLAUDE_DOTJSON_AFTER=$(file_mtime "${HOME}/.claude.json")
 leak=0
 if [ "${REAL_CLAUDE_MD_BEFORE}" != "${REAL_CLAUDE_MD_AFTER}" ]; then
     err "  LEAK: ~/.claude/CLAUDE.md mtime CHANGED (${REAL_CLAUDE_MD_BEFORE} -> ${REAL_CLAUDE_MD_AFTER})"
@@ -87,12 +97,16 @@ if [ "${REAL_SETTINGS_BEFORE}" != "${REAL_SETTINGS_AFTER}" ]; then
     err "  LEAK: ~/.claude/settings.json mtime CHANGED (${REAL_SETTINGS_BEFORE} -> ${REAL_SETTINGS_AFTER})"
     leak=1
 fi
+if [ "${REAL_CLAUDE_DOTJSON_BEFORE}" != "${REAL_CLAUDE_DOTJSON_AFTER}" ]; then
+    err "  LEAK: ~/.claude.json mtime CHANGED (${REAL_CLAUDE_DOTJSON_BEFORE} -> ${REAL_CLAUDE_DOTJSON_AFTER})"
+    leak=1
+fi
 if [ "${leak}" -eq 1 ]; then
-    err "ISOLATION FAILED — install.sh wrote to your real ~/.claude/. This is a kit bug; please file it."
+    err "ISOLATION FAILED — install.sh wrote to your real HOME. This is a kit bug; please file it."
     err "  Tempdir kept at ${TEST_HOME} for diagnosis"
     exit 2
 fi
-ok "  Real ~/.claude/CLAUDE.md and ~/.claude/settings.json mtimes UNCHANGED"
+ok "  Real ~/.claude/CLAUDE.md, ~/.claude/settings.json, and ~/.claude.json mtimes UNCHANGED"
 
 ok ""
 ok "==============================================="
