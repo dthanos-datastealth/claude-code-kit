@@ -1,7 +1,7 @@
 # claude-code-kit
 
-Private bootstrap kit for replicating a complete, opinionated Claude Code
-development setup on a clean macOS or Linux machine.
+Opinionated bootstrap kit for replicating a complete Claude Code development
+setup on a clean macOS or Linux machine.
 
 ## What you get
 

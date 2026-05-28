@@ -1,6 +1,7 @@
 # Contributing
 
-This is a private kit. Direct PRs from invited collaborators only.
+PRs welcome. Open one against `main` — CI runs shellcheck, the scrubbing
+lint, the tools-docs schema lint, and the pytest suite on ubuntu-latest.
 
 ## Drift-back-to-source workflow
 
