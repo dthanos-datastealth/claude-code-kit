@@ -6,6 +6,21 @@ contract changes; untagged for CLAUDE.md/docs edits.
 
 ## [Unreleased]
 ### Added
+- **`install.sh copy_docs` step** ships kit reference docs to
+  `~/.claude/docs/` (top-level: `philosophy.md`, `workflow.md`,
+  `prereqs.md`, `corporate-tls.md`, `memory-system.md`; plus
+  `tools/<name>.md` for all 23 plugins/MCPs/skills). Previously
+  these only existed in the cloned kit repo, with no stable path
+  Claude Code sessions could reference. New `claude/CLAUDE.md`
+  paragraph in "Installed Plugins" tells Claude exactly when to
+  consult `~/.claude/docs/tools/<name>.md` (cost recall, "should I
+  disable X" questions, unexpected behavior, source URL lookup).
+  Three new pytest cases (`test_install_docs.py`) verify the copy
+  works and stays in sync with the kit repo's `docs/tools/` count.
+  install.sh `main()` step order is now:
+  preflight → backup → copy_templates → **copy_docs** →
+  merge_settings → install_memory_index → register_marketplaces →
+  install_plugins.
 - **MANDATORY Quality Loop section** at the top of `claude/CLAUDE.md`
   (between Code Search Order and Installed Plugins). Codifies the
   TDD → Berry → V+O discipline the kit actually runs:

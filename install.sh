@@ -46,6 +46,35 @@ copy_templates() {
     log "  CLAUDE.md installed"
 }
 
+# Ship the kit's reference docs into ~/.claude/docs/ so CLAUDE.md
+# can reference them at a stable, machine-local path. Without this
+# step the docs only exist in the cloned kit repo, which Claude
+# Code sessions can't reliably locate.
+TOP_LEVEL_DOCS=(
+    "philosophy.md"
+    "workflow.md"
+    "prereqs.md"
+    "corporate-tls.md"
+    "memory-system.md"
+)
+
+copy_docs() {
+    log "Copying kit reference docs into ${CLAUDE_HOME}/docs/..."
+    local dst="${CLAUDE_HOME}/docs"
+    mkdir -p "${dst}/tools"
+
+    # Top-level guides (skip silently if any are missing from the kit)
+    for f in "${TOP_LEVEL_DOCS[@]}"; do
+        if [ -f "${REPO_DIR}/docs/${f}" ]; then
+            cp "${REPO_DIR}/docs/${f}" "${dst}/${f}"
+        fi
+    done
+
+    # Per-tool rationale docs (explicit glob, fails loudly if missing)
+    cp "${REPO_DIR}/docs/tools/"*.md "${dst}/tools/"
+    log "  Reference docs copied: ${#TOP_LEVEL_DOCS[@]} top-level + tools/"
+}
+
 merge_settings() {
     log "Merging settings.json (preserving your env block)..."
     python3 "${REPO_DIR}/scripts/merge-settings.py" \
@@ -127,11 +156,12 @@ main() {
     preflight
     backup_existing
     copy_templates
+    copy_docs
     merge_settings
     install_memory_index
     register_marketplaces
     install_plugins
-    log "Done. Restart Claude Code. See docs/workflow.md for next steps."
+    log "Done. Restart Claude Code. See ~/.claude/docs/workflow.md for next steps."
 }
 
 main "$@"

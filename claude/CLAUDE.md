@@ -78,6 +78,17 @@ The kit's `requesting-code-review`, `code-quality-reviewer`, and `code-simplifie
 
 ## Installed Plugins & When to Use Them
 
+For each plugin, MCP, or skill listed below, the kit ships a **per-tool depth-reference document** at `~/.claude/docs/tools/<name>.md` (installed there by the kit's `install.sh`). Each follows a strict 5-section schema — *What it does · Why it's in this kit · When you'd disable it · Source · Cost / footprint*. **Consult the depth-reference when:**
+
+- You're about to invoke a tool whose cost (memory, latency, network, external dependencies) you can't recall from the summary below.
+- The user asks "what does X do?" or "should I disable X?" — the depth-reference contains the authoritative answer with rationale.
+- You hit unexpected behavior and need to know whether it's by design (the "When you'd disable it" section enumerates the wrong-tool-for-the-job cases).
+- You need the upstream source URL (GitHub repo, marketplace identifier) for further reading or to file an issue against the right project.
+
+The same directory also contains `philosophy.md` (why each rule exists), `workflow.md` (the 10-step procedural recipe), `prereqs.md` (per-OS install commands for external tools), `corporate-tls.md` (CA-bundle setup for intercepted networks), and `memory-system.md` (auto-memory schema). Read those when broader context is needed than the summaries here provide.
+
+If `~/.claude/docs/` is missing or stale (no `tools/` subdirectory, or fewer files than plugins enabled), re-run the kit's `install.sh` — the `copy_docs` step is what populates it.
+
 ### Superpowers (Primary Workflow Engine)
 The backbone for all serious development work. Always invoke `/superpowers:using-superpowers` at the start of any new conversation.
 
