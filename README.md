@@ -102,7 +102,7 @@ flowchart TD
   build --> bgate2{Tests pass?<br/>Capture output as<br/>Berry span via<br/>berry-search-and-learn}
   bgate2 -->|no| tdd
   bgate2 -->|yes| review[/superpowers:requesting-code-review/]
-  review --> simplify[/simplify<br/>code-simplifier]
+  review --> simplify[/simplify<br/>code-simplifier/]
   simplify --> finish[/superpowers:finishing-a-development-branch/]
   finish --> docupd[/revise-claude-md<br/>capture session learnings/]
   docupd --> shipped([Shipped])
@@ -140,7 +140,7 @@ every session.
 
 | Layer | Contents |
 |---|---|
-| **Workflow** | Scrubbed `CLAUDE.md` (~210 lines) enforcing TDD-first, evidence-before-assertions, the MANDATORY code-search order (`graph_continue` → LSP → Read/Grep — bash grep/find/cat/sed/awk forbidden), Berry as a hard gate, and the optional spec-kit layer with a 9-step agent playbook. |
+| **Workflow** | `CLAUDE.md` (~210 lines) enforcing TDD-first, evidence-before-assertions, the MANDATORY code-search order (`graph_continue` → LSP → Read/Grep — bash grep/find/cat/sed/awk forbidden), Berry as a hard gate, and the optional spec-kit layer with a 9-step agent playbook. |
 | **Plugins (20)** | 18 from `anthropics/claude-plugins-official`: superpowers, feature-dev, berry-adjacent-rules, code-simplifier, context7, claude-md-management, frontend-design, explanatory-output-style, notion, gopls-lsp, typescript-lsp, **jdtls-lsp** (Java), playwright, chrome-devtools-mcp, microsoft-docs, huggingface-skills, security-guidance, optibot, remember. 1 from `leochlon/hallbayes`: berry (evidence verifier). 1 from `multica-ai/andrej-karpathy-skills`. |
 | **Berry verifier** | Defaults to OpenRouter `openai/gpt-4o-mini` (configured via `~/.berry/config.json` + `~/.berry/mcp_env.json`); self-hosted `llama.cpp` remains supported as the offline alternative. |
 | **Memory system** | `MEMORY.md` index template at `~/.claude/memory/`, plus `docs/memory-system.md` explaining the 4 memory types (user, feedback, project, reference), the index format, and the 200-line cap. |
