@@ -290,22 +290,54 @@ optional tools (LSP binaries, `ripgrep`, `jq`, `shellcheck`, `specify`).
 
 ---
 
-## What to do after `install.sh`
+## Required setup after `install.sh`
+
+`install.sh` only configures Claude Code and installs plugins. The kit's
+CLAUDE.md mandates that several **external** tools are present —
+without them the discipline the kit enforces is non-functional. These
+steps are **required**, not optional. The reason `install.sh` does not
+run them itself is supply-chain risk: each foundational tool below has
+its own update cadence, signing keys, and security posture, and
+bundling them into a config bootstrap is the wrong place to take that
+responsibility. See [`docs/philosophy.md`](docs/philosophy.md).
+
+### One-time, on every machine (do these in order, immediately after `install.sh`)
 
 | Step | Why | Command |
 |---|---|---|
-| Restart Claude Code | New plugins/skills register at session start | `Cmd-Q` then relaunch, or `/exit` then `claude` |
-| (Optional) Configure Berry verifier | Berry calls fail closed without a reachable LLM backend | `/berry:berry-configure` — sets up the OpenRouter or self-hosted backend |
-| (Optional, per project) Enable spec-kit | Adds `/speckit-*` slash commands to that project | `cd <your-project> && specify init --here --integration claude` |
-| (Optional) Install LSP binaries | Without these, the LSP plugins have nothing to call | `go install golang.org/x/tools/gopls@latest`, `npm i -g typescript typescript-language-server`, `brew install openjdk@21 jdtls` (or distribution equivalents) |
-| (Optional) Install dual-graph MCP | The CLAUDE.md mandates `graph_continue` first for code search; install per upstream docs then `claude mcp add` | See upstream docs |
-| (Optional) Install caveman skill | Terse-output register that cuts ~65% of output tokens on long sessions; opt-in per session | `gh repo clone JuliusBrussee/caveman ~/.claude/skills/caveman`, then restart Claude Code |
+| **1. Restart Claude Code** | New plugins/skills register at session start | `Cmd-Q` then relaunch, or `/exit` then `claude` |
+| **2. Configure the Berry verifier backend** | Berry verification is a MANDATORY gate per CLAUDE.md; every Berry call fails closed without a reachable LLM backend | `/berry:berry-configure` — walks you through OpenRouter (default — `openai/gpt-4o-mini`) or a self-hosted llama.cpp endpoint |
+| **3. Install the dual-graph MCP** | CLAUDE.md's MANDATORY code-search order requires `graph_continue` as the FIRST call for every code lookup; without it the kit falls back to bash grep which the kit's hard rules forbid | Follow upstream dual-graph MCP install instructions, then `claude mcp add <name> <command>` to register it locally |
+| **4. Install LSP server binaries** | LSPs are step TWO of the mandatory code-search order; the plugins ship but have no language server to call without these | `go install golang.org/x/tools/gopls@latest` · `npm i -g typescript typescript-language-server` · `brew install openjdk@21 jdtls` (or distribution equivalents — see [`docs/prereqs.md`](docs/prereqs.md) sections 7, 8, 9) |
+| **5. Install the caveman skill** | Token/context savings on long sessions (~65% output-token reduction); ships as a single-file skill cloned into your global skills dir | `gh repo clone JuliusBrussee/caveman ~/.claude/skills/caveman`, then restart Claude Code. Invoke per-session with `/caveman` when output length is the constraint |
 
-The kit deliberately keeps these optional / per-developer rather than
-bundling them in `install.sh` — see [`docs/philosophy.md`](docs/philosophy.md)
-for the reasoning (foundational tools have their own update cadence and
-security posture; bundling them creates supply-chain risk and version-pin
-headaches).
+### Per project, when starting work on a new repo
+
+| Step | Why | Command |
+|---|---|---|
+| **6. Initialize spec-kit for the project** | Required when adopting the spec-driven flow for a project; installs `/speckit-*` skills + `.specify/` scaffold into the project | `cd <your-project>` then `specify init --here --integration claude`, then restart Claude Code in that directory |
+
+### Per session (caveman is the only opt-in here)
+
+The caveman skill is installed once (step 5) but invoked per-session
+via `/caveman` when output-token volume is the constraint. All other
+plugins/skills above are session-scope automatic.
+
+### Verifying everything is wired up
+
+After steps 1–5, run:
+
+```bash
+claude plugin list                              # should show 20 plugins enabled
+which gopls typescript-language-server jdtls    # all three resolve
+jdtls --help                                    # JVM mismatch surfaces here if any
+ls ~/.claude/skills/caveman/SKILL.md            # caveman skill present
+```
+
+Then in a fresh Claude Code session, invoke `/berry:berry-configure`
+and confirm it reports the backend as reachable. If any of the above
+fails, see [`docs/prereqs.md`](docs/prereqs.md) for the
+section-by-section install commands.
 
 ---
 

@@ -66,6 +66,20 @@ contract changes; untagged for CLAUDE.md/docs edits.
   case; Sourcegraph adds a hosted-service dependency we don't need).
 
 ### Fixed
+- **Reframed README "What to do after install.sh" → "Required setup
+  after install.sh".** Previous wording marked Berry config, dual-graph
+  MCP, LSP binaries, caveman, and spec-kit init as `(Optional)`,
+  which contradicted the CLAUDE.md mandates (Berry hard gate;
+  dual-graph FIRST in code-search order; LSPs SECOND; bash grep
+  forbidden). New section structures them as: one-time required
+  steps in order (restart → Berry config → dual-graph → LSPs →
+  caveman), then per-project (spec-kit init when adopting spec-driven),
+  then per-session (caveman invocation). Also adds a verification
+  block (`claude plugin list`, `which gopls ...`, etc.) so the user
+  can confirm the wiring is complete. The reason install.sh doesn't
+  do these itself stays the same (supply-chain risk; foundational
+  tools have their own update cadence), but the framing no longer
+  understates that they're load-bearing.
 - README workflow Mermaid diagram now uses GitHub-safe syntax
   (rectangles instead of parallelograms, no `<br/>` inside edge labels)
   so GitHub's Mermaid renderer can parse it.
