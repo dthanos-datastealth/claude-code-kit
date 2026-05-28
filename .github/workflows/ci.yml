@@ -32,5 +32,15 @@ jobs:
       - name: Run tools-docs schema lint
         run: python3 scripts/lint-tools-docs.py docs/tools/*.md
 
+      - name: Authenticate gh (needed by plugin-marketplace lint)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh auth status
+
+      - name: Verify every plugin resolves against its upstream marketplace
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/lint-plugin-marketplaces.py
+
       - name: Run pytest suite
         run: python3 -m pytest tests/ -v

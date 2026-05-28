@@ -25,6 +25,12 @@
         "source": "github",
         "repo": "JuliusBrussee/caveman"
       }
+    },
+    "optimal-ai": {
+      "source": {
+        "source": "github",
+        "repo": "Optimal-AI/optibot-skill"
+      }
     }
   },
   "enabledPlugins": {
@@ -44,7 +50,7 @@
     "huggingface-skills@claude-plugins-official": true,
     "chrome-devtools-mcp@claude-plugins-official": true,
     "microsoft-docs@claude-plugins-official": true,
-    "optibot@claude-plugins-official": true,
+    "optibot@optimal-ai": true,
     "remember@claude-plugins-official": true,
     "berry@berry-marketplace": true,
     "andrej-karpathy-skills@karpathy-skills": true,

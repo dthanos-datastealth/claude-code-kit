@@ -54,12 +54,17 @@ touching loops over user-scale data, database access patterns, or
 new code that will be called per-request or per-event.
 
 **Source:**
-GitHub: <https://github.com/anthropics/claude-plugins-official>
-Marketplace: `anthropics/claude-plugins-official`
+GitHub: <https://github.com/Optimal-AI/optibot-skill>
+Marketplace: `Optimal-AI/optibot-skill` (marketplace name: `optimal-ai`)
 Plugin name: `optibot`
 
 Install via the kit's `install.sh`, which registers the marketplace and
-runs `claude plugin install optibot@anthropics/claude-plugins-official`.
+runs `claude plugin install optibot@optimal-ai`.
+
+Optibot was previously bundled in `anthropics/claude-plugins-official`
+but the upstream maintainer moved it out to its own marketplace at
+`Optimal-AI/optibot-skill`. The kit now points at that marketplace
+directly.
 
 The skill is pure prompt content; it operates on the working tree via
 Claude Code's existing file-access tools. No profiler, no external

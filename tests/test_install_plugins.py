@@ -18,7 +18,7 @@ EXPECTED_PLUGINS = {
     "huggingface-skills@claude-plugins-official",
     "chrome-devtools-mcp@claude-plugins-official",
     "microsoft-docs@claude-plugins-official",
-    "optibot@claude-plugins-official",
+    "optibot@optimal-ai",
     "remember@claude-plugins-official",
     "berry@berry-marketplace",
     "andrej-karpathy-skills@karpathy-skills",

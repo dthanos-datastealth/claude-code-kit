@@ -30,7 +30,7 @@ flowchart LR
     direction TB
     cmd[install.sh]
     tmpl[claude/CLAUDE.md<br/>scrubbed template]
-    sets[claude/settings.json<br/>21 plugins · 4 marketplaces<br/>effortLevel: max]
+    sets[claude/settings.json<br/>21 plugins · 5 marketplaces<br/>effortLevel: max]
     mem[claude/memory/MEMORY.md<br/>auto-memory index]
     docs[docs/<br/>philosophy · workflow ·<br/>prereqs · corporate-tls ·<br/>memory-system · tools/ ×23]
     sc[scripts/<br/>merge-settings · lint-scrubbing ·<br/>lint-tools-docs · diff-against-live]
@@ -43,7 +43,7 @@ flowchart LR
   backup --> copy[Copy CLAUDE.md template]
   copy --> merge[Merge settings.json preserving user env block]
   merge --> memi[Install MEMORY.md never overwrites]
-  memi --> mp[Register 4 marketplaces]
+  memi --> mp[Register 5 marketplaces]
   mp --> pl[Install 21 plugins via claude plugin install]
   pl --> ready[Restart Claude Code]
 
@@ -218,7 +218,7 @@ local spec or the diff.
 | Layer | Contents |
 |---|---|
 | **Workflow** | `CLAUDE.md` (~210 lines) enforcing TDD-first, evidence-before-assertions, the MANDATORY code-search order (`graph_continue` → LSP → Read/Grep — bash grep/find/cat/sed/awk forbidden), Berry as a hard gate, and the optional spec-kit layer with a 9-step agent playbook. |
-| **Plugins (21)** | 18 from `anthropics/claude-plugins-official`: superpowers, feature-dev, code-simplifier, context7, claude-md-management, frontend-design, explanatory-output-style, notion, gopls-lsp, typescript-lsp, **jdtls-lsp** (Java), playwright, chrome-devtools-mcp, microsoft-docs, huggingface-skills, security-guidance, optibot, remember. 1 from `dthanos-datastealth/hallbayes`: berry (evidence verifier; this is a Claude-Code-packaged fork of upstream `leochlon/hallbayes`). 1 from `multica-ai/andrej-karpathy-skills`. 1 from `JuliusBrussee/caveman`: caveman (token-savings terse-output mode). |
+| **Plugins (21)** | 17 from `anthropics/claude-plugins-official`: superpowers, feature-dev, code-simplifier, context7, claude-md-management, frontend-design, explanatory-output-style, notion, gopls-lsp, typescript-lsp, **jdtls-lsp** (Java), playwright, chrome-devtools-mcp, microsoft-docs, huggingface-skills, security-guidance, remember. 1 from `Optimal-AI/optibot-skill`: optibot (performance review). 1 from `dthanos-datastealth/hallbayes`: berry (evidence verifier; this is a Claude-Code-packaged fork of upstream `leochlon/hallbayes`). 1 from `multica-ai/andrej-karpathy-skills`. 1 from `JuliusBrussee/caveman`: caveman (token-savings terse-output mode). |
 | **Berry verifier** | Defaults to OpenRouter `openai/gpt-4o-mini` (configured via `~/.berry/config.json` + `~/.berry/mcp_env.json`); self-hosted `llama.cpp` remains supported as the offline alternative. |
 | **Memory system** | `MEMORY.md` index template at `~/.claude/memory/`, plus `docs/memory-system.md` explaining the 4 memory types (user, feedback, project, reference), the index format, and the 200-line cap. |
 | **Per-tool rationale** | 23 markdown files under `docs/tools/` (one per plugin / MCP / skill / external dependency) following a strict 5-section schema enforced by `scripts/lint-tools-docs.py`. |
@@ -274,7 +274,7 @@ optional tools (LSP binaries, `ripgrep`, `jq`, `shellcheck`, `specify`).
    replaced from the kit; your `env` block is preserved byte-for-byte.
 5. Install `claude/memory/MEMORY.md` at `~/.claude/memory/MEMORY.md` only
    if you don't already have one. Never overwrites.
-6. Register the four plugin marketplaces (with one retry on network blip).
+6. Register the five plugin marketplaces (with one retry on network blip).
 7. Install all 21 plugins (with one retry per plugin on failure).
 8. Print next steps.
 
@@ -431,7 +431,7 @@ claude-code-kit/
 ├── .github/workflows/ci.yml           shellcheck + lints + 29 pytest cases
 ├── claude/                            Files copied/merged into ~/.claude/
 │   ├── CLAUDE.md                      Scrubbed opinionated template
-│   ├── settings.json                  21 plugins, 4 marketplaces, effortLevel: max
+│   ├── settings.json                  21 plugins, 5 marketplaces, effortLevel: max
 │   └── memory/MEMORY.md               Empty index with type sections
 ├── docs/
 │   ├── philosophy.md                  Why each rule exists

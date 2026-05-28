@@ -120,6 +120,27 @@ contract changes; untagged for CLAUDE.md/docs edits.
   case; Sourcegraph adds a hosted-service dependency we don't need).
 
 ### Fixed
+- **`optibot` now installs from `Optimal-AI/optibot-skill` (marketplace
+  name `optimal-ai`)** instead of `claude-plugins-official`. Optibot
+  was removed from the upstream `anthropics/claude-plugins-official`
+  marketplace.json at some point and is now maintained at its own
+  marketplace; the kit's settings still referenced the old location.
+  Fresh installs failed at `claude plugin install optibot@claude-plugins-official`
+  with "Plugin not found in marketplace". Updated:
+  `claude/settings.json` (added `optimal-ai` marketplace, changed
+  enabledPlugins entry), `install.sh` MARKETPLACES array (4→5),
+  `tests/test_install_marketplaces.py` (renamed test, 4→5 asserted),
+  `tests/test_install_plugins.py` (EXPECTED_PLUGINS), `docs/tools/optibot.md`,
+  `README.md` plugin table + Mermaid + layout (4→5 marketplaces).
+- **New `scripts/lint-plugin-marketplaces.py` guard** wired into CI.
+  Fetches each declared marketplace's authoritative `.claude-plugin/
+  marketplace.json` via `gh api` and asserts every enabled plugin
+  appears in its declared marketplace's plugin list. Would have caught
+  optibot's drift the moment it happened — the pytest harness can't
+  catch this class of bug because the fake `claude` CLI returns 0 for
+  any plugin install regardless of whether the marketplace actually
+  publishes that plugin. CI step `Verify every plugin resolves against
+  its upstream marketplace` runs this on every push/PR.
 - **Berry marketplace points back to `dthanos-datastealth/hallbayes`**
   (the Claude-Code-packaged fork) instead of `leochlon/hallbayes`
   (the raw Python upstream). The upstream repo doesn't ship a

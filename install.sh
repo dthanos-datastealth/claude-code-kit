@@ -100,6 +100,7 @@ MARKETPLACES=(
     "dthanos-datastealth/hallbayes"
     "multica-ai/andrej-karpathy-skills"
     "JuliusBrussee/caveman"
+    "Optimal-AI/optibot-skill"
 )
 
 register_marketplaces() {
