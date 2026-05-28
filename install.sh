@@ -97,7 +97,7 @@ install_memory_index() {
 
 MARKETPLACES=(
     "anthropics/claude-plugins-official"
-    "leochlon/hallbayes"
+    "dthanos-datastealth/hallbayes"
     "multica-ai/andrej-karpathy-skills"
     "JuliusBrussee/caveman"
 )

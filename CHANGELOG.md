@@ -120,6 +120,23 @@ contract changes; untagged for CLAUDE.md/docs edits.
   case; Sourcegraph adds a hosted-service dependency we don't need).
 
 ### Fixed
+- **Berry marketplace points back to `dthanos-datastealth/hallbayes`**
+  (the Claude-Code-packaged fork) instead of `leochlon/hallbayes`
+  (the raw Python upstream). The upstream repo doesn't ship a
+  `.claude-plugin/marketplace.json` or any of the Claude Code
+  scaffolding (`commands/`, `skills/`, `.mcp.json`); only the fork
+  carries that. Surfaced when an isolated-HOME smoke test against
+  the real `claude` CLI failed at marketplace registration with
+  "Marketplace file not found at .../leochlon-hallbayes/.claude-plugin/
+  marketplace.json". The kit's CI pytest harness uses a mock
+  `claude` CLI that always returns 0 for `plugin marketplace add`,
+  so this failure mode couldn't surface there. Fork is also publicly
+  accessible, so kit distribution is unchanged. Updated:
+  `claude/settings.json`, `install.sh` MARKETPLACES array,
+  `tests/test_install_marketplaces.py`,
+  `tests/test_install_merge_settings.py`, `docs/tools/berry.md`
+  (now documents the fork-vs-upstream split explicitly),
+  `README.md` plugin table.
 - **Stale "22 per-tool docs" / "20 plugins" / "3 marketplaces" counts**
   across the README (11 occurrences), Mermaid architecture diagram,
   and the layout section. New counts: **23 per-tool docs, 21 plugins,

@@ -45,12 +45,21 @@ Do not disable it when you are: closing a bug, declaring tests green, finishing
 a plan step, or shipping any artifact a human or another agent will rely on.
 
 **Source:**
-GitHub: <https://github.com/leochlon/hallbayes>
-Marketplace: `leochlon/hallbayes`
+GitHub (Claude-Code-packaged): <https://github.com/dthanos-datastealth/hallbayes>
+Marketplace: `dthanos-datastealth/hallbayes`
 Plugin name: `berry`
+Upstream source (Python core, no Claude packaging): <https://github.com/leochlon/hallbayes>
+
+The kit points at `dthanos-datastealth/hallbayes` rather than upstream
+because upstream is the raw hallbayes Python project — it ships the
+verifier source but NOT the Claude Code marketplace scaffolding
+(`.claude-plugin/marketplace.json`, `commands/`, `skills/`, `.mcp.json`)
+that `claude plugin marketplace add` needs. The fork adds that
+scaffolding and is the only currently-published path to install Berry
+as a Claude Code plugin.
 
 Install via the kit's `install.sh`, which registers the marketplace and runs
-`claude plugin install berry@leochlon/hallbayes`.
+`claude plugin install berry@berry-marketplace`.
 
 **Cost / footprint:**
 - Disk: the plugin itself is small (~5 MB). The default OpenRouter backend

@@ -11,7 +11,7 @@
     "berry-marketplace": {
       "source": {
         "source": "github",
-        "repo": "leochlon/hallbayes"
+        "repo": "dthanos-datastealth/hallbayes"
       }
     },
     "karpathy-skills": {

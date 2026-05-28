@@ -22,7 +22,7 @@ def test_settings_merge_adds_marketplaces():
     r = run_install()
     merged = json.loads((r.home / ".claude" / "settings.json").read_text())
     mps = merged["extraKnownMarketplaces"]
-    assert mps["berry-marketplace"]["source"]["repo"] == "leochlon/hallbayes"
+    assert mps["berry-marketplace"]["source"]["repo"] == "dthanos-datastealth/hallbayes"
 
 
 def test_settings_merge_sets_effort_level():
