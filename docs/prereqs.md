@@ -269,7 +269,43 @@ for the rationale.
 
 ---
 
-## 9. Dual-graph MCP server (external prerequisite)
+## 9. `jdtls` (Eclipse JDT Java LSP)
+
+**Why this kit needs it:** the `jdtls-lsp` plugin shipped in the kit
+wraps Eclipse JDT.LS as an MCP-exposed LSP. Without the `jdtls`
+launcher (and a JDK 21+ runtime to back it), the plugin loads but
+every call falls through.
+
+**Version requirement:** `jdtls` from any recent build, plus
+**JDK 21 or newer** as the JVM that runs it. (Upstream Eclipse
+JDT.LS requires Java 21 minimum as of late-2025; older JDKs will
+refuse to launch the server. The Java version of the code being
+analyzed can be older.)
+
+**macOS:**
+
+```sh
+brew install openjdk@21 jdtls
+```
+
+**Linux (Debian/Ubuntu):** install OpenJDK 21 via your package
+manager, then download the JDT.LS tarball from the [official
+releases page](https://download.eclipse.org/jdtls/snapshots/?d) and
+add the launcher script to `$PATH`.
+
+**Verification:**
+
+```sh
+java -version           # should print: openjdk version "21.x.x" or newer
+jdtls --help            # should print usage; no crash on JVM mismatch
+```
+
+See [`docs/tools/jdtls-lsp.md`](tools/jdtls-lsp.md) for the plugin's
+behavior, cost/footprint, and when to disable it.
+
+---
+
+## 10. Dual-graph MCP server (external prerequisite)
 
 **Why this kit needs it:** The kit's mandatory code-navigation order is
 dual-graph first, LSP second, grep last. The dual-graph MCP server is
@@ -301,7 +337,7 @@ connections).
 
 ---
 
-## 10. Berry verifier LLM backend
+## 11. Berry verifier LLM backend
 
 **Why this kit needs it:** Berry's `audit_trace_budget` and
 `detect_hallucination` tools call an OpenAI-compatible LLM backend to
@@ -343,7 +379,7 @@ curl -s http://127.0.0.1:8080/v1/models | jq .
 
 ---
 
-## 11. `specify` CLI (spec-kit — optional, per-project)
+## 12. `specify` CLI (spec-kit — optional, per-project)
 
 **Why this kit needs it:** Spec-kit provides an optional spec-driven
 alternative to the kit's default brainstorm → plan → TDD flow. See
@@ -353,13 +389,13 @@ kit's `install.sh` because it is per-developer tooling, not part of
 the Claude Code surface itself.
 
 **Version requirement:** This kit was last verified against
-spec-kit `v0.8.15`. Newer tags should work but the slash-command
+spec-kit `v0.8.16`. Newer tags should work but the slash-command
 names occasionally evolve; pin the version in your install command.
 
 **Install (all platforms, requires `uv` from section 5):**
 
 ```sh
-uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.8.15
+uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.8.16
 ```
 
 For corporate-TLS environments, prepend the env vars from
@@ -368,7 +404,7 @@ For corporate-TLS environments, prepend the env vars from
 ```sh
 SSL_CERT_FILE=/path/to/corporate-ca.pem \
 GIT_SSL_CAINFO=/path/to/corporate-ca.pem \
-uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.8.15
+uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.8.16
 ```
 
 **Per-project init (one-time, in the project directory you want
@@ -395,7 +431,40 @@ directories (`speckit-constitution`, `speckit-specify`, `speckit-clarify`,
 
 ---
 
-## 12. `shellcheck` (kit-development only)
+## 13. `caveman` skill (optional — token-savings terse-output mode)
+
+**Why this kit needs it:** Caveman is a global Claude Code skill that
+switches the agent into a terse-output register, saving roughly 65%
+of output tokens per upstream's measurement. The kit installs no
+plugin for it — caveman is a single-file skill cloned directly into
+your global skills directory.
+
+**Version requirement:** No semantic version; the skill tracks the
+upstream `main` branch. Re-pull periodically (`git -C ~/.claude/skills/caveman pull`).
+
+**Install (all platforms, requires `gh` from section 3):**
+
+```sh
+gh repo clone JuliusBrussee/caveman ~/.claude/skills/caveman
+```
+
+Restart Claude Code afterward so the skill is discovered. Invoke it
+in a session with `/caveman` (or the skill name the upstream
+`SKILL.md` exposes).
+
+**Verification:**
+
+```sh
+ls ~/.claude/skills/caveman/SKILL.md   # should print the path
+```
+
+After restart, `/caveman` should appear in the slash-command palette.
+See [`docs/tools/caveman.md`](tools/caveman.md) for when to invoke it
+and when NOT to (it conflicts with `explanatory-output-style`).
+
+---
+
+## 14. `shellcheck` (kit-development only)
 
 **Why this kit needs it:** `shellcheck` is used to lint `install.sh`,
 `uninstall.sh`, and `scripts/*.sh` during development of the kit itself.

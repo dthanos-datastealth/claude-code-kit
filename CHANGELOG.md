@@ -6,39 +6,64 @@ contract changes; untagged for CLAUDE.md/docs edits.
 
 ## [Unreleased]
 ### Added
+- `jdtls-lsp` plugin (wraps Eclipse JDT.LS) and `docs/tools/jdtls-lsp.md`
+  rationale doc. Java is now a first-class LSP target alongside Go and
+  TypeScript. Plugin count 19 → 20; official-marketplace count 17 → 18.
+  Requires JDK 21+ (upstream Eclipse JDT.LS minimum) and the `jdtls`
+  launcher on `$PATH`. New dedicated prereqs section 9 in `docs/prereqs.md`.
 - Spec-kit (`specify` CLI) coverage: new `## Spec-Kit` section in
   `claude/CLAUDE.md` positions it as an optional spec-driven alternative
   to the default brainstorm → plan → TDD flow; new
   `docs/tools/spec-kit.md` rationale doc (5-section schema); new
-  prereqs section 11 in `docs/prereqs.md` documenting `uv tool install
-  specify-cli ...` (pinned to `v0.8.15`) and the per-project
+  prereqs section 12 in `docs/prereqs.md` documenting `uv tool install
+  specify-cli ...` (pinned to `v0.8.16`) and the per-project
   `specify init --here --integration claude` setup.
 - Spec-kit agent playbook in `claude/CLAUDE.md`: explicit 9-step
   procedure telling Claude HOW to drive `/speckit-*` skills on the
-  user's behalf, grounded in SDD best practices (Constitution before
-  first spec; spec = WHAT/WHY, plan = HOW; Clarify when ambiguous;
-  Analyze before Implement; update spec first when intent changes).
-  Includes hard prohibitions (no Implement without Constitution, no
-  bypassing Berry, no inventing spec answers). Berry rules stack on
-  top of every spec-kit step.
+  user's behalf, grounded in SDD best practices, with `[upstream]`
+  vs `[kit policy]` labels distinguishing official spec-kit behavior
+  from this kit's stricter overlays. Includes a `/feature-dev` vs
+  spec-kit disambiguation rule and hard prohibitions (no Implement
+  without Constitution, no bypassing Berry, no inventing spec answers).
+  Berry rules stack on top of every spec-kit step.
+- `caveman` skill coverage (token-savings terse-output mode): new
+  `## Caveman` section in `claude/CLAUDE.md`, new `docs/tools/caveman.md`
+  rationale doc, new prereqs section 13 with the manual install path
+  (`gh repo clone JuliusBrussee/caveman ~/.claude/skills/caveman`).
+  Skill is opt-in per session.
 
 ### Changed
 - Berry verifier backend default is now OpenRouter-hosted `openai/gpt-4o-mini`
   instead of self-hosted llama.cpp + Qwen3-Coder-30B-A3B. Configured via
   `~/.berry/config.json` and `~/.berry/mcp_env.json`. The llama.cpp path
   remains supported for offline / air-gapped use. Updated:
-  `claude/CLAUDE.md` (Verifier backend section), `docs/tools/berry.md`
-  (cost/footprint + setup), `docs/prereqs.md` (section 10 install +
-  verification recipe).
-
-### Added
-- `jdtls-lsp` plugin (wraps Eclipse JDT.LS) and `docs/tools/jdtls-lsp.md`
-  rationale doc. Java is now a first-class LSP target alongside Go and
-  TypeScript. Plugin count 19 → 20; official-marketplace count 17 → 18.
-  Requires JDK 17+ and the `jdtls` launcher on `$PATH`.
+  `claude/CLAUDE.md` (Verifier backend section; clarifies that env vars
+  in `mcp_env.json` are the load-bearing config, with `~/.berry/config.json`
+  shown for what `berry-configure` writes), `docs/tools/berry.md`
+  (cost/footprint + setup + OpenRouter rate-limit/free-tier caveat),
+  `docs/prereqs.md` (section 11 install + verification recipe).
 
 ### Removed
-- `sourcegraph` plugin and `docs/tools/sourcegraph.md` — not used in this kit's workflow (dual-graph + LSP already cover the in-repo navigation case; Sourcegraph adds a hosted-service dependency we don't need).
+- `sourcegraph` plugin and `docs/tools/sourcegraph.md` — not used in this
+  kit's workflow (dual-graph + LSP already cover the in-repo navigation
+  case; Sourcegraph adds a hosted-service dependency we don't need).
+
+### Fixed
+- README workflow Mermaid diagram now uses GitHub-safe syntax
+  (rectangles instead of parallelograms, no `<br/>` inside edge labels)
+  so GitHub's Mermaid renderer can parse it.
+- `jdtls-lsp` JDK floor corrected from "17+" to "21+" in
+  `docs/tools/jdtls-lsp.md` and `README.md` — upstream Eclipse JDT.LS
+  requires Java 21 minimum. Empirical cost/footprint numbers in the
+  rationale doc are now labelled as observed-in-this-kit's-usage
+  rather than asserted as upstream-published benchmarks.
+- Spec-kit playbook: removed factual misattribution of "2–5 minute task
+  granularity" to spec-kit (it's actually from `superpowers:writing-plans`).
+  Relabelled stricter-than-upstream rules (Constitution gate, Analyze
+  mandatory, update-spec-first-on-intent-change) as `[kit policy]` to be
+  honest about which steps go beyond official spec-kit guidance.
+- Spec-kit pin bumped `v0.8.15` → `v0.8.16` (released same day; minor
+  staleness fix).
 
 ### Security
 - Purged `docs/superpowers/` (internal design spec + implementation plan)

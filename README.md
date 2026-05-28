@@ -220,8 +220,9 @@ optional tools (LSP binaries, `ripgrep`, `jq`, `shellcheck`, `specify`).
 | Restart Claude Code | New plugins/skills register at session start | `Cmd-Q` then relaunch, or `/exit` then `claude` |
 | (Optional) Configure Berry verifier | Berry calls fail closed without a reachable LLM backend | `/berry:berry-configure` — sets up the OpenRouter or self-hosted backend |
 | (Optional, per project) Enable spec-kit | Adds `/speckit-*` slash commands to that project | `cd <your-project> && specify init --here --integration claude` |
-| (Optional) Install LSP binaries | Without these, the LSP plugins have nothing to call | `go install golang.org/x/tools/gopls@latest`, `npm i -g typescript typescript-language-server`, `brew install jdtls` (or distribution equivalents) |
+| (Optional) Install LSP binaries | Without these, the LSP plugins have nothing to call | `go install golang.org/x/tools/gopls@latest`, `npm i -g typescript typescript-language-server`, `brew install openjdk@21 jdtls` (or distribution equivalents) |
 | (Optional) Install dual-graph MCP | The CLAUDE.md mandates `graph_continue` first for code search; install per upstream docs then `claude mcp add` | See upstream docs |
+| (Optional) Install caveman skill | Terse-output register that cuts ~65% of output tokens on long sessions; opt-in per session | `gh repo clone JuliusBrussee/caveman ~/.claude/skills/caveman`, then restart Claude Code |
 
 The kit deliberately keeps these optional / per-developer rather than
 bundling them in `install.sh` — see [`docs/philosophy.md`](docs/philosophy.md)
@@ -304,6 +305,7 @@ claude-code-kit/
 │       ├── optibot.md                 Performance-focused review
 │       ├── remember.md                Session-state checkpointing
 │       ├── andrej-karpathy-skills.md  LLM coding heuristics
+│       ├── caveman.md                 Terse-output token-savings skill
 │       └── explanatory-output-style.md Insight blocks after code
 ├── scripts/
 │   ├── merge-settings.py              Atomic settings.json merge

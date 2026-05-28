@@ -60,7 +60,13 @@ Install via the kit's `install.sh`, which registers the marketplace and runs
   8-bit KV), budget ~18 GB on disk and ~16 GB RAM steady-state.
 - Network: each `audit_trace_budget` / `detect_hallucination` call hits
   OpenRouter. Per-call cost is `openai/gpt-4o-mini` pricing × the spans +
-  claims context size — typically fractions of a cent per audit.
+  claims context size — typically fractions of a cent per audit (a
+  10K-token prompt + 500-token response is ~0.18¢ at current rates).
+- OpenRouter caveats: free-tier accounts have strict per-minute rate
+  limits that will throttle Berry audits at any non-trivial pace. For
+  sustained use, add a small credit balance to your OpenRouter account
+  to unlock the paid-tier rate limits. Watch for `429` responses in
+  Berry's logs as the signal to upgrade.
 - Dependencies: an OpenRouter API key (free tier works for low volumes) OR
   any OpenAI-compatible server reachable from your machine.
 - Configuration: `~/.berry/config.json` selects the backend; `~/.berry/mcp_env.json`

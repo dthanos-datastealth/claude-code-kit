@@ -27,17 +27,19 @@ pay that cost on, say, a pure Python or Go repo.
 **Source:**
 Plugin: `jdtls-lsp@claude-plugins-official` (in `anthropics/claude-plugins-official`).
 Upstream Java language server: <https://github.com/eclipse-jdtls/eclipse.jdt.ls>.
-Requires JDK 17 or newer to be on `$PATH`, and the `jdtls` launcher
+Requires JDK 21 or newer to be on `$PATH`, and the `jdtls` launcher
 script also on `$PATH`. macOS install: `brew install openjdk@21 jdtls`.
 Linux install: distribution package or download the official tarball
 from the JDT.LS releases page and add the launcher script to `$PATH`.
 
-**Cost / footprint:**
-- One JDT.LS Java process per active project; typically 400–700 MB
-  resident, occasionally more on monorepos with thousands of classes.
+**Cost / footprint:** (numbers are empirical from this kit's usage,
+not upstream-published benchmarks)
+- One JDT.LS Java process per active project; observed at 400–700 MB
+  resident in typical service-class repos, occasionally more on
+  monorepos with thousands of classes.
 - Cold start: ~10–30 seconds on first open of a non-trivial Gradle
-  project (Maven imports tend to be faster). Subsequent queries are
-  sub-second.
+  project in our experience (Maven imports tend to be faster).
+  Subsequent queries are sub-second.
 - Workspace cache lives under `~/.cache/jdtls/workspace/`; safe to
   delete if it grows too large or gets corrupted.
 - JDK 17+ requirement (the server itself runs on a JVM; the Java
