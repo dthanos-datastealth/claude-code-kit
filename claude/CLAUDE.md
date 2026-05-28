@@ -140,7 +140,7 @@ Optimization-focused review skill — targets performance, allocations, complexi
 ### Remember (`/remember`)
 Session-state checkpointing skill. Persists transient task state across session boundaries — bridges the auto-memory system's gap for in-progress work that isn't a "memory" yet but needs to survive a session restart. Use at session end when work is mid-flight; the next session can `/remember` to resume.
 
-### Andrej Karpathy Skills (`karpathy-guidelines`)
+### Andrej Karpathy Skills (`andrej-karpathy-skills`)
 Behavioral guidelines (Karpathy-style) for reducing common LLM coding failure modes — overcomplication, surface assumptions, weak success criteria, missing error-class definitions. Low cost, broadly applicable; the kit leaves it on by default. Complements superpowers' workflow discipline with content-specific heuristics.
 
 ### Berry (Evidence Verification) — MANDATORY
@@ -178,7 +178,7 @@ spans=[{"sid": "S0", "text": "actual test output content here"}]
 spans=[{"S0": "actual test output content here"}]
 ```
 
-The `observed_bits` value is the KL divergence between P(YES | span in context) and P(YES | span redacted). If the verifier cannot read your span (wrong key names), both probabilities are near-zero and `observed_bits = 0`, causing the verification to fail with "insufficient bits" regardless of how good your evidence is. When you see 0 or near-0 bits on a span you believe is genuine, check the key names first.
+The `observed_bits` value is the KL divergence between P(YES | span in context) and P(YES | span redacted). If the verifier cannot read your span (wrong key names), both probabilities collapse to near-zero, so `observed_bits = 0` and the verification fails with "insufficient bits" regardless of how good your evidence actually is. When you see 0 or near-0 bits on a span you believe is genuine, check the key names first.
 
 #### Verifier backend
 
@@ -235,7 +235,7 @@ After init, the slash commands appear after a Claude Code restart:
 - `/speckit-analyze` (optional) — cross-artifact consistency check
 - `/speckit-implement` — execute all tasks
 
-Berry rules still apply on top: every spec-kit-driven plan step routes through `berry-plan-and-execute` for verification before implementation lands.
+Berry verification stacks on top of every spec-kit step — the playbook below specifies exactly where (Step 8). The hard prohibitions also forbid bypassing Berry by switching modes.
 
 #### How Claude drives spec-kit on the user's behalf (SDD playbook)
 
