@@ -20,13 +20,13 @@ listing. Plugins in a marketplace can be sourced from:
   - `git-subdir:<remote>`           (subdir of another repo)
 
 Usage:
-  lint-plugin-marketplaces.py             # online (fetches via gh)
-  lint-plugin-marketplaces.py --offline   # use cached fixtures only
+  lint-plugin-marketplaces.py    # always online; fetches via `gh api`
 
 Exit 0 if every plugin resolves, 1 if any mismatch.
 """
 from __future__ import annotations
 
+import base64
 import json
 import subprocess
 import sys
@@ -50,7 +50,6 @@ def fetch_marketplace_plugins(repo: str) -> set[str] | None:
         ).stdout.strip()
     except subprocess.CalledProcessError:
         return None
-    import base64
     try:
         m = json.loads(base64.b64decode(out).decode())
     except Exception:
@@ -107,7 +106,7 @@ def main() -> int:
         for e in errors:
             print(f"  ✘ {e}", file=sys.stderr)
         return 1
-    print(f"\nOK: every enabled plugin resolves against its declared marketplace.")
+    print("\nOK: every enabled plugin resolves against its declared marketplace.")
     return 0
 
 
