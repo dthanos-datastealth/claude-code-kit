@@ -236,10 +236,23 @@ agent all measure against.
 
 ---
 
-## Verification Agent Protocol (mandatory steps A-G)
+## Verification Agent Protocol
 
 The Verification agent MUST perform ALL of the following. Skipping any step
 is a verification failure.
+
+### Step 0. PRD Requirement Mapping
+
+For each requirement in the task spec (PRD document, plan section, or
+explicit acceptance criteria from the coordinator), trace it to a specific
+`file:line` in the implementation. If a requirement has no corresponding
+code, that is a **`[REQUIREMENT GAP]` finding** — file it as a task and
+surface it before proceeding to Step A.
+
+Skip Step 0 only when the task has no PRD-style requirements to map (e.g.
+a docs-only change). For implementation phases, the requirement-to-code
+trace is the first thing V records — without it, Steps B–G are auditing
+an implementation that may not even claim to do the right thing.
 
 ### A. Identify the real target function
 Read the implementation file completely. Note every exported function/method

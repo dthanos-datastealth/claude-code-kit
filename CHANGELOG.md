@@ -6,40 +6,24 @@ contract changes; untagged for CLAUDE.md/docs edits.
 
 ## [Unreleased]
 ### Added
-- **TRACKER.md + Task tool discipline** — full schema, dispatch protocol,
-  and V/O agent protocols captured at the kit level for the first time.
-  User noted that their real workflow has a sophisticated tracker system
-  that wasn't in the kit: project CLAUDE.md declaring the Task tool flow
-  + Phase Start Protocol (EnterPlanMode → approval) + Pre-Dispatch
-  Protocol (coordinator creates Dev/V/O tasks upfront) + extended
-  Verification Agent Protocol (Steps A–G including `[WIRE-PATH MISS]`
-  hot-path check) + Optimization Agent Protocol (dual-graph + LSP
-  redundancy check); per-project `docs/TRACKER.md` with header
-  (`Last Updated:` cumulative summary + `Earlier:` lines), per-iteration
-  sections with aspect tables + Quality Loop State + V/O Findings
-  Tracker + Open issues; hard rule that agents update tracker themselves
-  and coordinators never patch the tracker on agents' behalf. None of
-  this was in the kit. This commit adds:
-  - **`docs/tracker-system.md`** (NEW) — comprehensive human-readable
-    reference: why two layers (Task tool + tracker), the full schema,
-    the dispatch protocols, both agent protocols, hard rules, and the
-    plan-vs-tracker distinction. Shipped via `install.sh copy_docs` to
-    `~/.claude/docs/tracker-system.md`.
-  - **`claude/CLAUDE.md` `## MANDATORY: TRACKER.md + Task tool` section**
-    inserted between MANDATORY Quality Loop and Installed Plugins.
-    Agent-side reference: Phase Start Protocol, Pre-Dispatch Protocol,
-    what every agent MUST do at start/during/end of work, coordinator
-    hard prohibitions, the full Verification Agent Protocol Steps A–G,
-    Optimization Agent Protocol, and tracker hard rules.
-  - **`install.sh TOP_LEVEL_DOCS`** includes the new `tracker-system.md`.
-  - **`tests/test_install_docs.py::test_top_level_docs_copied`** updated
-    to assert `tracker-system.md` lands at `~/.claude/docs/`.
-  - **README** gains a "Tracker discipline" row in the "What you get"
-    table + lists `tracker-system.md` in the layout tree + the
-    architecture Mermaid label.
-  This makes the kit's quality loop discipline self-contained: every
-  adopter inherits the same tracker schema and the same dispatch
-  protocols, not just the same plugin list.
+- **TRACKER.md + Task tool discipline at the kit level.** Captures the
+  user's real workflow: per-project `docs/TRACKER.md` (Last Updated +
+  per-iteration aspect tables + Quality Loop State + V/O Findings
+  Tracker + Open issues) coupled with the `Task` tool that agents update
+  themselves. Every adopter inherits the same schema and dispatch
+  protocols.
+  - **`docs/tracker-system.md`** (NEW) — full schema, dispatch protocols,
+    V/O agent protocols (Steps 0 + A–G), hard rules, plan-vs-tracker
+    distinction. Shipped to `~/.claude/docs/` via `install.sh copy_docs`.
+  - **`claude/CLAUDE.md` MANDATORY section** between Quality Loop and
+    Installed Plugins: Phase Start Protocol (EnterPlanMode → approval
+    → execute), Pre-Dispatch Protocol (coordinator creates Dev + V + O
+    tasks upfront), agent procedures, coordinator prohibitions, full
+    Verification Steps 0 + A–G (Step 0 = PRD Requirement Mapping;
+    Step G = `[WIRE-PATH MISS]` hot-path check, BLOCKING), Optimization
+    Protocol (dual-graph + LSP redundancy check), tracker hard rules.
+  - **`install.sh TOP_LEVEL_DOCS`** + **`tests/test_install_docs.py`**
+    + **README** ("Tracker discipline" row + layout listing + Mermaid).
 
 ### Changed
 - **Settings merge contract: kit env defaults now layer UNDER user env

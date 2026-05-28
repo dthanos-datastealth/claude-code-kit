@@ -83,7 +83,7 @@ The quality loop above does not run on agent memory or chat scrollback. It runs 
 1. **Claude Code `Task` tool** — `TaskCreate` / `TaskUpdate` / `TaskList` / `TaskGet` for live, machine-readable task state every agent reads and writes.
 2. **`docs/TRACKER.md`** (per project) — the durable Markdown record of what happened, what's in flight, what's open, what V/O produced. Single source of truth for any human or future agent reviewing the project.
 
-Full reference doc: [`~/.claude/docs/tracker-system.md`](docs/tracker-system.md) (installed by `install.sh`). What follows is the agent-side rule set Claude reads every session.
+Full reference doc: `~/.claude/docs/tracker-system.md` (installed by `install.sh`). What follows is the agent-side rule set Claude reads every session.
 
 ### Phase Start Protocol (coordinator)
 
@@ -142,10 +142,11 @@ Each finding = one new task. Findings are NOT logged only in chat and hoped-to-b
 - **Coordinators do not update the tracker on behalf of agents.** If an agent finished work without calling `TaskUpdate` or editing `docs/TRACKER.md`, that's evidence the agent didn't have the task context it needed. Fix the agent's prompt — do NOT paper over the missing context by patching the tracker yourself.
 - **No phase closes without V + O on the same revision.** If V finds something, the fix lands as a new task, V and O re-run on the new revision, then the phase closes.
 
-### Verification Agent Protocol (mandatory Steps A-G)
+### Verification Agent Protocol (mandatory)
 
 Skipping any step is a verification failure.
 
+- **Step 0 — PRD Requirement Mapping.** For each requirement in the task spec (PRD, plan, or explicit acceptance criteria), trace it to a specific file:line in the implementation. If a requirement has no corresponding code, that is a `[REQUIREMENT GAP]` finding — file it as a task and surface it before proceeding to Step A. Skip this step ONLY when the task has no PRD-style requirements to map (e.g., a docs-only change).
 - **Step A — Identify the real target function.** Read the implementation; note every exported symbol and its signature.
 - **Step B — Trace the test's call path.** Confirm tests import the real module, use the real exported symbol, with the real package import path (not a test double).
 - **Step C — Verify input → output tracing.** Does the assertion test the REAL function's REAL output, or a mock response independent of the real code path? Mock-only assertions are `[SHALLOW TEST]`.
