@@ -309,14 +309,17 @@ compute the information-theoretic contribution of each evidence span to
 each claim. Without a reachable backend, every Berry-gated step fails
 because the verifier cannot score the spans.
 
-**Version requirement:** Any OpenAI-compatible HTTP endpoint. The most
-common configuration is a local `llama-server` from `llama.cpp` exposing
-a chat-completions endpoint, but any compatible service works.
+**Version requirement:** Any OpenAI-compatible HTTP endpoint. The kit
+defaults to OpenRouter-hosted `openai/gpt-4o-mini` (configured via
+`~/.berry/config.json` + `~/.berry/mcp_env.json`). A self-hosted
+`llama-server` from `llama.cpp` is supported as an offline /
+air-gapped alternative.
 
-**Install:** See [`docs/tools/berry.md`](tools/berry.md) for the
-configuration options the kit supports, the environment variables Berry
-reads to discover the backend, and the autostart patterns
-(launchd / systemd) for keeping the backend reachable across reboots.
+**Install:** Get an OpenRouter API key from <https://openrouter.ai/> and
+configure Berry by running the configure skill (see Verification below)
+or by editing `~/.berry/config.json` directly. See
+[`docs/tools/berry.md`](tools/berry.md) for the full configuration
+schema, env-var contract, and the self-hosted alternative.
 
 **Verification:**
 
@@ -324,14 +327,19 @@ The Berry plugin exposes a configuration skill — invoke
 `berry:berry-configure` after install and follow its prompts. The skill
 probes the configured backend and reports whether it can reach it.
 
-For a manual check against a local `llama-server` on port 8080:
+For a manual check against OpenRouter:
+
+```sh
+curl -s -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  https://openrouter.ai/api/v1/models | jq '.data | length'
+```
+
+A successful response prints a number (the count of available models).
+For a manual check against a self-hosted `llama-server` on port 8080:
 
 ```sh
 curl -s http://127.0.0.1:8080/v1/models | jq .
 ```
-
-A successful response lists the loaded model; an empty or error response
-indicates the backend is not running or not reachable.
 
 ---
 

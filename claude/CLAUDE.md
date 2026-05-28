@@ -160,7 +160,28 @@ The `observed_bits` value is the KL divergence between P(YES | span in context) 
 
 #### Verifier backend
 
-Local llama-server at `http://127.0.0.1:8080/v1` (Qwen3-Coder-30B-A3B, KV cache 8-bit, autostart via launchd). If Berry's verifier is unreachable: `launchctl load ~/Library/LaunchAgents/com.llamacpp.server.plist`
+OpenRouter-hosted `openai/gpt-4o-mini` via Berry's OpenAI-compatible client. Configured in `~/.berry/config.json` and propagated to the MCP via `~/.berry/mcp_env.json`:
+
+```jsonc
+// ~/.berry/config.json
+{
+  "verifier": {
+    "backend": "openai",
+    "model": "openai/gpt-4o-mini",
+    "base_url": "https://openrouter.ai/api/v1",
+    "api_key": "<your-openrouter-key>"
+  }
+}
+
+// ~/.berry/mcp_env.json
+{
+  "OPENAI_API_KEY": "<your-openrouter-key>",
+  "OPENAI_BASE_URL": "https://openrouter.ai/api/v1",
+  "BERRY_VERIFIER_MODEL": "openai/gpt-4o-mini"
+}
+```
+
+If verification calls start failing, first check that the OpenRouter key is still valid (`curl -H "Authorization: Bearer $KEY" https://openrouter.ai/api/v1/models | head`), then check OpenRouter status. A self-hosted llama.cpp backend remains an option for offline / air-gapped work — see Berry's upstream docs for the alternative config.
 
 ---
 

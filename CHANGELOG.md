@@ -5,6 +5,15 @@ Format: Keep a Changelog. Versioning: `vYYYY.MM.DD` when `install.sh`
 contract changes; untagged for CLAUDE.md/docs edits.
 
 ## [Unreleased]
+### Changed
+- Berry verifier backend default is now OpenRouter-hosted `openai/gpt-4o-mini`
+  instead of self-hosted llama.cpp + Qwen3-Coder-30B-A3B. Configured via
+  `~/.berry/config.json` and `~/.berry/mcp_env.json`. The llama.cpp path
+  remains supported for offline / air-gapped use. Updated:
+  `claude/CLAUDE.md` (Verifier backend section), `docs/tools/berry.md`
+  (cost/footprint + setup), `docs/prereqs.md` (section 10 install +
+  verification recipe).
+
 ### Added
 - `jdtls-lsp` plugin (wraps Eclipse JDT.LS) and `docs/tools/jdtls-lsp.md`
   rationale doc. Java is now a first-class LSP target alongside Go and
