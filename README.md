@@ -8,8 +8,8 @@ setup on a clean macOS or Linux machine.
 - A scrubbed `~/.claude/CLAUDE.md` enforcing the kit's workflow philosophy
   (TDD-first, evidence-before-assertions, dual-graph + LSP + Read code-search
   order, Berry verification mandatory).
-- 20 plugins from 3 marketplaces, installed and enabled automatically:
-  - `anthropics/claude-plugins-official` (18 plugins)
+- 19 plugins from 3 marketplaces, installed and enabled automatically:
+  - `anthropics/claude-plugins-official` (17 plugins)
   - `leochlon/hallbayes` (Berry verifier)
   - `multica-ai/andrej-karpathy-skills`
 - A memory-system index ready for the auto-memory hook.
@@ -52,7 +52,7 @@ Does:
 5. Install `claude/memory/MEMORY.md` at `~/.claude/memory/MEMORY.md` (only
    if you don't already have one — never overwrites).
 6. Register the three plugin marketplaces.
-7. Install all 20 plugins.
+7. Install all 19 plugins.
 
 Does NOT:
 - Install `uv`, `gh`, `ripgrep`, `jq`, LSP servers, MCP backend binaries,

@@ -10,7 +10,6 @@ EXPECTED_PLUGINS = {
     "frontend-design@claude-plugins-official",
     "explanatory-output-style@claude-plugins-official",
     "notion@claude-plugins-official",
-    "sourcegraph@claude-plugins-official",
     "gopls-lsp@claude-plugins-official",
     "typescript-lsp@claude-plugins-official",
     "feature-dev@claude-plugins-official",
@@ -25,7 +24,7 @@ EXPECTED_PLUGINS = {
 }
 
 
-def test_installs_all_twenty_plugins():
+def test_installs_all_expected_plugins():
     r = run_install()
     log = r.claude_log.read_text()
     called = set()

@@ -129,11 +129,11 @@ rewrite) when the decision is revisited.
 ### 4.4 `reference` — pointers to external systems
 
 Captures stable handles into external systems the project depends on:
-specific Notion database IDs, Sourcegraph endpoints, internal wiki
-URLs, account names that recur. Examples:
+specific Notion database IDs, dashboards, internal wiki URLs, account
+names that recur. Examples:
 
 - "Tasks database in Notion: <database-id>."
-- "Internal Sourcegraph: <hostname>; primary repos under `code/`."
+- "Internal status dashboard: <hostname>; key metrics under `/api/v1/`."
 - "Issue tracker for vendor X: <project-url>."
 
 Write a `reference` memory when an external pointer is one Claude will

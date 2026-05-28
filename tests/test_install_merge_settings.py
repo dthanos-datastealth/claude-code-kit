@@ -15,7 +15,7 @@ def test_settings_merge_adds_enabled_plugins():
     plugins = merged["enabledPlugins"]
     assert plugins["superpowers@claude-plugins-official"] is True
     assert plugins["berry@berry-marketplace"] is True
-    assert len(plugins) == 20
+    assert len(plugins) == 19
 
 
 def test_settings_merge_adds_marketplaces():

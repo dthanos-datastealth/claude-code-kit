@@ -121,14 +121,6 @@ Full Notion workspace access via MCP. Key slash commands:
 
 Use for: capturing decisions, meeting prep, turning specs into tasks, knowledge documentation.
 
-### Sourcegraph (Code Search)
-MCP for searching large codebases, finding references, navigating symbols. Use when:
-- Working across repos or unfamiliar codebases
-- Finding where a symbol is defined or used
-- Searching commit history or diffs
-- `/sourcegraph:sg-search` — Natural language or keyword search
-- `/sourcegraph:sg-file` — Fetch and summarize a specific file
-
 ### Berry (Evidence Verification) — MANDATORY
 
 Berry is an MCP-backed hallucination detection system installed via the `berry@berry-marketplace` plugin. It exposes MCP tools (`start_run`, `add_span`, `add_file_span`, `audit_trace_budget`, `detect_hallucination`, etc.) and six workflow skills that encode when and how to call them.
@@ -205,7 +197,7 @@ Persistent memory lives at `~/.claude/projects/<your-project-encoded>/memory/`. 
 - User preferences and role context
 - Feedback / corrections (most important — prevents repeating mistakes)
 - Project goals and constraints
-- External system references (Notion DBs, Sourcegraph endpoints)
+- External system references (Notion DBs, internal wikis, dashboards)
 
 **Do NOT save** to memory: code patterns, git history, debugging solutions, or anything derivable from the codebase.
 
