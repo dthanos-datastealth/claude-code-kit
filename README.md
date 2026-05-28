@@ -75,39 +75,39 @@ an optional alternative spec-driven layer for higher-ceremony work.
 
 ```mermaid
 flowchart TD
-  ask([User asks for X]) --> classify{What kind of<br/>change is X?}
+  ask([User asks for X]) --> classify{What kind of change?}
 
-  classify -->|new feature·<br/>add/build/create/<br/>implement| fd[Phase 1-7:<br/>/feature-dev<br/>code-explorer ·<br/>code-architect ·<br/>code-reviewer subagents]
-  classify -->|greenfield ·<br/>multi-contributor ·<br/>stakeholder-reviewed| sdd[Spec-driven flow:<br/>/speckit-constitution]
-  classify -->|bugfix · refactor ·<br/>single-session change| def[/superpowers:brainstorming/]
+  classify -->|new feature| fd[feature-dev: 7-phase workflow with code-explorer, code-architect, code-reviewer subagents]
+  classify -->|greenfield, multi-contributor| sdd[Spec-driven flow: speckit-constitution]
+  classify -->|bugfix, refactor, single-session| def[superpowers:brainstorming]
 
-  sdd --> sk1[/speckit-specify<br/>WHAT and WHY only/]
-  sk1 --> sk2{Spec has<br/>ambiguities?}
-  sk2 -->|yes| sk3[/speckit-clarify<br/>never invent answers/]
-  sk2 -->|no| sk4[/speckit-plan<br/>HOW · tech stack/]
+  sdd --> sk1[speckit-specify - WHAT and WHY only]
+  sk1 --> sk2{Spec has ambiguities?}
+  sk2 -->|yes| sk3[speckit-clarify - never invent answers]
+  sk2 -->|no| sk4[speckit-plan - HOW, tech stack]
   sk3 --> sk4
-  sk4 --> sk5[/speckit-tasks/]
-  sk5 --> sk6[/speckit-analyze<br/>cross-artifact check —<br/>mandatory/]
+  sk4 --> sk5[speckit-tasks]
+  sk5 --> sk6[speckit-analyze - cross-artifact check, mandatory]
   sk6 --> bplan[berry-plan-and-execute]
 
-  def --> wp[/superpowers:writing-plans<br/>2–5 min tasks/]
+  def --> wp[superpowers:writing-plans - 2 to 5 min tasks]
   wp --> bplan
   fd --> bplan
 
-  bplan --> bgate1{Berry<br/>audit_trace_budget<br/>passes?}
-  bgate1 -->|no — 3-strike rule| stop[STOP · surface<br/>what passed/flagged ·<br/>wait for user]
-  bgate1 -->|yes| worktree[/superpowers:using-git-worktrees<br/>isolated branch/]
-  worktree --> tdd[TDD: RED test first ·<br/>GREEN minimal impl ·<br/>REFACTOR]
-  tdd --> build[Build · use Context7<br/>for current library docs ·<br/>LSP for symbol intel]
-  build --> bgate2{Tests pass?<br/>Capture output as<br/>Berry span via<br/>berry-search-and-learn}
+  bplan --> bgate1{Berry audit_trace_budget passes?}
+  bgate1 -->|no, 3-strike rule| stop[STOP: surface what passed and flagged, wait for user]
+  bgate1 -->|yes| worktree[superpowers:using-git-worktrees]
+  worktree --> tdd[TDD: RED, GREEN, REFACTOR]
+  tdd --> build[Build with Context7 for live docs, LSP for symbols]
+  build --> bgate2{Tests pass? Capture output as Berry span via berry-search-and-learn}
   bgate2 -->|no| tdd
-  bgate2 -->|yes| review[/superpowers:requesting-code-review/]
-  review --> simplify[/simplify<br/>code-simplifier/]
-  simplify --> finish[/superpowers:finishing-a-development-branch/]
-  finish --> docupd[/revise-claude-md<br/>capture session learnings/]
+  bgate2 -->|yes| review[superpowers:requesting-code-review]
+  review --> simplify[simplify - code-simplifier]
+  simplify --> finish[superpowers:finishing-a-development-branch]
+  finish --> docupd[revise-claude-md - capture session learnings]
   docupd --> shipped([Shipped])
 
-  intent[Intent change<br/>mid-flight] -.spec-driven only.-> updspec[Update spec FIRST<br/>re-run /speckit-analyze]
+  intent[Intent change mid-flight] -.spec-driven only.-> updspec[Update spec FIRST, re-run speckit-analyze]
   updspec -.-> bplan
 
   classDef gate fill:#7c2d12,stroke:#fed7aa,color:#fff7ed
