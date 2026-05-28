@@ -7,7 +7,11 @@ Behavior:
   * Reads kit template (required).
   * If user file exists, reads it; otherwise starts from {}.
   * Merge rules:
-      - Preserve user's "env" block entirely; ignore the kit's "env".
+      - Env: kit defaults layered UNDER user overrides. Kit ships
+        broadly-needed defaults like UV_NATIVE_TLS=1 (required for
+        uvx-based MCP servers behind corporate TLS-intercepting proxies).
+        User entries always win on conflict, so a user can override or
+        disable any kit default explicitly.
       - Replace user's "enabledPlugins" with kit's (kit is source of truth).
       - Replace user's "extraKnownMarketplaces" with kit's.
       - Replace user's "effortLevel" with kit's.
@@ -33,8 +37,10 @@ def main() -> int:
     user = json.loads(user_path.read_text()) if user_path.exists() else {}
 
     merged = dict(user)  # start from user's content
-    # User env wins; if user has none, fall back to {} (don't import kit's stub)
-    merged["env"] = user.get("env", {})
+    # Env: kit defaults layered UNDER user overrides (user wins on conflict).
+    kit_env = kit.get("env", {})
+    user_env = user.get("env", {})
+    merged["env"] = {**kit_env, **user_env}
     merged["enabledPlugins"] = kit["enabledPlugins"]
     merged["extraKnownMarketplaces"] = kit["extraKnownMarketplaces"]
     merged["effortLevel"] = kit["effortLevel"]

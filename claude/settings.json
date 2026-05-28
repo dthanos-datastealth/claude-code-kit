@@ -1,5 +1,7 @@
 {
-  "env": {},
+  "env": {
+    "UV_NATIVE_TLS": "1"
+  },
   "effortLevel": "max",
   "extraKnownMarketplaces": {
     "claude-plugins-official": {

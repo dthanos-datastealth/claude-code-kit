@@ -5,6 +5,29 @@ Format: Keep a Changelog. Versioning: `vYYYY.MM.DD` when `install.sh`
 contract changes; untagged for CLAUDE.md/docs edits.
 
 ## [Unreleased]
+### Changed
+- **Settings merge contract: kit env defaults now layer UNDER user env
+  overrides** (user always wins on conflict). Previously the user's env
+  block was preserved byte-for-byte and any kit-side env was ignored;
+  now the kit can ship broadly-needed defaults that fill in only the
+  keys the user hasn't set themselves.
+- **Kit ships `UV_NATIVE_TLS=1` as its first env default.** Required
+  for uvx-based MCP servers (Berry) to start successfully behind
+  corporate TLS-intercepting proxies (Cloudflare, Zscaler, Netskope, Palo Alto,
+  Cisco). Without it, `uvx` uses its bundled rustls cert store which
+  doesn't include corporate CA certs; with it, `uvx` uses the OS
+  native TLS stack (macOS Keychain / Linux system CA bundle) which
+  typically does. Surfaced when an isolated-HOME smoke test against
+  the real `claude` CLI showed Berry's `uvx` failing with
+  `Failed to fetch https://pypi.org/simple/openai/: invalid peer
+  certificate: UnknownIssuer`. New README section "Corporate TLS
+  handling" documents the kit's stance: ships UV_NATIVE_TLS=1,
+  documents SSL_CERT_FILE/etc. for users who need an explicit cert
+  path, never bakes absolute cert paths into plugin .mcp.json files.
+  Three new pytest cases in `test_install_merge_settings.py` cover
+  the new merge layering (user wins on conflict; kit default fills in
+  missing keys; fresh-install env contains UV_NATIVE_TLS=1).
+
 ### Added
 - **`scripts/lint-mcp-hardcoded-paths.py`** — scans every installed
   plugin's `.mcp.json` for owner-specific absolute paths (`/Users/<x>`,

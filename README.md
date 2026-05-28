@@ -271,7 +271,10 @@ optional tools (LSP binaries, `ripgrep`, `jq`, `shellcheck`, `specify`).
 3. Copy `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`.
 4. Merge `claude/settings.json` into `~/.claude/settings.json` —
    `enabledPlugins`, `extraKnownMarketplaces`, and `effortLevel` are
-   replaced from the kit; your `env` block is preserved byte-for-byte.
+   replaced from the kit. For the `env` block, **the kit's defaults are
+   layered UNDER your existing env entries** (your entries always win on
+   conflict). See "Corporate TLS handling" below for the one kit default
+   that ships today and why.
 5. Install `claude/memory/MEMORY.md` at `~/.claude/memory/MEMORY.md` only
    if you don't already have one. Never overwrites.
 6. Register the five plugin marketplaces (with one retry on network blip).
@@ -283,10 +286,62 @@ optional tools (LSP binaries, `ripgrep`, `jq`, `shellcheck`, `specify`).
 - Install `uv`, `gh`, `ripgrep`, `jq`, LSP server binaries (`gopls`,
   `typescript-language-server`, `jdtls`), MCP backend binaries, the
   `specify` CLI, or the Berry verifier backend.
-- Touch corporate CA certificate configuration. Your `NODE_EXTRA_CA_CERTS`
-  or `SSL_CERT_FILE` env vars (if any) survive the merge untouched.
 - Modify your shell rc files (`.zshrc`, `.bashrc`).
 - Write to any path outside `~/.claude/`.
+
+---
+
+## Corporate TLS handling (the kit's one env default)
+
+If your laptop sits behind a corporate TLS-intercepting proxy
+(Zscaler, Netskope, Palo Alto Prisma, Cisco Umbrella, etc.), some
+of the kit's plugins fail to start out of the box because they fetch
+upstream dependencies that get TLS-rejected by the bundled cert
+stores in `uvx` / Node / Python `requests`. The most visible
+example is the Berry plugin: `uvx` tries to download `openai` from
+PyPI to satisfy Berry's dependencies, the corporate proxy presents
+its own cert, `uvx`'s bundled rustls trust store doesn't have the
+corporate CA, and the plugin shows up as `✘ failed` in `claude mcp list`.
+
+The kit handles this by shipping **one env default**:
+
+```jsonc
+// claude/settings.json
+{
+  "env": {
+    "UV_NATIVE_TLS": "1"
+  }
+}
+```
+
+`UV_NATIVE_TLS=1` tells `uvx` to use the operating system's native
+TLS stack instead of its bundled rustls certs. On macOS that's the
+Keychain; on Linux that's the system CA bundle (`/etc/ssl/certs/...`).
+**If your corporate cert is installed in the system trust store**
+(which is the standard way corporate IT distributes it), `uvx` will
+trust it through this env var alone — no per-machine path needed.
+
+**The merge is layered:** when `install.sh` runs, the kit's
+`UV_NATIVE_TLS=1` is added to your `~/.claude/settings.json` env
+block **only if you don't already have an entry for it**. Any env
+entry you already have always wins. You can disable the default
+explicitly by setting `UV_NATIVE_TLS` to a different value (e.g.
+`"0"`) in your own settings.json — the merge respects that.
+
+**If the system trust store isn't enough** (e.g. your corporate
+cert is only available as a file, not installed in Keychain), see
+[`docs/corporate-tls.md`](docs/corporate-tls.md) for the
+`SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE` / `NODE_EXTRA_CA_CERTS` /
+`GIT_SSL_CAINFO` env vars you set yourself. The kit deliberately
+does NOT bake an absolute cert path into any plugin's config (that
+would couple the kit to one specific machine's filesystem); supplying
+the path is the user's responsibility.
+
+**The kit does NOT:**
+- Bake any absolute corporate-CA cert path into a plugin's `.mcp.json`
+  (a `scripts/lint-mcp-hardcoded-paths.py` guard runs on every
+  `test-install-isolated.sh` to catch regressions).
+- Install a corporate CA bundle on your behalf.
 
 ---
 
