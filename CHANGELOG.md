@@ -65,6 +65,33 @@ contract changes; untagged for CLAUDE.md/docs edits.
   Skill is opt-in per session.
 
 ### Changed
+- **Caveman now installs automatically** via the kit's `install.sh`
+  instead of requiring a manual `gh repo clone` step. Verification
+  agent caught that the previously-documented install path was not
+  the upstream-recommended one: caveman IS a Claude Code plugin
+  (`caveman@caveman`, marketplace `JuliusBrussee/caveman`), and
+  upstream's INSTALL.md specifies `claude plugin marketplace add
+  JuliusBrussee/caveman && claude plugin install caveman@caveman`
+  as the canonical install for Claude Code. Kit now:
+  - Adds `caveman` marketplace + `caveman@caveman` enabled plugin
+    to `claude/settings.json` (plugin count 20 → 21; marketplace
+    count 3 → 4).
+  - Adds `JuliusBrussee/caveman` to `install.sh`'s `MARKETPLACES`
+    array so it registers automatically.
+  - Renames `tests/test_install_marketplaces.py::test_registers_three_marketplaces`
+    → `test_registers_four_marketplaces` with the new assertion.
+  - Updates `tests/test_install_plugins.py` EXPECTED_PLUGINS to
+    include `caveman@caveman` and `tests/test_install_merge_settings.py`
+    to assert `len(plugins) == 21`.
+  - Drops the manual "Step 5: install caveman" row from the
+    README's Required-setup post-install table (now auto).
+  - Rewrites the Caveman section in `claude/CLAUDE.md`,
+    `docs/tools/caveman.md`, and `docs/prereqs.md` section 13 to
+    reflect the plugin-marketplace install path. Also bumps the
+    upstream-claimed token savings 65% → 75% (per current upstream
+    README). Mentions the four upstream modes (`lite`/`full`/`ultra`/
+    `wenyan`) and points at the upstream one-liner for users who
+    want extras (caveman-shrink MCP middleware, statusline badge).
 - Berry verifier backend default is now OpenRouter-hosted `openai/gpt-4o-mini`
   instead of self-hosted llama.cpp + Qwen3-Coder-30B-A3B. Configured via
   `~/.berry/config.json` and `~/.berry/mcp_env.json`. The llama.cpp path
@@ -81,6 +108,23 @@ contract changes; untagged for CLAUDE.md/docs edits.
   case; Sourcegraph adds a hosted-service dependency we don't need).
 
 ### Fixed
+- **Stale "22 per-tool docs" / "20 plugins" / "3 marketplaces" counts**
+  across the README (11 occurrences), Mermaid architecture diagram,
+  and the layout section. New counts: **23 per-tool docs, 21 plugins,
+  4 marketplaces** (caveman added; this is the source of the bump).
+- **Typo `code-quality-reviewer` → `code-reviewer`** in `claude/CLAUDE.md`
+  (Quality Loop section's reference to the kit's review-subagent
+  stack). The correct plugin is `feature-dev:code-reviewer`.
+- **jdtls install command tightened**: `brew install openjdk@21 jdtls`
+  was redundant because Homebrew's `jdtls` formula pulls a current
+  JDK as a dependency. Now recommends `brew install jdtls` by
+  default, with the `openjdk@21` pin as the optional fallback for
+  users who need a specific JDK on `$PATH` for other reasons.
+  Updated in `claude/CLAUDE.md` LSP section and README step 4c.
+- **3-strike rule consolidated to canonical statement in the Berry
+  section**; the Quality Loop section now references it instead of
+  re-stating, eliminating the in-file duplication the optimization
+  agent flagged.
 - **Reframed README "What to do after install.sh" → "Required setup
   after install.sh".** Previous wording marked Berry config, dual-graph
   MCP, LSP binaries, caveman, and spec-kit init as `(Optional)`,

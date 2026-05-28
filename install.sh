@@ -99,6 +99,7 @@ MARKETPLACES=(
     "anthropics/claude-plugins-official"
     "leochlon/hallbayes"
     "multica-ai/andrej-karpathy-skills"
+    "JuliusBrussee/caveman"
 )
 
 register_marketplaces() {

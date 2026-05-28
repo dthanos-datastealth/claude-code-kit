@@ -65,14 +65,14 @@ After any code commit, doc change, or config change that affects behavior, run t
 - Verdicts of either agent block "done" — if V flags a `[CONCERN]` or `[BLOCKER]`, fix it before moving on; if O flags `[worth-fixing]`, apply the fix in a follow-up commit before the next substantive change lands.
 - Run V and O **in parallel** (independent reviews of the same state). Use `subagent_type: general-purpose` for V (it needs WebFetch + Read), `subagent_type: code-simplifier:code-simplifier` for O.
 
-The kit's `requesting-code-review`, `code-quality-reviewer`, and `code-simplifier` plugins implement the V and O roles inside `superpowers:subagent-driven-development`'s built-in two-stage review; the V+O loop above sits **on top** of that, with one explicit difference: V+O verifies against **external authoritative sources**, not just against the local spec or the diff itself.
+The kit's `superpowers:requesting-code-review` skill, `feature-dev:code-reviewer` subagent, and `code-simplifier` plugin implement the V and O roles inside `superpowers:subagent-driven-development`'s built-in two-stage review; the V+O loop above sits **on top** of that, with one explicit difference: V+O verifies against **external authoritative sources**, not just against the local spec or the diff itself.
 
 ### Hard prohibitions for the quality loop
 
 - Do not claim "tests pass" without a Berry span citing the actual test runner output.
 - Do not skip V+O on the grounds that "the change is small" — small changes are exactly where unaudited drift accumulates.
 - Do not invent answers when V flags a `[CONCERN]` — gather more evidence or escalate.
-- 3-strike rule: if a Berry audit fails three consecutive times on the same claim set, STOP and surface the partial results. Do not silently loop.
+- 3-strike rule applies (see the Berry section below for the canonical statement): if a Berry audit fails three times on the same claim set, STOP and surface partial results. No silent looping.
 
 ---
 
@@ -129,7 +129,7 @@ These provide code intelligence (go-to-definition, find references, error checki
 
 - **gopls-lsp** — Go files (`.go`). Requires: `go install golang.org/x/tools/gopls@latest`
 - **typescript-lsp** — TypeScript/JavaScript files (`.ts`, `.tsx`, `.js`, `.jsx`, `.mts`, `.mjs`). Requires: `npm install -g typescript-language-server typescript`
-- **jdtls-lsp** — Java files (`.java`). Requires the `jdtls` launcher on `$PATH` plus a **JDK 21+** runtime (upstream Eclipse JDT.LS minimum). macOS install: `brew install openjdk@21 jdtls`.
+- **jdtls-lsp** — Java files (`.java`). Requires the `jdtls` launcher on `$PATH` plus a **JDK 21+** runtime (upstream Eclipse JDT.LS minimum). macOS install: `brew install jdtls` (Homebrew pulls a current JDK as a dependency; pin explicitly with `brew install openjdk@21 jdtls` only if you need that specific JDK version on your PATH for other reasons).
 
 If LSP features aren't working, verify the server binaries are installed and on `$PATH`.
 
@@ -327,7 +327,7 @@ If spec-kit isn't initialized and the user's request is small (bugfix, refactor,
 
 ### Caveman — terse-output mode for token/context savings
 
-[`caveman`](https://github.com/JuliusBrussee/caveman) is a Claude Code skill (not a marketplace plugin) that makes the agent reply in radically condensed prose — short sentences, no filler, minimal markdown. Upstream measures the saving at roughly 65% fewer output tokens. The skill is opt-in per session, not always-on.
+[`caveman`](https://github.com/JuliusBrussee/caveman) is a Claude Code plugin (`caveman@caveman`, shipped via the upstream `JuliusBrussee/caveman` marketplace) that makes the agent reply in radically condensed prose — short sentences, no filler, minimal markdown. Upstream measures the saving at roughly 75% fewer output tokens. The plugin is installed by the kit's `install.sh`; activation is opt-in per session, not always-on.
 
 **When to invoke caveman:**
 - Long working sessions where output tokens dominate cost (e.g. bulk refactors, large doc generation).
@@ -339,11 +339,9 @@ If spec-kit isn't initialized and the user's request is small (bugfix, refactor,
 - Code review feedback that the user will read carefully — terse output loses nuance.
 - Any session under the `explanatory-output-style` plugin's `★ Insight` regime (the two styles conflict).
 
-**Install (one-time):**
-```sh
-gh repo clone JuliusBrussee/caveman ~/.claude/skills/caveman
-```
-After a Claude Code restart, the skill is available globally. To use it in a session, invoke the skill explicitly (e.g. `/caveman`) — it modifies the agent's output style for the rest of that session until cleared.
+**Install:** automatic — the kit's `install.sh` registers the `JuliusBrussee/caveman` marketplace and installs `caveman@caveman` along with the other 20 plugins. No manual step required. Upstream also offers a one-liner (`curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.sh | bash`) that detects every supported agent on the machine and installs for each, plus extras like the `caveman-shrink` MCP middleware and statusline badge — run that *after* the kit's installer if you want those extras.
+
+**Activate per session:** invoke the plugin explicitly (slash command exposed by the plugin — see the plugin's docs for the current command name) to switch the output style for the rest of that session until cleared. Modes (per upstream): `lite` (drop filler), `full` (default caveman), `ultra` (telegraphic), `wenyan` (classical Chinese, even shorter).
 
 **Hard rule:** caveman never overrides the kit's mandatory rules. Berry verification, evidence-before-assertions, the MANDATORY code-search order, and the spec-kit / Berry hard prohibitions all still apply — caveman compresses *how* the agent reports work, not *whether* the work meets the kit's quality gates.
 

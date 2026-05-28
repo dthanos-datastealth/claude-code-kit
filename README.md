@@ -9,7 +9,7 @@ high-discipline setup with a single command:
 1. **A scrubbed global `CLAUDE.md`** that encodes the workflow philosophy
    (TDD-first, evidence-before-assertions, mandatory code-search order, Berry
    verification as a hard gate, spec-driven development as an optional layer).
-2. **A merged `settings.json`** that enables 20 curated plugins from 3
+2. **A merged `settings.json`** that enables 21 curated plugins from 4
    marketplaces and sets `effortLevel: max` — without overwriting your
    existing `env` block.
 3. **A complete documentation layer** explaining *why* every plugin, MCP,
@@ -30,9 +30,9 @@ flowchart LR
     direction TB
     cmd[install.sh]
     tmpl[claude/CLAUDE.md<br/>scrubbed template]
-    sets[claude/settings.json<br/>20 plugins · 3 marketplaces<br/>effortLevel: max]
+    sets[claude/settings.json<br/>21 plugins · 4 marketplaces<br/>effortLevel: max]
     mem[claude/memory/MEMORY.md<br/>auto-memory index]
-    docs[docs/<br/>philosophy · workflow ·<br/>prereqs · corporate-tls ·<br/>memory-system · tools/ ×22]
+    docs[docs/<br/>philosophy · workflow ·<br/>prereqs · corporate-tls ·<br/>memory-system · tools/ ×23]
     sc[scripts/<br/>merge-settings · lint-scrubbing ·<br/>lint-tools-docs · diff-against-live]
     tests[tests/<br/>29 pytest cases ·<br/>isolated-HOME harness]
   end
@@ -43,14 +43,14 @@ flowchart LR
   backup --> copy[Copy CLAUDE.md template]
   copy --> merge[Merge settings.json preserving user env block]
   merge --> memi[Install MEMORY.md never overwrites]
-  memi --> mp[Register 3 marketplaces]
-  mp --> pl[Install 20 plugins via claude plugin install]
+  memi --> mp[Register 4 marketplaces]
+  mp --> pl[Install 21 plugins via claude plugin install]
   pl --> ready[Restart Claude Code]
 
   tmpl -.copied to.-> claudeHome[(.claude/CLAUDE.md)]
   sets -.merged to.-> settingsHome[(.claude/settings.json)]
   mem -.copied if absent.-> memHome[(.claude/memory/MEMORY.md)]
-  pl -.installed.-> pluginsHome[(.claude/plugins/ - 20 plugins)]
+  pl -.installed.-> pluginsHome[(.claude/plugins/ - 21 plugins)]
 
   classDef store fill:#1f2937,stroke:#9ca3af,color:#f3f4f6
   classDef action fill:#0f766e,stroke:#5eead4,color:#f0fdfa
@@ -218,10 +218,10 @@ local spec or the diff.
 | Layer | Contents |
 |---|---|
 | **Workflow** | `CLAUDE.md` (~210 lines) enforcing TDD-first, evidence-before-assertions, the MANDATORY code-search order (`graph_continue` → LSP → Read/Grep — bash grep/find/cat/sed/awk forbidden), Berry as a hard gate, and the optional spec-kit layer with a 9-step agent playbook. |
-| **Plugins (20)** | 18 from `anthropics/claude-plugins-official`: superpowers, feature-dev, berry-adjacent-rules, code-simplifier, context7, claude-md-management, frontend-design, explanatory-output-style, notion, gopls-lsp, typescript-lsp, **jdtls-lsp** (Java), playwright, chrome-devtools-mcp, microsoft-docs, huggingface-skills, security-guidance, optibot, remember. 1 from `leochlon/hallbayes`: berry (evidence verifier). 1 from `multica-ai/andrej-karpathy-skills`. |
+| **Plugins (21)** | 18 from `anthropics/claude-plugins-official`: superpowers, feature-dev, code-simplifier, context7, claude-md-management, frontend-design, explanatory-output-style, notion, gopls-lsp, typescript-lsp, **jdtls-lsp** (Java), playwright, chrome-devtools-mcp, microsoft-docs, huggingface-skills, security-guidance, optibot, remember. 1 from `leochlon/hallbayes`: berry (evidence verifier). 1 from `multica-ai/andrej-karpathy-skills`. 1 from `JuliusBrussee/caveman`: caveman (token-savings terse-output mode). |
 | **Berry verifier** | Defaults to OpenRouter `openai/gpt-4o-mini` (configured via `~/.berry/config.json` + `~/.berry/mcp_env.json`); self-hosted `llama.cpp` remains supported as the offline alternative. |
 | **Memory system** | `MEMORY.md` index template at `~/.claude/memory/`, plus `docs/memory-system.md` explaining the 4 memory types (user, feedback, project, reference), the index format, and the 200-line cap. |
-| **Per-tool rationale** | 22 markdown files under `docs/tools/` (one per plugin / MCP / skill / external dependency) following a strict 5-section schema enforced by `scripts/lint-tools-docs.py`. |
+| **Per-tool rationale** | 23 markdown files under `docs/tools/` (one per plugin / MCP / skill / external dependency) following a strict 5-section schema enforced by `scripts/lint-tools-docs.py`. |
 | **Settings** | `effortLevel: max` merged in; your existing `env` block (including any corporate-CA bundle vars) preserved byte-for-byte. |
 
 ---
@@ -235,7 +235,7 @@ cd claude-code-kit
 ```
 
 Then restart Claude Code. Verify with `claude plugin list` — you should
-see all 20 plugins.
+see all 21 plugins.
 
 For corporate networks with TLS interception, see
 [`docs/corporate-tls.md`](docs/corporate-tls.md) before running install.
@@ -274,8 +274,8 @@ optional tools (LSP binaries, `ripgrep`, `jq`, `shellcheck`, `specify`).
    replaced from the kit; your `env` block is preserved byte-for-byte.
 5. Install `claude/memory/MEMORY.md` at `~/.claude/memory/MEMORY.md` only
    if you don't already have one. Never overwrites.
-6. Register the three plugin marketplaces (with one retry on network blip).
-7. Install all 20 plugins (with one retry per plugin on failure).
+6. Register the four plugin marketplaces (with one retry on network blip).
+7. Install all 21 plugins (with one retry per plugin on failure).
 8. Print next steps.
 
 **Does NOT:**
@@ -310,8 +310,7 @@ responsibility. See [`docs/philosophy.md`](docs/philosophy.md).
 | **3. Install the dual-graph MCP** | CLAUDE.md's MANDATORY code-search order requires `graph_continue` as the FIRST call for every code lookup; without it the kit falls back to bash grep which the kit's hard rules forbid | Follow upstream dual-graph MCP install instructions, then `claude mcp add <name> <command>` to register it locally |
 | **4a. Install the Go LSP binary (`gopls`)** | The kit's `gopls-lsp` plugin is an MCP wrapper; it does not auto-install the language server. Without `gopls` on `$PATH`, the Go LSP integration loads but every call falls through | `go install golang.org/x/tools/gopls@latest` (Go must be installed; see [`docs/prereqs.md`](docs/prereqs.md) section 7). Ensure `$(go env GOPATH)/bin` is on `$PATH`. |
 | **4b. Install the TypeScript LSP binaries** | Same reason as 4a — `typescript-lsp` is a plugin wrapper; the actual language server is a separate npm package | `npm install -g typescript typescript-language-server` (Node 18+; see [`docs/prereqs.md`](docs/prereqs.md) section 8). |
-| **4c. Install the Java LSP binary (`jdtls`) + JDK 21+** | Same reason as 4a — `jdtls-lsp` is a plugin wrapper; the underlying Eclipse JDT.LS server requires Java 21+ at runtime | macOS: `brew install openjdk@21 jdtls`. Linux: install OpenJDK 21+ via your package manager + download `jdtls` from the [official release page](https://download.eclipse.org/jdtls/snapshots/?d). See [`docs/prereqs.md`](docs/prereqs.md) section 9. |
-| **5. Install the caveman skill** | Token/context savings on long sessions (~65% output-token reduction); ships as a single-file skill cloned into your global skills dir | `gh repo clone JuliusBrussee/caveman ~/.claude/skills/caveman`, then restart Claude Code. Invoke per-session with `/caveman` when output length is the constraint |
+| **4c. Install the Java LSP binary (`jdtls`) + JDK 21+** | Same reason as 4a — `jdtls-lsp` is a plugin wrapper; the underlying Eclipse JDT.LS server requires Java 21+ at runtime | macOS: `brew install jdtls` (Homebrew pulls a current JDK as a dependency; pin with `brew install openjdk@21 jdtls` only if you need that specific JDK on PATH). Linux: install OpenJDK 21+ via your package manager + download `jdtls` from the [official release page](https://download.eclipse.org/jdtls/snapshots/?d). See [`docs/prereqs.md`](docs/prereqs.md) section 9. |
 
 ### Per project, when starting work on a new repo
 
@@ -321,19 +320,22 @@ responsibility. See [`docs/philosophy.md`](docs/philosophy.md).
 
 ### Per session (caveman is the only opt-in here)
 
-The caveman skill is installed once (step 5) but invoked per-session
-via `/caveman` when output-token volume is the constraint. All other
-plugins/skills above are session-scope automatic.
+The caveman plugin is installed automatically by `install.sh` (it ships
+as `caveman@caveman` via the `JuliusBrussee/caveman` marketplace). What
+*is* per-session is the activation: invoke the plugin's slash command
+when output-token volume is the constraint, then it's active for the
+rest of that session. All other plugins/skills are session-scope
+automatic. See [`docs/tools/caveman.md`](docs/tools/caveman.md) for
+mode flags (`lite`, `full`, `ultra`, `wenyan`).
 
 ### Verifying everything is wired up
 
-After steps 1–5, run:
+After steps 1–4, run:
 
 ```bash
-claude plugin list                              # should show 20 plugins enabled
+claude plugin list                              # should show 21 plugins enabled (incl. caveman@caveman)
 which gopls typescript-language-server jdtls    # all three resolve
 jdtls --help                                    # JVM mismatch surfaces here if any
-ls ~/.claude/skills/caveman/SKILL.md            # caveman skill present
 ```
 
 Then in a fresh Claude Code session, invoke `/berry:berry-configure`
@@ -386,7 +388,7 @@ claude-code-kit/
 ├── .github/workflows/ci.yml           shellcheck + lints + 29 pytest cases
 ├── claude/                            Files copied/merged into ~/.claude/
 │   ├── CLAUDE.md                      Scrubbed opinionated template
-│   ├── settings.json                  20 plugins, 3 marketplaces, effortLevel: max
+│   ├── settings.json                  21 plugins, 4 marketplaces, effortLevel: max
 │   └── memory/MEMORY.md               Empty index with type sections
 ├── docs/
 │   ├── philosophy.md                  Why each rule exists
@@ -394,7 +396,7 @@ claude-code-kit/
 │   ├── prereqs.md                     Install steps per OS
 │   ├── corporate-tls.md               CA bundle setup for intercepted networks
 │   ├── memory-system.md               Auto-memory schema and conventions
-│   └── tools/                         22 per-tool rationale docs (5-section schema)
+│   └── tools/                         23 per-tool rationale docs (5-section schema)
 │       ├── superpowers.md             Workflow-discipline skills
 │       ├── berry.md                   Evidence verifier (OpenRouter default)
 │       ├── feature-dev.md             7-phase feature workflow

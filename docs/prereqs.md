@@ -431,36 +431,47 @@ directories (`speckit-constitution`, `speckit-specify`, `speckit-clarify`,
 
 ---
 
-## 13. `caveman` skill (optional — token-savings terse-output mode)
+## 13. `caveman` plugin (installed automatically by `install.sh`)
 
-**Why this kit needs it:** Caveman is a global Claude Code skill that
-switches the agent into a terse-output register, saving roughly 65%
-of output tokens per upstream's measurement. The kit installs no
-plugin for it — caveman is a single-file skill cloned directly into
-your global skills directory.
+**Why this kit needs it:** Caveman is a Claude Code plugin that
+switches the agent into a terse-output register, saving roughly 75%
+of output tokens per upstream's measurement. The kit ships it as
+`caveman@caveman` (marketplace: `JuliusBrussee/caveman`); `install.sh`
+registers the marketplace and enables the plugin alongside the other
+20 plugins.
 
-**Version requirement:** No semantic version; the skill tracks the
-upstream `main` branch. Re-pull periodically (`git -C ~/.claude/skills/caveman pull`).
+**Version requirement:** The kit pulls whatever the
+`JuliusBrussee/caveman` marketplace currently publishes. Re-run
+`install.sh` to pick up a newer version (or `claude plugin upgrade
+caveman@caveman` directly).
 
-**Install (all platforms, requires `gh` from section 3):**
+**Install:** automatic via the kit's `install.sh`. No separate
+manual step.
 
+Manual equivalent (what `install.sh` runs for you):
 ```sh
-gh repo clone JuliusBrussee/caveman ~/.claude/skills/caveman
+claude plugin marketplace add JuliusBrussee/caveman
+claude plugin install caveman@caveman
 ```
 
-Restart Claude Code afterward so the skill is discovered. Invoke it
-in a session with `/caveman` (or the skill name the upstream
-`SKILL.md` exposes).
+Upstream's unified one-liner (only if you want extras like the
+caveman-shrink MCP middleware or statusline badge that the kit's
+plugin install doesn't include):
+```sh
+curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.sh | bash
+```
 
 **Verification:**
 
 ```sh
-ls ~/.claude/skills/caveman/SKILL.md   # should print the path
+claude plugin list | grep caveman   # should show caveman@caveman enabled
 ```
 
-After restart, `/caveman` should appear in the slash-command palette.
-See [`docs/tools/caveman.md`](tools/caveman.md) for when to invoke it
-and when NOT to (it conflicts with `explanatory-output-style`).
+After Claude Code restart, the plugin's slash command (see upstream
+docs for the current command name and the four mode flags: `lite`,
+`full`, `ultra`, `wenyan`) appears in the palette. See
+[`docs/tools/caveman.md`](tools/caveman.md) for when to invoke it and
+when NOT to (it conflicts with `explanatory-output-style`).
 
 ---
 

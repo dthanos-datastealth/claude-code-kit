@@ -19,6 +19,12 @@
         "source": "github",
         "repo": "multica-ai/andrej-karpathy-skills"
       }
+    },
+    "caveman": {
+      "source": {
+        "source": "github",
+        "repo": "JuliusBrussee/caveman"
+      }
     }
   },
   "enabledPlugins": {
@@ -41,6 +47,7 @@
     "optibot@claude-plugins-official": true,
     "remember@claude-plugins-official": true,
     "berry@berry-marketplace": true,
-    "andrej-karpathy-skills@karpathy-skills": true
+    "andrej-karpathy-skills@karpathy-skills": true,
+    "caveman@caveman": true
   }
 }

@@ -22,6 +22,7 @@ EXPECTED_PLUGINS = {
     "remember@claude-plugins-official",
     "berry@berry-marketplace",
     "andrej-karpathy-skills@karpathy-skills",
+    "caveman@caveman",
 }
 
 

@@ -2,12 +2,14 @@
 
 **What it does:**
 [`caveman`](https://github.com/JuliusBrussee/caveman) is a Claude Code
-skill (delivered as a single `SKILL.md` rather than a marketplace
-plugin) that switches the agent's reply style to a heavily condensed
-"caveman" voice — short sentences, no filler, minimal markdown,
-no preamble. Upstream measures the result at roughly **65% fewer
-output tokens** versus the agent's default register. The skill is
-opt-in per session, not always-on.
+plugin (`caveman@caveman`, shipped via the upstream
+`JuliusBrussee/caveman` marketplace) that switches the agent's reply
+style to a heavily condensed "caveman" voice — short sentences, no
+filler, minimal markdown, no preamble. Upstream measures the result
+at roughly **75% fewer output tokens** versus the agent's default
+register. Activation is opt-in per session, not always-on. Modes:
+`lite` (drop filler), `full` (default), `ultra` (telegraphic),
+`wenyan` (classical Chinese).
 
 **Why it's in this kit:**
 Output tokens dominate session cost on long working runs (bulk
@@ -35,20 +37,28 @@ other skills.
 
 **Source:**
 GitHub: <https://github.com/JuliusBrussee/caveman>
-Distribution: cloned directly into the user's global Claude Code
-skills directory (`~/.claude/skills/caveman/`). Not packaged for
-the official Anthropic plugin marketplace, so `install.sh` does NOT
-install it — the kit documents the manual install in
-[`docs/prereqs.md`](../prereqs.md) section 13.
+Distribution: a Claude Code plugin shipped through the upstream
+`JuliusBrussee/caveman` marketplace. The kit's `install.sh` registers
+that marketplace and installs `caveman@caveman` automatically — no
+manual step required.
 
-Install command (one-time):
+Equivalent manual command (what install.sh runs for you):
+
 ```sh
-gh repo clone JuliusBrussee/caveman ~/.claude/skills/caveman
+claude plugin marketplace add JuliusBrussee/caveman
+claude plugin install caveman@caveman
 ```
-Restart Claude Code afterward so the skill is discovered. To use it,
-invoke `/caveman` (or the skill name the upstream `SKILL.md` exposes
-in its frontmatter) — it modifies the output style for the rest of
-the session.
+
+Upstream also offers a unified one-liner for users who want the
+extras (caveman-shrink MCP middleware, statusline badge, multi-agent
+detection across Claude Code + Cursor + Codex + others):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.sh | bash
+```
+
+Run that *after* the kit's `install.sh` if you want those extras
+alongside the kit-managed plugin install.
 
 **Cost / footprint:**
 - Disk: ~50 KB (single markdown skill file).
