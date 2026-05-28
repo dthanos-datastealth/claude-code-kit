@@ -33,7 +33,7 @@ flowchart LR
     sets[claude/settings.json<br/>21 plugins · 5 marketplaces<br/>effortLevel: max]
     mem[claude/memory/MEMORY.md<br/>auto-memory index]
     docs[docs/<br/>philosophy · workflow ·<br/>prereqs · corporate-tls ·<br/>memory-system · tools/ ×23]
-    sc[scripts/<br/>merge-settings · lint-scrubbing ·<br/>lint-tools-docs · diff-against-live]
+    sc[scripts/<br/>merge-settings · lint-scrubbing · lint-tools-docs ·<br/>lint-plugin-marketplaces · diff-against-live ·<br/>test-install-isolated]
     tests[tests/<br/>29 pytest cases ·<br/>isolated-HOME harness]
   end
 
@@ -469,6 +469,7 @@ claude-code-kit/
 │   ├── diff-settings.py               Settings delta (JSON)
 │   ├── lint-scrubbing.py              Catches owner paths / company names
 │   ├── lint-tools-docs.py             Enforces 5-section schema
+│   ├── lint-plugin-marketplaces.py    Verifies every plugin resolves against its upstream marketplace.json
 │   └── test-install-isolated.sh       Parallel-test install.sh in a temp HOME with leak check
 └── tests/                             pytest with isolated-HOME harness
 ```
