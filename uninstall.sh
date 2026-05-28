@@ -14,7 +14,8 @@ if [ ! -d "${BACKUP_ROOT}" ]; then
     exit 0
 fi
 
-# Find the most-recent backup directory (ISO timestamps sort lexicographically)
+# Find the most-recent backup directory (ISO timestamps sort lexicographically).
+# shellcheck disable=SC2012  # safe: backup dir names are ISO-8601 timestamps, no special chars
 latest=$(ls -1 "${BACKUP_ROOT}" 2>/dev/null | sort | tail -n1)
 if [ -z "${latest}" ]; then
     log "Nothing to restore (backups directory is empty)"
