@@ -6,6 +6,23 @@ contract changes; untagged for CLAUDE.md/docs edits.
 
 ## [Unreleased]
 ### Added
+- **MANDATORY Quality Loop section** at the top of `claude/CLAUDE.md`
+  (between Code Search Order and Installed Plugins). Codifies the
+  TDD → Berry → V+O discipline the kit actually runs:
+  - TDD with mandatory lifecycle tests (not just function-centric);
+    RED must fail for the right reason.
+  - Berry verification on every completion claim, with test output
+    as the canonical evidence form.
+  - V+O loop: dispatch a Verification agent (verifies against
+    authoritative external sources) and an Optimization agent
+    (finds simplification / consistency wins) in parallel against
+    each substantive change.
+  - Hard prohibitions: no "tests pass" without a Berry span,
+    no skipping V+O on small changes, no inventing answers when
+    V flags a concern, 3-strike rule.
+  Previously the V+O pattern lived only as an auto-memory feedback
+  entry; promoting it to CLAUDE.md makes it a load-bearing rule
+  every session reads at start.
 - `jdtls-lsp` plugin (wraps Eclipse JDT.LS) and `docs/tools/jdtls-lsp.md`
   rationale doc. Java is now a first-class LSP target alongside Go and
   TypeScript. Plugin count 19 → 20; official-marketplace count 17 → 18.

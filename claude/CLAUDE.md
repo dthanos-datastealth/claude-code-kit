@@ -38,6 +38,44 @@ For ANY code navigation, symbol lookup, or codebase exploration, use this order.
 
 ---
 
+## MANDATORY Quality Loop (TDD → Berry → V+O)
+
+This is the unconditional discipline that runs around **every substantive change** the kit ships, regardless of which workflow (default, `/feature-dev`, or spec-kit) framed it. The plugin sections below describe the *tools*; this section describes the *rules they enforce*.
+
+### TDD discipline (always; no exceptions for "small" changes)
+
+- Write the **failing test first** (RED). Run it; confirm it fails for the *right reason* — not for missing imports, typos, or fixture gaps.
+- Implement the minimum that makes the test pass (GREEN). Do not add unrequested features.
+- REFACTOR only with the test green. If you can't keep it green during refactor, stop and split the refactor into smaller steps.
+- **Lifecycle tests, not just function-centric ones.** For anything stateful (sessions, caches, queues, write paths), assert on the full create → use → close → reopen → cleanup cycle. Function-only tests miss the failures that matter.
+- Skill: `superpowers:test-driven-development`.
+
+### Berry verification (load-bearing — fails the build if skipped)
+
+- Every claim a session ships with — "tests pass", "the bug is fixed", "the spec is complete", "the plan is sound" — must be backed by a Berry span. No exceptions.
+- Test output is the canonical evidence form: capture it via `berry-search-and-learn` and cite it before any "tests pass" assertion.
+- See the **Berry** plugin section below for the mandatory triggers, hard rules, `audit_trace_budget` API contract, and the OpenRouter backend configuration.
+
+### V+O loop (after each substantive change to a tracked artifact)
+
+After any code commit, doc change, or config change that affects behavior, run the two-agent **Verification + Optimization** loop against that same revision before declaring the change complete:
+
+- **V — Verification agent.** Dispatched to verify the change against **authoritative external sources** (upstream READMEs, official docs, the kit's own spec/plan, vendor API references). Its job is to catch correctness drift between the change and reality. Output: `[OK]` / `[CONCERN]` / `[BLOCKER]` per check, with citations.
+- **O — Optimization agent.** Dispatched in parallel to find simplification / clarity / consistency wins on the same revision. Output: `[trivial]` / `[worth-considering]` / `[worth-fixing]` per finding.
+- Verdicts of either agent block "done" — if V flags a `[CONCERN]` or `[BLOCKER]`, fix it before moving on; if O flags `[worth-fixing]`, apply the fix in a follow-up commit before the next substantive change lands.
+- Run V and O **in parallel** (independent reviews of the same state). Use `subagent_type: general-purpose` for V (it needs WebFetch + Read), `subagent_type: code-simplifier:code-simplifier` for O.
+
+The kit's `requesting-code-review`, `code-quality-reviewer`, and `code-simplifier` plugins implement the V and O roles inside `superpowers:subagent-driven-development`'s built-in two-stage review; the V+O loop above sits **on top** of that, with one explicit difference: V+O verifies against **external authoritative sources**, not just against the local spec or the diff itself.
+
+### Hard prohibitions for the quality loop
+
+- Do not claim "tests pass" without a Berry span citing the actual test runner output.
+- Do not skip V+O on the grounds that "the change is small" — small changes are exactly where unaudited drift accumulates.
+- Do not invent answers when V flags a `[CONCERN]` — gather more evidence or escalate.
+- 3-strike rule: if a Berry audit fails three consecutive times on the same claim set, STOP and surface the partial results. Do not silently loop.
+
+---
+
 ## Installed Plugins & When to Use Them
 
 ### Superpowers (Primary Workflow Engine)
