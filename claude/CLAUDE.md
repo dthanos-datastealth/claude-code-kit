@@ -80,6 +80,7 @@ These provide code intelligence (go-to-definition, find references, error checki
 
 - **gopls-lsp** — Go files (`.go`). Requires: `go install golang.org/x/tools/gopls@latest`
 - **typescript-lsp** — TypeScript/JavaScript files (`.ts`, `.tsx`, `.js`, `.jsx`, `.mts`, `.mjs`). Requires: `npm install -g typescript-language-server typescript`
+- **jdtls-lsp** — Java files (`.java`). Requires the `jdtls` launcher on `$PATH` plus a **JDK 21+** runtime (upstream Eclipse JDT.LS minimum). macOS install: `brew install openjdk@21 jdtls`.
 
 If LSP features aren't working, verify the server binaries are installed and on `$PATH`.
 
@@ -120,6 +121,27 @@ Full Notion workspace access via MCP. Key slash commands:
 - `/Notion:tasks:explain-diff` — Document a code change in Notion
 
 Use for: capturing decisions, meeting prep, turning specs into tasks, knowledge documentation.
+
+### Chrome DevTools MCP (`chrome-devtools-mcp`)
+Low-level Chrome DevTools Protocol access — performance traces, network inspection, console capture, accessibility audits, memory snapshots. Use when Playwright's higher-level API is insufficient (LCP debugging, memory leak hunts, real-network-condition emulation). Requires Chrome/Chromium with `--remote-debugging-port` enabled.
+
+### Microsoft Docs (`microsoft-docs`)
+MCP for searching and fetching from Microsoft Learn (Azure, .NET, M365, Windows, Bicep, etc.). Use whenever code touches a Microsoft SDK or API — catches hallucinated `.NET` methods and confirms current signatures. Three sub-tools: `microsoft_docs_search` (breadth), `microsoft_code_sample_search` (working snippets), `microsoft_docs_fetch` (full pages).
+
+### Hugging Face Skills (`huggingface-skills`)
+A bundle of 12+ skills for Hugging Face Hub workflows: model selection by benchmark (`huggingface-best`), local inference (`huggingface-local-models` via llama.cpp), training (sentence-transformers, vision, LLM via TRL/Unsloth on HF Jobs), datasets (`huggingface-datasets`), papers (`huggingface-papers`), Gradio (`huggingface-gradio`), Trackio, ZeroGPU, and the `hf` CLI. Use for any ML-engineering task that touches the Hub. Some skills need `hf` CLI + a Hugging Face API token.
+
+### Security Guidance (`/security-review`)
+Security-aware code review skill that scans pending changes for OWASP-top-10-class issues. Use before merge on any code that handles auth, input parsing, file uploads, secrets, network calls, or DB queries. Complements (not replaces) the general code-review skill.
+
+### Optibot (`optibot`)
+Optimization-focused review skill — targets performance, allocations, complexity. Pairs with `code-simplifier`: simplifier targets *clarity*, optibot targets *speed/cost*. Use after profiling has identified a hot path, or when shipping code into a known throughput / latency budget. Skip for prototypes where perf isn't a concern yet.
+
+### Remember (`/remember`)
+Session-state checkpointing skill. Persists transient task state across session boundaries — bridges the auto-memory system's gap for in-progress work that isn't a "memory" yet but needs to survive a session restart. Use at session end when work is mid-flight; the next session can `/remember` to resume.
+
+### Andrej Karpathy Skills (`karpathy-guidelines`)
+Behavioral guidelines (Karpathy-style) for reducing common LLM coding failure modes — overcomplication, surface assumptions, weak success criteria, missing error-class definitions. Low cost, broadly applicable; the kit leaves it on by default. Complements superpowers' workflow discipline with content-specific heuristics.
 
 ### Berry (Evidence Verification) — MANDATORY
 
