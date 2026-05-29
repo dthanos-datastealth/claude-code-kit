@@ -338,20 +338,22 @@ The `--` separator is required so that `--stdio` is passed as an
 argument to the MCP binary rather than parsed by `claude mcp add`
 itself.
 
+**Per-HOME registration (read this before verifying):**
+`claude mcp add` writes to the per-`$HOME` `.claude.json` `mcpServers`
+section. If you use an isolated `$HOME` for testing (see the README
+§"Testing the kit in parallel" section), the registration must be
+repeated against that HOME: `HOME="$TEST_HOME" claude mcp add
+dual-graph /absolute/path -- --stdio`. The binary itself is reused
+across HOMEs — only the registration is per-HOME. Verifying with
+`claude mcp list` against the wrong HOME will succeed and mask the
+miss in the HOME that actually matters.
+
 **Verification:**
 
 ```sh
 claude mcp list | grep dual-graph
 # Expect: dual-graph: /absolute/path/to/mcp-graph-server --stdio - ✓ Connected
 ```
-
-**Per-HOME registration:** `claude mcp add` writes to the
-per-`$HOME` `.claude.json` `mcpServers` section. If you use an
-isolated `$HOME` for testing (see the README §"Testing the kit in
-parallel" section), the registration must be repeated against that
-HOME: `HOME="$TEST_HOME" claude mcp add dual-graph /absolute/path
--- --stdio`. The binary itself is reused across HOMEs — only the
-registration is per-HOME.
 
 ---
 
