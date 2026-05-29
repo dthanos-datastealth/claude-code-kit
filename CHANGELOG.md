@@ -58,24 +58,14 @@ contract changes; untagged for CLAUDE.md/docs edits.
   isolated HOME against `claude auth status` and `claude mcp list`.
 
 ### Changed
-- **README "Launching `claude` interactively in the isolated HOME"
-  recipe rewritten** (supersedes the original `cp ~/.claude.json`
-  recipe). Empirical testing proved that copying `~/.claude.json`
-  alone — whether full-file or surgical (`oauthAccount` + `userID`
-  only) — populates the welcome banner and account metadata but does
-  NOT authenticate API calls: `claude auth status` reports
-  `loggedIn: false` and every request 401s. Root cause: Claude Code
-  uses the macOS Keychain (not `.claude.json`) as the source-of-truth
-  for login state, and the Keychain lookup is HOME-dependent. The
-  replacement recipe (`claude setup-token` → `CLAUDE_CODE_OAUTH_TOKEN`
-  env var → `read -s` for safe paste) bypasses Keychain lookup
-  entirely and is the canonical pattern for non-interactive Claude
-  Code use per upstream. The original recipe also stripped its
-  references to non-suffixed `Claude Code-credentials` Keychain
-  entries — those turned out to be MCP OAuth state caches (Notion,
-  Linear, Monday, etc.), not Anthropic auth credentials, making the
-  earlier `security delete-generic-password` "cleanup" instruction
-  potentially destructive.
+- **README "Launching `claude` interactively" recipe rewritten.**
+  Replaces the `cp ~/.claude.json` recipe with `claude setup-token` +
+  `CLAUDE_CODE_OAUTH_TOKEN` env var; the copy populates display
+  metadata but does not authenticate API calls (Keychain is
+  source-of-truth, HOME-dependent). Also retracts the
+  `security delete-generic-password "Claude Code-credentials"` cleanup
+  step — those unsuffixed entries are MCP OAuth state caches, not
+  Anthropic credentials.
 
 ### Fixed
 - **README staleness in two places** caught during the post-iteration

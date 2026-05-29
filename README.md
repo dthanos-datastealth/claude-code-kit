@@ -511,9 +511,9 @@ doesn't need an authenticated session. If you want to actually *use*
 Claude Code interactively inside the isolated HOME (e.g. to verify a
 new plugin loads correctly, to walk through a slash-command flow),
 **do not run `/login` from the isolated HOME**. Claude Code's OAuth
-credentials live in the macOS Keychain (or Linux Secret Service), keyed
-off something HOME-dependent (per-HOME entry suffix, code-signing ACL,
-or similar). Re-running `/login` from a fresh `$HOME` creates a new
+credentials live in the macOS Keychain (or Linux Secret Service), and
+the lookup is HOME-dependent. Re-running `/login` from a fresh `$HOME`
+creates a new
 Keychain item that races against the existing one, triggering a
 Keychain authorization prompt and (often) a post-OAuth handshake
 failure that can leave both the test session AND the real session in
@@ -545,23 +545,23 @@ export CLAUDE_CODE_OAUTH_TOKEN      # make it available to subprocesses
 ```
 
 `read -s` reads from stdin without echoing — the token never appears
-in your terminal scrollback or shell history. Plain
-`export CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...` also works but
-writes the token into your shell history file, which is a leak
-surface; prefer the `read -s` pattern.
+in your terminal scrollback or shell history.
 
-**Step 3. Launch the isolated session:**
-
-```bash
-HOME="$TEST_HOME" claude
-```
-
-Claude Code reads `CLAUDE_CODE_OAUTH_TOKEN` from the env, reports
-`authMethod: "oauth_token"`, and launches authenticated. Verify with:
+**Step 3. Verify the env var is recognized (before the interactive
+launch, since that's blocking):**
 
 ```bash
 HOME="$TEST_HOME" claude auth status
 # Expected: {"loggedIn": true, "authMethod": "oauth_token", ...}
+```
+
+If `loggedIn: false` here, fix the env var before launching; the
+interactive session will fail every API call with 401 otherwise.
+
+**Step 4. Launch the isolated session:**
+
+```bash
+HOME="$TEST_HOME" claude
 ```
 
 **If the token leaks (pasted into a transcript, committed, etc.),
@@ -577,16 +577,10 @@ You can also revoke the token from the Anthropic console at
 Settings → API Keys / OAuth Tokens.
 
 **Why not `cp ~/.claude.json $TEST_HOME/.claude.json`?** Earlier
-versions of this guide suggested that, on the theory that
-`oauthAccount` metadata in `.claude.json` plus Keychain entries scoped
-to the OS user would be enough. Testing proved otherwise:
-`claude auth status` in the isolated HOME continues to report
-`loggedIn: false` even after the copy, because Claude Code uses the
-Keychain (not `.claude.json`) as its source-of-truth for login state,
-and the Keychain lookup is HOME-dependent. The `.claude.json` copy
-populates the welcome banner ("Welcome back, &lt;name&gt;") and
-account metadata, but every API call still 401s. The env-var path
-above is the only verified-working approach.
+versions of this guide suggested that. Empirically: the copy
+populates the welcome banner and account metadata, but every API
+call 401s and `claude auth status` reports `loggedIn: false`. The
+env-var path above is the only verified-working approach.
 
 ---
 
