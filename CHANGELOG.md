@@ -6,37 +6,14 @@ contract changes; untagged for CLAUDE.md/docs edits.
 
 ## [Unreleased]
 ### Added
-- **Doc-sync pass to propagate tracker discipline + recent fixes across
-  every affected doc** (one commit, no behavior change):
-  - **`docs/philosophy.md`** — new Principle 7 "Tracker as collaboration
-    substrate" (between Principle 6 and "How the principles compose").
-    Intro line + composition section updated from "six principles" to
-    "seven principles".
-  - **`docs/workflow.md`** — tracker dispatch folded into Step 2 (Plan)
-    as "Tracker dispatch (Pre-Dispatch Protocol)" subsection and into
-    Step 6 (Verify) as "Tracker-coordinated V+O dispatch" subsection.
-    Cross-references `docs/tracker-system.md` for the full schema.
-  - **`docs/corporate-tls.md`** — new section 0 "What the kit ships by
-    default" documenting `UV_NATIVE_TLS=1` (what it fixes, what it
-    doesn't, when it's not enough, the merge-layering contract). Closes
-    the gap where the canonical TLS doc didn't mention the kit's actual
-    mitigation that was already shipping in `claude/settings.json`.
-  - **`README.md` Mermaid #2 (agentic dev process)** — added `track`
-    node ("docs/TRACKER.md: coordinator opens row per planned Dev / V /
-    O Task before dispatch") between `bgate1` and `worktree`, and
-    `trackclose` node ("close rows, log V/O verdicts, file findings as
-    new rows") between `simplify` and `finish`.
-  - **`README.md` Mermaid #3 (quality loop)** — added `track` node
-    ("Pre-Dispatch Protocol: coordinator opens TRACKER.md row per
-    Dev / V / O Task") between `bgate` and `vo`; updated V and O node
-    labels to include "updates own row · files findings as new rows";
-    updated `done` terminal to "close TRACKER rows"; added
-    `[WIRE-PATH MISS]` to the V verdict edge label.
-  - **`README.md` Quality Loop prose** — added 4th bullet "Tracker as
-    substrate" explaining Pre-Dispatch Protocol, agent-updates-own-row,
-    findings-as-new-rows, coordinator-does-not-write-to-agents-rows;
-    augmented existing V+O bullet with `[WIRE-PATH MISS]` BLOCKING
-    finding and dual-graph + LSP redundancy check.
+- **Doc-sync pass propagating tracker discipline + recent fixes into
+  affected docs** (no behavior change): `docs/philosophy.md` gains
+  Principle 7 "Tracker as collaboration substrate"; `docs/workflow.md`
+  folds tracker dispatch into Steps 2 + 6; `docs/corporate-tls.md`
+  adds §0 documenting the kit's `UV_NATIVE_TLS=1` default; README
+  Mermaid #2 and #3 gain tracker open/close nodes plus
+  `[WIRE-PATH MISS]` edge; Quality Loop prose gains a 4th bullet
+  "Tracker as substrate".
 - **README — "If npx-based MCPs show ✘ failed on first launch, restart
   once" subsection** in §"Required setup after `install.sh`". Documents
   the cold-start race where prewarmed npm cache is healthy but Claude

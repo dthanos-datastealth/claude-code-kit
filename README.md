@@ -96,7 +96,7 @@ flowchart TD
 
   bplan --> bgate1{Berry audit_trace_budget passes?}
   bgate1 -->|no, 3-strike rule| stop[STOP: surface what passed and flagged, wait for user]
-  bgate1 -->|yes| track[docs/TRACKER.md: coordinator opens row per planned Dev / V / O Task before dispatch]
+  bgate1 -->|yes| track[Open TRACKER row per planned Dev / V / O Task]
   track --> worktree[superpowers:using-git-worktrees]
   worktree --> tdd[TDD: RED, GREEN, REFACTOR]
   tdd --> build[Build with Context7 for live docs, LSP for symbols]
@@ -104,7 +104,7 @@ flowchart TD
   bgate2 -->|no| tdd
   bgate2 -->|yes| review[superpowers:requesting-code-review]
   review --> simplify[simplify - code-simplifier]
-  simplify --> trackclose[docs/TRACKER.md: close rows, log V/O verdicts, file findings as new rows]
+  simplify --> trackclose[Close TRACKER rows, file V/O findings as new rows]
   trackclose --> finish[superpowers:finishing-a-development-branch]
   finish --> docupd[revise-claude-md - capture session learnings]
   docupd --> shipped([Shipped])
@@ -152,10 +152,10 @@ flowchart TD
   tdd --> capture[Capture test output as Berry span via berry-search-and-learn]
   capture --> bgate{Berry audit_trace_budget passes?}
   bgate -->|no, 3-strike rule| stop[STOP: surface what passed and flagged, wait for user]
-  bgate -->|yes| track[Pre-Dispatch Protocol: coordinator opens TRACKER.md row per Dev / V / O Task]
+  bgate -->|yes| track[Open TRACKER row per Dev / V / O Task]
   track --> vo[Dispatch V and O Tasks in parallel against their tracker rows]
-  vo --> v[V: Verification agent - cites authoritative external sources - updates own row - files findings as new rows]
-  vo --> o[O: Optimization agent - dual-graph plus LSP redundancy check - updates own row - files findings as new rows]
+  vo --> v[V: Verification - cites authoritative external sources - files findings as new rows]
+  vo --> o[O: Optimization - dual-graph plus LSP redundancy check - files findings as new rows]
   v --> vv{V verdict}
   o --> ov{O verdict}
   vv -->|CONCERN or BLOCKER or WIRE-PATH MISS| fix[Apply fix, re-cycle]
@@ -649,6 +649,8 @@ claude-code-kit/
 
 - [`docs/philosophy.md`](docs/philosophy.md) — the "why" behind every rule
 - [`docs/workflow.md`](docs/workflow.md) — the 10-step development loop
+- [`docs/tracker-system.md`](docs/tracker-system.md) — TRACKER.md schema + Pre-Dispatch Protocol + V/O agent protocols
+- [`docs/corporate-tls.md`](docs/corporate-tls.md) — corporate TLS-intercepting proxy setup + `UV_NATIVE_TLS=1` default
 - [`docs/tools/`](docs/tools/) — one rationale doc per tool
 - [`CHANGELOG.md`](CHANGELOG.md) — change history
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — PR workflow

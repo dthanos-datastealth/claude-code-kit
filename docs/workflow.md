@@ -275,16 +275,12 @@ ship.
   any task complete. Go: `go vet` + `golangci-lint`. TypeScript:
   `eslint`. Other languages: whatever the project uses.
 
-**Tracker-coordinated V+O dispatch:** Verification and Optimization
-agents run as parallel `Task` dispatches against the rows opened in
-Step 2's Pre-Dispatch Protocol. Each agent claims its row by updating
-its own row state (in-progress → done), follows the Verification
-Steps 0 + A–G (including the `[WIRE-PATH MISS]` hot-path check, which
-is BLOCKING) or the Optimization Protocol (dual-graph + LSP redundancy
-check), then files **findings as new rows** in the V/O Findings
-Tracker — never as edits to other rows. The coordinator that
-dispatched them does not write to their rows. Full protocols and
-examples in [`docs/tracker-system.md`](tracker-system.md).
+**Tracker-coordinated V+O dispatch:** V and O run as parallel `Task`
+dispatches against the rows opened in Step 2. Each agent follows the
+Verification Steps 0 + A–G (BLOCKING on `[WIRE-PATH MISS]`) or the
+Optimization Protocol (dual-graph + LSP redundancy check), updates
+its own row, and files findings as new rows. Full protocols:
+[`docs/tracker-system.md`](tracker-system.md).
 
 ---
 
@@ -483,6 +479,9 @@ actually trivial, or am I being optimistic about my own care?"
 
 - [`docs/philosophy.md`](philosophy.md) — the principles the loop
   operationalises.
+- [`docs/tracker-system.md`](tracker-system.md) — the full schema +
+  Pre-Dispatch Protocol + V/O agent protocols referenced in steps 2
+  and 6.
 - [`docs/tools/superpowers.md`](tools/superpowers.md) — the
   workflow-discipline plugin that owns most of the slash commands here.
 - [`docs/tools/berry.md`](tools/berry.md) — the evidence-verification

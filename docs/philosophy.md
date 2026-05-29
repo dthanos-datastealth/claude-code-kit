@@ -309,44 +309,36 @@ Findings Tracker, never as edits to other agents' rows. Coordinators
 do not write to agents' rows on their behalf.
 
 **Why this is its own principle:** Parallel agentic work without a
-shared substrate degrades into a manual telephone game. The same
-finding gets re-reported because no agent can see what others have
-already filed. Work gets duplicated because no agent knows which rows
-are claimed. The coordinator becomes a manual switchboard, which is
-exactly what the parallel dispatch was supposed to eliminate. A
-tracker fixes this by being a single mutable file every agent reads
-and writes against — the substrate makes the coordination explicit.
+shared substrate degrades into a manual telephone game — same findings
+re-reported, work duplicated, coordinator demoted to switchboard. A
+tracker is the single mutable file every agent reads and writes
+against; the substrate makes the coordination explicit. The two
+mechanical sub-rules exist for the same reason:
 
-**Why "coordinators do not edit on behalf":** When a coordinator writes
-to a verification agent's row, the verification step has been laundered
-through a non-verifier process. The audit trail lies. The principle that
-makes this principle worth enforcing — evidence-before-assertions,
-principle #1 — collapses, because the row's "verified" state was
-produced by someone other than the verifier. The rule is mechanical
-because the alternative is invisible drift.
-
-**Why "findings as new rows, not edits":** A finding edited into an
-existing row is invisible to anyone who has already read that row. A
-finding filed as a new row appears in the tracker's tail where the
-next reader is looking. The format makes findings visible to the
-parallel agents who need to act on them; the edit pattern hides them
-under a previously-seen header.
+- **Coordinators do not edit on behalf** — when a coordinator writes
+  to a verification agent's row, the verification step has been
+  laundered through a non-verifier process and the audit trail lies.
+  Principle #1 (evidence-before-assertions) collapses, because the
+  row's "verified" state was produced by someone other than the
+  verifier.
+- **Findings as new rows, not edits** — a finding edited into an
+  existing row is invisible to anyone who has already read that row;
+  a finding filed as a new row appears in the tracker's tail where
+  the next reader is looking.
 
 **How the kit enforces it:**
 
+- [`docs/tracker-system.md`](tracker-system.md) is the canonical
+  reference: full schema, dispatch protocols, V/O agent protocols
+  (Verification Steps 0 + A–G with `[WIRE-PATH MISS]` BLOCKING;
+  Optimization Protocol with dual-graph + LSP redundancy check),
+  hard rules, worked examples. Shipped to `~/.claude/docs/` via
+  `install.sh`.
 - `claude/CLAUDE.md` ships a MANDATORY section (between the Quality
-  Loop and Installed Plugins) covering Phase Start Protocol
-  (EnterPlanMode → approval → execute), Pre-Dispatch Protocol
-  (coordinator creates Dev + V + O tasks upfront), agent procedures,
-  coordinator prohibitions, full Verification Steps 0 + A–G (Step 0 =
-  PRD Requirement Mapping; Step G = `[WIRE-PATH MISS]` hot-path check,
-  BLOCKING), Optimization Protocol (dual-graph + LSP redundancy
-  check), and tracker hard rules.
-- [`docs/tracker-system.md`](tracker-system.md) is the full schema +
-  dispatch protocols + V/O agent protocols + worked examples; shipped
-  to `~/.claude/docs/` via `install.sh copy_docs`.
-- The kit's `docs/workflow.md` folds tracker dispatch into Step 2
-  (Plan → open rows) and Step 6 (Verify → V/O agents update own rows).
+  Loop and Installed Plugins) summarising the protocols above so
+  every session reads them before the plugin tour.
+- `docs/workflow.md` folds tracker dispatch into Step 2 (Plan → open
+  rows) and Step 6 (Verify → agents claim, update, file findings).
 
 **Pitfalls:**
 
@@ -414,6 +406,8 @@ To prevent the kit from being mistaken for something it is not:
 
 - [`docs/workflow.md`](workflow.md) — the 10-step development loop that
   operationalises the principles above.
+- [`docs/tracker-system.md`](tracker-system.md) — the full schema,
+  dispatch protocols, and V/O agent protocols behind Principle 7.
 - [`docs/tools/superpowers.md`](tools/superpowers.md) — the workflow-discipline
   skills.
 - [`docs/tools/berry.md`](tools/berry.md) — the evidence-verification gate.
