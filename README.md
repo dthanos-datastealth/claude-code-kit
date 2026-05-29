@@ -490,6 +490,76 @@ Use this any time you've changed `install.sh`, the plugin set, or the
 docs-shipping logic and want to confirm the kit installs cleanly without
 touching your working setup.
 
+### Launching `claude` interactively in the isolated HOME
+
+The leak-check test above runs `claude mcp list` non-interactively and
+doesn't need an authenticated session. If you want to actually *use*
+Claude Code interactively inside the isolated HOME (e.g. to verify a
+new plugin loads correctly, to walk through a slash-command flow),
+**do not run `/login` from the isolated HOME**. Claude Code's OAuth
+state is split across two stores that have incompatible scopes:
+
+- **macOS Keychain entries** (`Claude Code-credentials-*`) — keyed to
+  the OS user account, shared across every `claude` process regardless
+  of `$HOME`.
+- **`~/.claude.json`** — keyed to `$HOME`, holds the account/org
+  metadata (`oauthAccount`, `userID`) that pairs with the Keychain
+  entries. **Note: this is a separate file from the kit's
+  `~/.claude/settings.json`**; `install.sh` never touches `.claude.json`
+  (Claude Code itself auto-generates it on first launch with onboarding
+  state — `firstStartTime`, `projects`, `mcpServers`, etc).
+
+Re-running `/login` from a fresh `$HOME` makes Claude Code try to
+create a NEW Keychain item while a working one already exists for
+the OS user, triggering a Keychain authorization prompt and (often)
+a post-OAuth handshake failure that can leave both the test session
+AND the real session in a broken state.
+
+The right pattern is to **share the auth state**, not re-acquire it.
+Pick one of two approaches — both leave your kit settings under
+`$TEST_HOME/.claude/settings.json` completely untouched, because
+the file we're modifying (`.claude.json`) is a sibling in HOME root,
+not anything `install.sh` writes to.
+
+**Option A — Surgical (recommended for clean isolation):** copy
+*only* the auth binding fields, leaving the test HOME's auto-generated
+runtime state (project history, MCP server bindings, etc.) intact.
+
+```bash
+python3 -c "
+import json
+real = json.load(open('$HOME/.claude.json'))
+test = json.load(open('$TEST_HOME/.claude.json'))
+test['oauthAccount'] = real['oauthAccount']
+test['userID'] = real['userID']
+json.dump(test, open('$TEST_HOME/.claude.json', 'w'), indent=2)
+"
+HOME="$TEST_HOME" claude
+```
+
+**Option B — Full copy (recommended for convenience):** copy the
+whole file. Simpler, but the test HOME inherits your real session's
+`projects` list and per-project `mcpServers` registrations alongside
+the auth binding. Harmless for testing, slightly less isolated.
+
+```bash
+cp ~/.claude.json "$TEST_HOME/.claude.json"
+HOME="$TEST_HOME" claude
+```
+
+Either way, Claude Code will find the existing Keychain entries for
+the OS user, skip the OAuth flow entirely, and launch authenticated.
+
+If a previous failed `/login` attempt left a broken Keychain item
+behind, scrub it *before* either option with:
+
+```bash
+security delete-generic-password -s "Claude Code-credentials"
+```
+
+Do NOT touch the suffixed entries like `Claude Code-credentials-<hex>`
+— those are the real working credentials for the OS user.
+
 ---
 
 ## Layout
