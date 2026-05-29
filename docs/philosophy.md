@@ -6,7 +6,7 @@ practice. If you adopt this kit, you are accepting these constraints in
 exchange for the workflows the tools enforce. If a constraint feels wrong for
 your situation, fork the kit and remove it; do not weaken it in place.
 
-The six principles are listed in dependency order. Earlier principles are
+The seven principles are listed in dependency order. Earlier principles are
 preconditions for later ones — you cannot honour "minimum viable changes"
 without first honouring "evidence before assertions," because without evidence
 you cannot tell which changes are viable and which are speculative.
@@ -297,20 +297,93 @@ not actually decided to add it; you have copied a pattern.
 
 ---
 
+## 7. Tracker as collaboration substrate
+
+**The rule:** When work is dispatched across multiple agents — Dev,
+Verification, Optimization, or any parallel coordination beyond a
+single linear session — the dispatch routes through a per-project
+`docs/TRACKER.md`. The coordinator opens one row per planned dispatch
+**before** any agent fires (Pre-Dispatch Protocol). Each agent updates
+its **own** row state. Findings surface as **new rows** in the V/O
+Findings Tracker, never as edits to other agents' rows. Coordinators
+do not write to agents' rows on their behalf.
+
+**Why this is its own principle:** Parallel agentic work without a
+shared substrate degrades into a manual telephone game. The same
+finding gets re-reported because no agent can see what others have
+already filed. Work gets duplicated because no agent knows which rows
+are claimed. The coordinator becomes a manual switchboard, which is
+exactly what the parallel dispatch was supposed to eliminate. A
+tracker fixes this by being a single mutable file every agent reads
+and writes against — the substrate makes the coordination explicit.
+
+**Why "coordinators do not edit on behalf":** When a coordinator writes
+to a verification agent's row, the verification step has been laundered
+through a non-verifier process. The audit trail lies. The principle that
+makes this principle worth enforcing — evidence-before-assertions,
+principle #1 — collapses, because the row's "verified" state was
+produced by someone other than the verifier. The rule is mechanical
+because the alternative is invisible drift.
+
+**Why "findings as new rows, not edits":** A finding edited into an
+existing row is invisible to anyone who has already read that row. A
+finding filed as a new row appears in the tracker's tail where the
+next reader is looking. The format makes findings visible to the
+parallel agents who need to act on them; the edit pattern hides them
+under a previously-seen header.
+
+**How the kit enforces it:**
+
+- `claude/CLAUDE.md` ships a MANDATORY section (between the Quality
+  Loop and Installed Plugins) covering Phase Start Protocol
+  (EnterPlanMode → approval → execute), Pre-Dispatch Protocol
+  (coordinator creates Dev + V + O tasks upfront), agent procedures,
+  coordinator prohibitions, full Verification Steps 0 + A–G (Step 0 =
+  PRD Requirement Mapping; Step G = `[WIRE-PATH MISS]` hot-path check,
+  BLOCKING), Optimization Protocol (dual-graph + LSP redundancy
+  check), and tracker hard rules.
+- [`docs/tracker-system.md`](tracker-system.md) is the full schema +
+  dispatch protocols + V/O agent protocols + worked examples; shipped
+  to `~/.claude/docs/` via `install.sh copy_docs`.
+- The kit's `docs/workflow.md` folds tracker dispatch into Step 2
+  (Plan → open rows) and Step 6 (Verify → V/O agents update own rows).
+
+**Pitfalls:**
+
+- Coordinator-updates-on-behalf-of-agent (the most common violation).
+  Defeats verification. If the coordinator wants the row to advance,
+  the right move is to wait for the agent to update it — or to
+  re-dispatch if the agent stalled.
+- Skipping the Pre-Dispatch Protocol and opening rows after agents
+  start. Loses the parallel-coordination substrate the upfront-row
+  pattern exists to provide.
+- Writing prose into rows instead of state transitions. Rows are
+  status + outcome + pointer; the prose belongs in the linked PR,
+  commit, or scratchpad. A row that is a paragraph is unreadable
+  parallel coordination.
+- Treating the tracker as a journal rather than a coordination file.
+  Old iterations move to the Earlier section; the Last Updated section
+  stays small enough that every dispatched agent reads it in full each
+  turn.
+
+---
+
 ## How the principles compose
 
-The six principles are a chain. Evidence-before-assertions gives you the
+The seven principles are a chain. Evidence-before-assertions gives you the
 ground truth that TDD turns into a falsifiable claim. TDD's small, scoped
 changes are what makes minimum-viable-changes possible. The dual-graph and
 LSP discipline is how you gather evidence without burning the context budget
 you need for the implementation. Berry is the mechanism that prevents the
-prior principles from being skipped under pressure. And the explanatory
-output style is how the discipline propagates — to the next session, to the
-next reviewer, to the next maintainer.
+prior principles from being skipped under pressure. The explanatory output
+style is how the discipline propagates — to the next session, to the next
+reviewer, to the next maintainer. And the tracker substrate is what makes
+all of the above survive parallel dispatch, where the chain has to hold
+across processes that cannot see each other's transcripts.
 
 Remove any one link and the chain weakens. Remove two and the kit is no
 longer doing the work it was built to do. If you find yourself in a session
-where you have skipped two of the six, stop and reset: this is the failure
+where you have skipped two of the seven, stop and reset: this is the failure
 mode the kit was assembled to prevent.
 
 ---

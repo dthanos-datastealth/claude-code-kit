@@ -11,6 +11,51 @@ own configuration documentation, prefer theirs for the parts that overlap.
 
 ---
 
+## 0. What the kit ships by default (read this first)
+
+The kit's `claude/settings.json` env block sets a single TLS-related
+default: **`UV_NATIVE_TLS=1`**. This tells `uvx` (the Python tool runner
+that Berry's MCP server invokes) to use the OS native TLS stack — macOS
+Keychain on Darwin, `/etc/ssl/certs` on Linux — instead of its bundled
+rustls cert store. The bundled rustls store does **not** include corporate
+internal CAs, so any `uvx tool install` or `uvx run` that fetches over a
+TLS-intercepting proxy fails with `invalid peer certificate:
+UnknownIssuer`. Flipping to native TLS makes `uvx` trust whatever the OS
+trusts, which on a corporate-issued machine usually includes the
+intercepting CA.
+
+**What this fixes out of the box:** Berry's MCP server starting
+successfully behind Cloudflare, Zscaler, Netskope, Palo Alto, Cisco, and
+similar TLS-intercepting proxies — without you needing to do anything
+beyond running `install.sh`.
+
+**What this does NOT fix:** `git`, `curl`, `npm`, `python`, and other
+language stacks that have their own trust-store policies. Those still
+need the env vars in section 3 below. `UV_NATIVE_TLS=1` is `uvx`-specific.
+
+**When it is not enough:** If your OS trust store doesn't include the
+corporate CA (rare on managed Macs and managed Linux desktops, common on
+self-built developer Linux setups), `UV_NATIVE_TLS=1` won't help and you
+need to add the corporate CA to the OS trust store directly (macOS:
+`sudo security add-trusted-cert ...`; Linux: copy to
+`/usr/local/share/ca-certificates/` then `update-ca-certificates`). Once
+the OS trusts it, `UV_NATIVE_TLS=1` picks it up automatically.
+
+**How the merge works if you've already set `UV_NATIVE_TLS` yourself:**
+The kit's `scripts/merge-settings.py` layers kit env defaults **under**
+your existing env. If you've set `UV_NATIVE_TLS=0` (or any other value)
+in your existing `~/.claude/settings.json`, your value wins — the kit
+default only fills in keys you haven't set. This is intentional: the kit
+ships sensible defaults, you keep override authority.
+
+The rest of this guide covers the broader picture (CA bundle assembly,
+env vars for the other stacks, persistence, verification, removal). If
+you only needed Berry working behind your proxy and the OS trust store
+already includes the corporate CA, `install.sh` already did everything
+necessary.
+
+---
+
 ## 1. Obtain your corporate CA bundle
 
 Ask your IT or platform team for the corporate root CA certificate (and

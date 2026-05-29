@@ -101,6 +101,18 @@ not to exist when you go to execute them.
   bits, which looks like an evidence problem but is actually a parameter
   problem. Check the keys first when a strong span fails the audit.
 
+**Tracker dispatch (Pre-Dispatch Protocol):** Once the plan passes
+Berry, open a `docs/TRACKER.md` row for the iteration and one row per
+Dev / V / O `Task` you will dispatch. Do this **upfront, before any
+dispatch fires**, so the parallel agents share a coordination
+substrate from the moment they start. The full schema (Last Updated +
+Earlier · per-iteration aspect tables · Quality Loop State · V/O
+Findings Tracker · Open issues) and the rationale for opening rows
+before dispatch live in [`docs/tracker-system.md`](tracker-system.md).
+The hard rule: coordinators do **not** edit other agents' rows on
+their behalf — each agent updates its own row state, and findings
+surface as **new rows**, not as edits to existing ones.
+
 ---
 
 ## Step 3: Isolate
@@ -262,6 +274,17 @@ ship.
 - Linter not run. The kit's standard is: linter green before claiming
   any task complete. Go: `go vet` + `golangci-lint`. TypeScript:
   `eslint`. Other languages: whatever the project uses.
+
+**Tracker-coordinated V+O dispatch:** Verification and Optimization
+agents run as parallel `Task` dispatches against the rows opened in
+Step 2's Pre-Dispatch Protocol. Each agent claims its row by updating
+its own row state (in-progress → done), follows the Verification
+Steps 0 + A–G (including the `[WIRE-PATH MISS]` hot-path check, which
+is BLOCKING) or the Optimization Protocol (dual-graph + LSP redundancy
+check), then files **findings as new rows** in the V/O Findings
+Tracker — never as edits to other rows. The coordinator that
+dispatched them does not write to their rows. Full protocols and
+examples in [`docs/tracker-system.md`](tracker-system.md).
 
 ---
 

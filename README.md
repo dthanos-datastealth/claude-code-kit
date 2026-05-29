@@ -96,14 +96,16 @@ flowchart TD
 
   bplan --> bgate1{Berry audit_trace_budget passes?}
   bgate1 -->|no, 3-strike rule| stop[STOP: surface what passed and flagged, wait for user]
-  bgate1 -->|yes| worktree[superpowers:using-git-worktrees]
+  bgate1 -->|yes| track[docs/TRACKER.md: coordinator opens row per planned Dev / V / O Task before dispatch]
+  track --> worktree[superpowers:using-git-worktrees]
   worktree --> tdd[TDD: RED, GREEN, REFACTOR]
   tdd --> build[Build with Context7 for live docs, LSP for symbols]
   build --> bgate2{Tests pass? Capture output as Berry span via berry-search-and-learn}
   bgate2 -->|no| tdd
   bgate2 -->|yes| review[superpowers:requesting-code-review]
   review --> simplify[simplify - code-simplifier]
-  simplify --> finish[superpowers:finishing-a-development-branch]
+  simplify --> trackclose[docs/TRACKER.md: close rows, log V/O verdicts, file findings as new rows]
+  trackclose --> finish[superpowers:finishing-a-development-branch]
   finish --> docupd[revise-claude-md - capture session learnings]
   docupd --> shipped([Shipped])
 
@@ -150,19 +152,20 @@ flowchart TD
   tdd --> capture[Capture test output as Berry span via berry-search-and-learn]
   capture --> bgate{Berry audit_trace_budget passes?}
   bgate -->|no, 3-strike rule| stop[STOP: surface what passed and flagged, wait for user]
-  bgate -->|yes| vo[Dispatch V and O subagents in parallel against the same revision]
-  vo --> v[V: Verification agent - cites authoritative external sources upstream READMEs, official docs]
-  vo --> o[O: Optimization agent - finds simplification, clarity, consistency wins]
+  bgate -->|yes| track[Pre-Dispatch Protocol: coordinator opens TRACKER.md row per Dev / V / O Task]
+  track --> vo[Dispatch V and O Tasks in parallel against their tracker rows]
+  vo --> v[V: Verification agent - cites authoritative external sources - updates own row - files findings as new rows]
+  vo --> o[O: Optimization agent - dual-graph plus LSP redundancy check - updates own row - files findings as new rows]
   v --> vv{V verdict}
   o --> ov{O verdict}
-  vv -->|CONCERN or BLOCKER| fix[Apply fix, re-cycle]
+  vv -->|CONCERN or BLOCKER or WIRE-PATH MISS| fix[Apply fix, re-cycle]
   vv -->|OK| vpass[V pass]
   ov -->|worth-fixing| fix
   ov -->|trivial or clean| opass[O pass]
   fix --> tdd
   vpass --> done
   opass --> done
-  done([Change accepted - ready to ship])
+  done([Change accepted - close TRACKER rows - ready to ship])
 
   classDef gate fill:#7c2d12,stroke:#fed7aa,color:#fff7ed
   classDef stop fill:#7f1d1d,stroke:#fecaca,color:#fef2f2
@@ -190,13 +193,24 @@ Three layers, all mandatory:
 - **V+O loop.** After any code, doc, or config change with behavioral
   impact, dispatch a **Verification agent** (cites authoritative
   external sources — upstream READMEs, official docs, vendor API
-  references; output: `[OK]` / `[CONCERN]` / `[BLOCKER]`) and an
-  **Optimization agent** (finds simplification, clarity, and
-  consistency wins; output: `[trivial]` / `[worth-considering]` /
-  `[worth-fixing]`) in parallel against the same revision. Verdicts
-  of either block "done" — `[CONCERN]` / `[BLOCKER]` requires a
+  references; output: `[OK]` / `[CONCERN]` / `[BLOCKER]` plus the
+  hot-path `[WIRE-PATH MISS]` finding, which is BLOCKING) and an
+  **Optimization agent** (dual-graph + LSP redundancy check plus
+  simplification, clarity, and consistency wins; output:
+  `[trivial]` / `[worth-considering]` / `[worth-fixing]`) in parallel
+  against the same revision. Verdicts of either block "done" —
+  `[CONCERN]` / `[BLOCKER]` / `[WIRE-PATH MISS]` requires a
   correctness fix; `[worth-fixing]` requires a follow-up commit
   before the next substantive change.
+- **Tracker as substrate.** V and O are dispatched via the `Task`
+  tool against rows the coordinator opened in `docs/TRACKER.md` per
+  the Pre-Dispatch Protocol (rows opened **before** any agent fires,
+  one per planned dispatch). Each agent updates its **own** row state;
+  findings surface as **new rows** in the V/O Findings Tracker, never
+  as edits to other agents' rows; coordinators do **not** write to
+  agents' rows on their behalf. See
+  [`docs/tracker-system.md`](docs/tracker-system.md) for the full
+  schema and worked examples.
 
 Hard prohibitions: no "tests pass" claim without a Berry span;
 no skipping V+O on the grounds that "the change is small" (small
