@@ -399,6 +399,21 @@ and confirm it reports the backend as reachable. If any of the above
 fails, see [`docs/prereqs.md`](docs/prereqs.md) for the
 section-by-section install commands.
 
+### If npx-based MCPs show ✘ failed on first launch, restart once
+
+`install.sh` pre-warms the npm cache for the three npx-based MCP
+servers (`@playwright/mcp`, `chrome-devtools-mcp`,
+`@upstash/context7-mcp`) so that first launch reads from cache
+instead of resolving from the registry. Even so, on a cold install
+the first Claude Code session can race the MCP handshake timeout
+while `npx` is finalizing its resolve, and one or more of those three
+MCPs will get marked `✘ failed` in that session. Claude Code does
+**not** auto-retry an MCP once it's marked failed — the only recovery
+is a session restart. Quit (`Cmd-Q` or `/exit`) and relaunch
+`claude`; the cache is warm by then and all three will come up
+`✓ Connected`. If a restart doesn't fix it, then it's a real
+failure — check `claude mcp list` for the actual error.
+
 ---
 
 ## Reverting
