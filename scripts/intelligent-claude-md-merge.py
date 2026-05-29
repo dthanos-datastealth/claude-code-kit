@@ -26,12 +26,14 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import sys
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+
+# Shared atomic-write helper (replaces previously-inline tmpfile+os.replace).
+sys.path.insert(0, str(Path(__file__).parent))
+from _atomic import atomic_write_text  # noqa: E402
 
 DEFAULT_MANIFEST = Path(__file__).parent.parent / "claude" / "CLAUDE.md.manifest.json"
 
@@ -189,7 +191,7 @@ def merge(live_text: str, prev_text: str, new_text: str, manifest: dict,
         if decision == "take_new":
             new_section = new_by_heading.get(h, section)
             out.append({"heading_line": h, "depth": d, "body": new_section["body"]})
-        elif decision == "keep_live" or decision == "noop":
+        elif decision in ("keep_live", "noop"):
             out.append(section)
         elif decision == "conflict":
             if not interactive:
@@ -219,20 +221,6 @@ def merge(live_text: str, prev_text: str, new_text: str, manifest: dict,
             out.append(new_section)
 
     return serialize_sections(out), conflicts, aborts
-
-
-def atomic_write(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".CLAUDE-", suffix=".md")
-    try:
-        with os.fdopen(fd, "w") as f:
-            f.write(text)
-        os.replace(tmp, path)
-    except Exception:
-        import contextlib
-        with contextlib.suppress(OSError):
-            os.unlink(tmp)
-        raise
 
 
 def main(argv: list[str]) -> int:
@@ -308,7 +296,7 @@ def main(argv: list[str]) -> int:
         return 0
 
     if merged:
-        atomic_write(args.user, merged)
+        atomic_write_text(args.user, merged)
     return 0
 
 

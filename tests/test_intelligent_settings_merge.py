@@ -1,4 +1,4 @@
-"""Tests for scripts/intelligent_settings_merge.py — the UNION-on-conflict
+"""Tests for scripts/intelligent-settings-merge.py — the UNION-on-conflict
 upgrade-safe settings.json merger that replaces scripts/merge-settings.py."""
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
-MERGER = REPO / "scripts" / "intelligent_settings_merge.py"
+MERGER = REPO / "scripts" / "intelligent-settings-merge.py"
 POLICY = REPO / "scripts" / "merge-policy.json"
 KIT_SETTINGS = REPO / "claude" / "settings.json"
 

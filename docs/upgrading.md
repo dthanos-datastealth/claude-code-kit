@@ -122,7 +122,7 @@ result as a fresh install.
 ### "I want to skip the kit's CLAUDE.md and only merge settings.json"
 Run the merger directly:
 ```bash
-python3 scripts/intelligent_settings_merge.py \
+python3 scripts/intelligent-settings-merge.py \
     claude/settings.json ~/.claude/settings.json \
     --policy scripts/merge-policy.json
 ```
@@ -139,8 +139,8 @@ section is preserved verbatim across upgrades and never conflicts.
 
 - `claude/CLAUDE.md.manifest.json` — list of kit-owned section headings
 - `scripts/merge-policy.json` — per-key settings.json merge policy
-- `scripts/intelligent_settings_merge.py` — settings.json merger
-- `scripts/intelligent_claude_md_merge.py` — CLAUDE.md merger
+- `scripts/intelligent-settings-merge.py` — settings.json merger
+- `scripts/intelligent-claude-md-merge.py` — CLAUDE.md merger
 - `scripts/upgrade.sh` — orchestrator
 - `plugins/claude-code-kit/skills/{upgrade,rollback,status}.md` — slash
   command skills

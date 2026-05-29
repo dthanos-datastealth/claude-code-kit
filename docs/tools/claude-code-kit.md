@@ -37,8 +37,8 @@ Self-published from this repo: `dthanos-datastealth/claude-code-kit`
 marketplace, plugin path `plugins/claude-code-kit/`. Skill files at
 `plugins/claude-code-kit/skills/{upgrade,rollback,status,fix-notion-mcp-port}.md`,
 script at `plugins/claude-code-kit/scripts/fix-notion-mcp-port.sh`,
-underlying mergers at `scripts/intelligent_settings_merge.py` and
-`scripts/intelligent_claude_md_merge.py`.
+underlying mergers at `scripts/intelligent-settings-merge.py` and
+`scripts/intelligent-claude-md-merge.py`.
 
 **Cost / footprint:**
 Negligible. Four markdown skill files (~3 KB each, loaded on demand

@@ -1,6 +1,6 @@
 {
   "format_version": 1,
-  "description": "Per-key merge policy for ~/.claude/settings.json. Consumed by scripts/intelligent_settings_merge.py. Replaces the hard-coded REPLACE behavior in the deprecated scripts/merge-settings.py.",
+  "description": "Per-key merge policy for ~/.claude/settings.json. Consumed by scripts/intelligent-settings-merge.py. Replaces the hard-coded REPLACE behavior in the deprecated scripts/merge-settings.py.",
   "policies": {
     "env": {
       "strategy": "union_dict",

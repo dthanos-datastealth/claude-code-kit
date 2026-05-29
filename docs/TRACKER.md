@@ -3,6 +3,57 @@
 > Per-project tracker per `~/.claude/docs/tracker-system.md`. Single source of
 > truth for in-flight work, V/O findings, and iteration state.
 
+## Last Updated: 2026-05-29 Iter-2 — CLOSED
+
+| Aspect | State |
+|---|---|
+| Active phase | (none — Iter-2 closed; all Iter-1 deferred items resolved) |
+| Last completed phase | Iter-2: A7 (lint-merge-policy + test-upgrade-isolated + CI wire) + _atomic.py helper consolidation + kebab-case rename |
+| Plan | `~/.claude/plans/effervescent-spinning-bumblebee.md` (Berry-verified Iter-1 run_id 5b359944a9ff9741) |
+| Dev branch | `main` |
+| Quality Loop State | CLOSED — V=PASS (1 doc-only concern resolved) + O=worth-fixing (all 10 items addressed); tests=84/84 GREEN |
+| Open conflicts | none |
+
+### Iter-2 quality loop (final)
+
+| Stage | Status |
+|---|---|
+| Kebab-case rename + ref updates | done — 77/77 still GREEN after rename |
+| scripts/_atomic.py helper consolidation | done — both mergers import via sys.path |
+| scripts/lint-merge-policy.py + 7 test cases | done — 84/84 GREEN |
+| scripts/test-upgrade-isolated.sh | done — shellcheck clean, mirrors test-install-isolated.sh pattern |
+| .github/workflows/ci.yml wire-up | done — lint-merge-policy step added; both isolated tests documented as local-only |
+| V (Verification agent) | done — PASS with 1 doc-only CONCERN (CHANGELOG snake_case refs) |
+| O (Optimization agent) | done — worth-fixing (10 items, all `worth-fixing` addressed; `worth-considering` deferred) |
+| Fix-cycle for V+O findings | done — V concern + all 10 O findings closed in same revision |
+| Iteration close | done |
+
+### V/O findings (Iter-2)
+
+| ID | Source | Severity | File:line | Finding | Status |
+|---|---|---|---|---|---|
+| V-1 | V Step F | CONCERN doc-only | CHANGELOG.md:19,22,82 | snake_case refs after rename | FIXED (kebab-case) |
+| O-1 | O | worth-fixing | CHANGELOG.md:19,22,82 | same as V-1 | FIXED |
+| O-2 | O | worth-fixing | README.md:36 (Mermaid inventory) | missing lint-merge-policy + test-upgrade-isolated | FIXED |
+| O-3 | O | worth-fixing | README.md §"Testing the kit in parallel" | new test-upgrade-isolated.sh not mentioned | FIXED (added sibling note) |
+| O-4 | O | worth-fixing | tests/test_intelligent_claude_md_merge.py:5,9 | unused json + pytest imports | FIXED (deleted) |
+| O-5 | O | worth-fixing | tests/test_lint_merge_policy.py:10 | unused KIT_POLICY constant | FIXED (deleted) |
+| O-6 | O | worth-fixing | tests/test_lint_merge_policy.py:59 | redundant .replace half of assertion | FIXED (simplified) |
+| O-7 | O | worth-fixing | scripts/intelligent-claude-md-merge.py:194 | `elif x == "a" or x == "b"` non-idiomatic | FIXED (in tuple) |
+| O-8 | O | worth-considering | scripts/_atomic.py:40 | atomic_write_json prefix `.settings-` not generic | FIXED (`.cck-`) |
+| O-9 | O | worth-considering | scripts/intelligent-settings-merge.py:51 | dead `default` var | FIXED (deleted) |
+| O-10 | O | worth-considering (pre-existing) | scripts/upgrade.sh:130-132 | orphaned `.before` snapshot cp | FIXED (deleted) |
+
+### Open issues (carry to next iteration)
+
+- Berry audit on Iter-2 pytest output (deferred from Iter-2 close due to no new external behavior claims; would re-validate the same "all tests pass" claim from Iter-1).
+- Python atomic_write helper consolidation: DONE this iteration (was a worth-considering deferred item from Iter-1).
+- A7: DONE this iteration.
+- snake_case → kebab-case rename: DONE this iteration.
+- Issue #55067 upstream — kit cannot fix; documented in docs/notion-mcp-pinning.md.
+
+---
+
 ## Last Updated: 2026-05-29 Iter-1 — CLOSED
 
 | Aspect | State |

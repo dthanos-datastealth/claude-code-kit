@@ -1,15 +1,12 @@
-"""Tests for scripts/intelligent_claude_md_merge.py — heading-based CLAUDE.md
+"""Tests for scripts/intelligent-claude-md-merge.py — heading-based CLAUDE.md
 merge with 3-way conflict detection per the kit manifest."""
 from __future__ import annotations
 
-import json
 import subprocess
 from pathlib import Path
 
-import pytest
-
 REPO = Path(__file__).resolve().parents[1]
-MERGER = REPO / "scripts" / "intelligent_claude_md_merge.py"
+MERGER = REPO / "scripts" / "intelligent-claude-md-merge.py"
 MANIFEST = REPO / "claude" / "CLAUDE.md.manifest.json"
 KIT_CLAUDE_MD = REPO / "claude" / "CLAUDE.md"
 

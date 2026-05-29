@@ -33,7 +33,7 @@ flowchart LR
     sets[claude/settings.json<br/>22 plugins · 6 marketplaces<br/>effortLevel: max]
     mem[claude/memory/MEMORY.md<br/>auto-memory index]
     docs[docs/<br/>philosophy · workflow · prereqs ·<br/>corporate-tls · memory-system ·<br/>tracker-system · tools/ ×23]
-    sc[scripts/<br/>merge-settings · lint-scrubbing · lint-tools-docs ·<br/>lint-plugin-marketplaces · lint-mcp-hardcoded-paths ·<br/>diff-against-live · test-install-isolated]
+    sc[scripts/<br/>merge-settings · intelligent-settings-merge · intelligent-claude-md-merge · upgrade ·<br/>lint-scrubbing · lint-tools-docs · lint-plugin-marketplaces · lint-mcp-hardcoded-paths · lint-merge-policy ·<br/>diff-against-live · test-install-isolated · test-upgrade-isolated]
     tests[tests/<br/>76 pytest cases ·<br/>isolated-HOME harness]
   end
 
@@ -329,7 +329,7 @@ optional tools (LSP binaries, `ripgrep`, `jq`, `shellcheck`, `specify`).
 3. Copy `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`.
 4. Merge `claude/settings.json` into `~/.claude/settings.json` via
    `scripts/merge-settings.py` (which now delegates to
-   `scripts/intelligent_settings_merge.py` per `scripts/merge-policy.json`).
+   `scripts/intelligent-settings-merge.py` per `scripts/merge-policy.json`).
    The merge is UNION-on-conflict with user-wins: `enabledPlugins`,
    `extraKnownMarketplaces`, and `env` keep all user entries and add
    missing kit entries on top; `effortLevel` is user-wins-if-set;
@@ -525,7 +525,19 @@ before and after.
 ./scripts/test-install-isolated.sh --clean
 ```
 
-**What it does:**
+**For the upgrade path** (testing `scripts/upgrade.sh` against a HOME
+that already has `~/.claude/.kit-version` + simulated user mutations),
+use the sibling script:
+
+```bash
+./scripts/test-upgrade-isolated.sh         # install → mutate → upgrade → assert preservation + leak check
+./scripts/test-upgrade-isolated.sh --clean # auto-clean on success
+```
+
+Both are local-only (CI doesn't have the real `claude` CLI, so neither
+runs in `.github/workflows/ci.yml` — by design).
+
+**What `test-install-isolated.sh` does:**
 
 1. Captures `mtime` of your real `~/.claude/CLAUDE.md` and `~/.claude/settings.json`.
 2. Creates `$(mktemp -d -t cck-test-XXXXXX)` and runs `HOME="$TEST_HOME" ./install.sh`.

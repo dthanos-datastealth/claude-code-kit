@@ -7,7 +7,7 @@ applies per-key strategy. User-added top-level keys not in the policy are
 preserved verbatim.
 
 Usage:
-    intelligent_settings_merge.py <kit-template> <user-settings>
+    intelligent-settings-merge.py <kit-template> <user-settings>
                                   [--policy <merge-policy.json>]
 
 Behavior:
@@ -21,10 +21,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
-import tempfile
 from pathlib import Path
+
+# Shared atomic-write helper (replaces previously-inline tmpfile+os.replace
+# duplicated across intelligent-settings-merge.py and intelligent-claude-md-merge.py).
+sys.path.insert(0, str(Path(__file__).parent))
+from _atomic import atomic_write_json  # noqa: E402
 
 DEFAULT_POLICY = Path(__file__).parent / "merge-policy.json"
 
@@ -45,7 +48,6 @@ def apply_policy(kit: dict, user: dict, policy: dict) -> dict:
     """Apply per-key merge policy. Returns merged dict."""
     merged = dict(user)  # start from user — preserves unknown keys
     policies = policy.get("policies", {})
-    default = policy.get("default_strategy_for_unlisted_keys", {})
 
     # Apply per-key policies
     for key, rule in policies.items():
@@ -82,22 +84,6 @@ def apply_policy(kit: dict, user: dict, policy: dict) -> dict:
     return merged
 
 
-def atomic_write(path: Path, data: dict) -> None:
-    """Write data as JSON to path atomically (tmpfile + os.replace)."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".settings-", suffix=".json")
-    try:
-        with os.fdopen(fd, "w") as f:
-            json.dump(data, f, indent=2, sort_keys=False)
-            f.write("\n")
-        os.replace(tmp, path)
-    except Exception:
-        import contextlib
-        with contextlib.suppress(OSError):
-            os.unlink(tmp)
-        raise
-
-
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("kit_template", type=Path)
@@ -117,7 +103,7 @@ def main(argv: list[str]) -> int:
     policy = json.loads(args.policy.read_text())
 
     merged = apply_policy(kit, user, policy)
-    atomic_write(args.user_settings, merged)
+    atomic_write_json(args.user_settings, merged)
     return 0
 
 

@@ -5,6 +5,45 @@ Format: Keep a Changelog. Versioning: `vYYYY.MM.DD` when `install.sh`
 contract changes; untagged for CLAUDE.md/docs edits.
 
 ## [Unreleased]
+
+### Added (Iter-2)
+- **A7 closes: CI lint + isolated upgrade test + helper consolidation.**
+  Resolves 3 items deferred from Iter-1:
+  - `scripts/_atomic.py` shared helper (`atomic_write_text` +
+    `atomic_write_json`); both mergers import from it (eliminates the
+    previously-duplicated tmpfile+os.replace pattern).
+  - `scripts/lint-merge-policy.py` — JSON-schema validator for
+    `scripts/merge-policy.json`. Enforces format_version=1, known
+    strategies, union_dict requires winner_on_conflict, etc. Wired
+    into `.github/workflows/ci.yml`.
+  - `scripts/test-upgrade-isolated.sh` — analog to test-install-isolated.sh
+    for the upgrade flow. Seeds isolated HOME with fresh install + 4 user
+    mutations (custom plugin, custom marketplace, custom env var, custom
+    CLAUDE.md section), runs upgrade --dry-run + --apply, asserts all
+    mutations survive + leak check vs real HOME. Local-only by design.
+  - `tests/test_lint_merge_policy.py` (7 cases). 84/84 GREEN
+    (Iter-1: 77 → Iter-2: +7).
+
+### Changed (Iter-2)
+- **Kebab-case rename** of mergers to match the kit's scripts/ convention:
+  `intelligent_settings_merge.py` → `intelligent-settings-merge.py`,
+  `intelligent_claude_md_merge.py` → `intelligent-claude-md-merge.py`. All
+  refs updated in upgrade.sh, merge-settings.py shim, tests, docs/upgrading.md,
+  docs/tools/claude-code-kit.md, README, manifest + policy descriptions.
+
+### Fixed (Iter-2 V+O follow-up)
+- All `worth-fixing` items from O's Iter-2 verdict applied: unused imports
+  in `test_intelligent_claude_md_merge.py`, unused `KIT_POLICY` in
+  `test_lint_merge_policy.py`, dead `default` var in
+  `intelligent-settings-merge.py`, `_atomic.atomic_write_json` prefix
+  renamed to `.cck-` for consistency, orphaned `.before` snapshot in
+  `upgrade.sh:backup()` deleted (was never read), `elif x == "a" or x ==
+  "b":` → `elif x in ("a", "b"):`. CHANGELOG `[Unreleased]` Iter-1 refs
+  rewritten to kebab-case (3 occurrences). README architecture diagram
+  inventory updated to include the 4 new scripts shipped this iteration;
+  new sibling note for `test-upgrade-isolated.sh` added to README §"Testing
+  the kit in parallel".
+
 ### Added
 - **Intelligent upgrade tooling.** Kit now ships an upgrade-safe path
   for existing `~/.claude/` installations that preserves user-added
@@ -16,10 +55,10 @@ contract changes; untagged for CLAUDE.md/docs edits.
   - `scripts/merge-policy.json` — per-key settings.json merge policy
     (env / enabledPlugins / extraKnownMarketplaces: UNION, user-wins;
     effortLevel: user-wins-if-set; other top-level keys: preserve).
-  - `scripts/intelligent_settings_merge.py` — settings.json merger
+  - `scripts/intelligent-settings-merge.py` — settings.json merger
     replacing the destructive `merge-settings.py` (which is now a
     deprecation shim forwarding to the new merger).
-  - `scripts/intelligent_claude_md_merge.py` — heading-based 3-way
+  - `scripts/intelligent-claude-md-merge.py` — heading-based 3-way
     CLAUDE.md merger with interactive conflict UX (no auto-resolution
     — surface diff + ask `[k]`/`[y]`/`[m]`/`[a]`).
   - `scripts/upgrade.sh` — orchestrator with `--dry-run` / `--apply` /
@@ -79,7 +118,7 @@ contract changes; untagged for CLAUDE.md/docs edits.
 
 ### Changed
 - `scripts/merge-settings.py` is now a deprecation shim that delegates
-  to `scripts/intelligent_settings_merge.py` with the kit's default
+  to `scripts/intelligent-settings-merge.py` with the kit's default
   merge policy. Existing `install.sh:merge_settings` callers are
   unaffected (same `<kit-template> <user-settings>` arg shape).
 - `install.sh` MARKETPLACES array adds `dthanos-datastealth/claude-code-kit`

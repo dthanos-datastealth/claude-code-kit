@@ -1,6 +1,6 @@
 {
   "format_version": 1,
-  "description": "Declares which CLAUDE.md sections this kit owns. Sections NOT listed here are treated as user-owned and preserved verbatim during upgrade. Used by scripts/intelligent_claude_md_merge.py to scope heading-based section merging.",
+  "description": "Declares which CLAUDE.md sections this kit owns. Sections NOT listed here are treated as user-owned and preserved verbatim during upgrade. Used by scripts/intelligent-claude-md-merge.py to scope heading-based section merging.",
   "owned_sections": [
     {"heading": "## Core Principles",                "depth": 2, "match": "exact"},
     {"heading": "## MANDATORY Code Search Order",    "depth": 2, "match": "prefix"},

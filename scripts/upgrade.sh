@@ -12,8 +12,8 @@
 #   * If absent, delegates to install.sh (clean install path).
 #
 # Preserves user state via:
-#   * scripts/intelligent_settings_merge.py (UNION + user-wins per merge-policy.json)
-#   * scripts/intelligent_claude_md_merge.py (heading-based 3-way per CLAUDE.md.manifest.json)
+#   * scripts/intelligent-settings-merge.py (UNION + user-wins per merge-policy.json)
+#   * scripts/intelligent-claude-md-merge.py (heading-based 3-way per CLAUDE.md.manifest.json)
 #   * scripts/install.sh backup pattern (~/.claude/backups/<ISO>)
 
 set -euo pipefail
@@ -31,8 +31,8 @@ KIT_CACHE_DIR="${CLAUDE_HOME}/.kit-cache"
 CONFLICT_DIR="${CLAUDE_HOME}/.kit-conflicts"
 HISTORY_LOG="${CLAUDE_HOME}/.kit-version.history.jsonl"
 
-MERGER_SETTINGS="${REPO_DIR}/scripts/intelligent_settings_merge.py"
-MERGER_CLAUDE_MD="${REPO_DIR}/scripts/intelligent_claude_md_merge.py"
+MERGER_SETTINGS="${REPO_DIR}/scripts/intelligent-settings-merge.py"
+MERGER_CLAUDE_MD="${REPO_DIR}/scripts/intelligent-claude-md-merge.py"
 POLICY="${REPO_DIR}/scripts/merge-policy.json"
 MANIFEST="${REPO_DIR}/claude/CLAUDE.md.manifest.json"
 KIT_CLAUDE_MD="${REPO_DIR}/claude/CLAUDE.md"
@@ -127,9 +127,6 @@ backup() {
         log "Nothing to back up (fresh install)."
         return 0
     fi
-    # Snapshot kit_previous state for next upgrade's 3-way merge
-    mkdir -p "${KIT_CACHE_DIR}"
-    cp "${CLAUDE_HOME}/CLAUDE.md" "${KIT_CACHE_DIR}/CLAUDE.md.before" 2>/dev/null || true
     log "Backup written: ${bk}"
     echo "${bk}"
 }
