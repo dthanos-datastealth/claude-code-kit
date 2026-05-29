@@ -511,68 +511,82 @@ doesn't need an authenticated session. If you want to actually *use*
 Claude Code interactively inside the isolated HOME (e.g. to verify a
 new plugin loads correctly, to walk through a slash-command flow),
 **do not run `/login` from the isolated HOME**. Claude Code's OAuth
-state is split across two stores that have incompatible scopes:
+credentials live in the macOS Keychain (or Linux Secret Service), keyed
+off something HOME-dependent (per-HOME entry suffix, code-signing ACL,
+or similar). Re-running `/login` from a fresh `$HOME` creates a new
+Keychain item that races against the existing one, triggering a
+Keychain authorization prompt and (often) a post-OAuth handshake
+failure that can leave both the test session AND the real session in
+a broken state.
 
-- **macOS Keychain entries** (`Claude Code-credentials-*`) — keyed to
-  the OS user account, shared across every `claude` process regardless
-  of `$HOME`.
-- **`~/.claude.json`** — keyed to `$HOME`, holds the account/org
-  metadata (`oauthAccount`, `userID`) that pairs with the Keychain
-  entries. **Note: this is a separate file from the kit's
-  `~/.claude/settings.json`**; `install.sh` never touches `.claude.json`
-  (Claude Code itself auto-generates it on first launch with onboarding
-  state — `firstStartTime`, `projects`, `mcpServers`, etc).
+The right pattern is to use a **long-lived OAuth token** generated
+from your existing subscription session, passed to the isolated
+session as an env var. This bypasses Keychain lookup entirely, works
+on any `$HOME`, and is the canonical pattern for non-interactive
+Claude Code use (CI, automation, isolated test sessions) per upstream.
 
-Re-running `/login` from a fresh `$HOME` makes Claude Code try to
-create a NEW Keychain item while a working one already exists for
-the OS user, triggering a Keychain authorization prompt and (often)
-a post-OAuth handshake failure that can leave both the test session
-AND the real session in a broken state.
-
-The right pattern is to **share the auth state**, not re-acquire it.
-Pick one of two approaches — both leave your kit settings under
-`$TEST_HOME/.claude/settings.json` completely untouched, because
-the file we're modifying (`.claude.json`) is a sibling in HOME root,
-not anything `install.sh` writes to.
-
-**Option A — Surgical (recommended for clean isolation):** copy
-*only* the auth binding fields, leaving the test HOME's auto-generated
-runtime state (project history, MCP server bindings, etc.) intact.
+**Step 1. Generate the token (one-time, from your real shell):**
 
 ```bash
-python3 -c "
-import json
-real = json.load(open('$HOME/.claude.json'))
-test = json.load(open('$TEST_HOME/.claude.json'))
-test['oauthAccount'] = real['oauthAccount']
-test['userID'] = real['userID']
-json.dump(test, open('$TEST_HOME/.claude.json', 'w'), indent=2)
-"
+claude setup-token
+```
+
+This opens your browser, walks through OAuth against your existing
+subscription, and prints a token of the form `sk-ant-oat01-...`.
+**The token is a bearer credential — anyone with it has full API
+access for one year.** Do not paste it into a chat transcript,
+commit it, or echo it back through your terminal history.
+
+**Step 2. Set the env var without leaking the token (read silently):**
+
+```bash
+read -s CLAUDE_CODE_OAUTH_TOKEN     # silent prompt; paste then Enter
+export CLAUDE_CODE_OAUTH_TOKEN      # make it available to subprocesses
+```
+
+`read -s` reads from stdin without echoing — the token never appears
+in your terminal scrollback or shell history. Plain
+`export CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...` also works but
+writes the token into your shell history file, which is a leak
+surface; prefer the `read -s` pattern.
+
+**Step 3. Launch the isolated session:**
+
+```bash
 HOME="$TEST_HOME" claude
 ```
 
-**Option B — Full copy (recommended for convenience):** copy the
-whole file. Simpler, but the test HOME inherits your real session's
-`projects` list and per-project `mcpServers` registrations alongside
-the auth binding. Harmless for testing, slightly less isolated.
+Claude Code reads `CLAUDE_CODE_OAUTH_TOKEN` from the env, reports
+`authMethod: "oauth_token"`, and launches authenticated. Verify with:
 
 ```bash
-cp ~/.claude.json "$TEST_HOME/.claude.json"
-HOME="$TEST_HOME" claude
+HOME="$TEST_HOME" claude auth status
+# Expected: {"loggedIn": true, "authMethod": "oauth_token", ...}
 ```
 
-Either way, Claude Code will find the existing Keychain entries for
-the OS user, skip the OAuth flow entirely, and launch authenticated.
-
-If a previous failed `/login` attempt left a broken Keychain item
-behind, scrub it *before* either option with:
+**If the token leaks (pasted into a transcript, committed, etc.),
+rotate immediately:**
 
 ```bash
-security delete-generic-password -s "Claude Code-credentials"
+claude auth logout                  # invalidates the token globally
+# Then generate a new one with `claude setup-token` and re-export it.
 ```
 
-Do NOT touch the suffixed entries like `Claude Code-credentials-<hex>`
-— those are the real working credentials for the OS user.
+You can also revoke the token from the Anthropic console at
+[`console.anthropic.com`](https://console.anthropic.com/) under
+Settings → API Keys / OAuth Tokens.
+
+**Why not `cp ~/.claude.json $TEST_HOME/.claude.json`?** Earlier
+versions of this guide suggested that, on the theory that
+`oauthAccount` metadata in `.claude.json` plus Keychain entries scoped
+to the OS user would be enough. Testing proved otherwise:
+`claude auth status` in the isolated HOME continues to report
+`loggedIn: false` even after the copy, because Claude Code uses the
+Keychain (not `.claude.json`) as its source-of-truth for login state,
+and the Keychain lookup is HOME-dependent. The `.claude.json` copy
+populates the welcome banner ("Welcome back, &lt;name&gt;") and
+account metadata, but every API call still 401s. The env-var path
+above is the only verified-working approach.
 
 ---
 
