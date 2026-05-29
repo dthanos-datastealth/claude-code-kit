@@ -317,23 +317,41 @@ LSP+grep.
 current.
 
 **Install:** This kit does not bundle the dual-graph MCP. Follow the
-upstream project's setup instructions, then run `claude mcp add` to
-register it locally for your installation. The kit's `install.sh` does
-not attempt to install it on your behalf because the upstream
-distribution model is project-specific.
+upstream project's setup instructions to land an `mcp-graph-server`
+binary on disk (typical pattern: clone the upstream repo, create a
+Python venv, `pip install -e .`, which writes `mcp-graph-server` into
+`venv/bin/`). The kit's `install.sh` does not attempt to install it on
+your behalf because the upstream distribution model is project-specific.
 
 See [`docs/tools/dual-graph-mcp.md`](tools/dual-graph-mcp.md) for the
 rationale and the MCP tools the kit's `CLAUDE.md` rules reference.
 
-**Verification (after registering with `claude mcp add`):**
+**Register with Claude Code (once you have the binary path):**
 
 ```sh
-claude mcp list
+# Substitute /absolute/path/to/mcp-graph-server with where the install
+# landed it (e.g. ~/.dual-graph/venv/bin/mcp-graph-server).
+claude mcp add dual-graph /absolute/path/to/mcp-graph-server -- --stdio
 ```
 
-Expect the dual-graph entry to appear in the list with status `ready` (or
-the equivalent label your `claude` version uses for healthy MCP
-connections).
+The `--` separator is required so that `--stdio` is passed as an
+argument to the MCP binary rather than parsed by `claude mcp add`
+itself.
+
+**Verification:**
+
+```sh
+claude mcp list | grep dual-graph
+# Expect: dual-graph: /absolute/path/to/mcp-graph-server --stdio - ✓ Connected
+```
+
+**Per-HOME registration:** `claude mcp add` writes to the
+per-`$HOME` `.claude.json` `mcpServers` section. If you use an
+isolated `$HOME` for testing (see the README §"Testing the kit in
+parallel" section), the registration must be repeated against that
+HOME: `HOME="$TEST_HOME" claude mcp add dual-graph /absolute/path
+-- --stdio`. The binary itself is reused across HOMEs — only the
+registration is per-HOME.
 
 ---
 
