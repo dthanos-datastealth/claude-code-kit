@@ -32,4 +32,20 @@ for f in CLAUDE.md settings.json; do
     fi
 done
 
+# Clean up kit state files (version marker, cache, conflicts) — these are
+# kit-specific bookkeeping that must not survive an uninstall, otherwise a
+# future fresh install would see stale markers and get confused.
+for f in .kit-version .kit-version.history.jsonl; do
+    if [ -f "${CLAUDE_HOME}/${f}" ]; then
+        rm -f "${CLAUDE_HOME}/${f}"
+        log "  Removed ${f}"
+    fi
+done
+for d in .kit-cache .kit-conflicts; do
+    if [ -d "${CLAUDE_HOME}/${d}" ]; then
+        rm -rf "${CLAUDE_HOME:?}/${d}"
+        log "  Removed ${d}/"
+    fi
+done
+
 log "Done. Plugins remain installed; remove via 'claude plugin uninstall <name>' if desired."

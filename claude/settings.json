@@ -33,6 +33,12 @@
         "source": "github",
         "repo": "Optimal-AI/optibot-skill"
       }
+    },
+    "claude-code-kit": {
+      "source": {
+        "source": "github",
+        "repo": "dthanos-datastealth/claude-code-kit"
+      }
     }
   },
   "enabledPlugins": {
@@ -56,6 +62,7 @@
     "remember@claude-plugins-official": true,
     "berry@berry-marketplace": true,
     "andrej-karpathy-skills@karpathy-skills": true,
-    "caveman@caveman": true
+    "caveman@caveman": true,
+    "claude-code-kit@claude-code-kit": true
   }
 }

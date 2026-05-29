@@ -6,6 +6,90 @@ contract changes; untagged for CLAUDE.md/docs edits.
 
 ## [Unreleased]
 ### Added
+- **Intelligent upgrade tooling.** Kit now ships an upgrade-safe path
+  for existing `~/.claude/` installations that preserves user-added
+  plugins, marketplaces, env vars, and CLAUDE.md sections instead of
+  destroying them. Components:
+  - `claude/CLAUDE.md.manifest.json` — declares kit-owned section
+    headings (top-level + subsections under `## Installed Plugins`).
+    Sections NOT in the manifest are preserved verbatim during merge.
+  - `scripts/merge-policy.json` — per-key settings.json merge policy
+    (env / enabledPlugins / extraKnownMarketplaces: UNION, user-wins;
+    effortLevel: user-wins-if-set; other top-level keys: preserve).
+  - `scripts/intelligent_settings_merge.py` — settings.json merger
+    replacing the destructive `merge-settings.py` (which is now a
+    deprecation shim forwarding to the new merger).
+  - `scripts/intelligent_claude_md_merge.py` — heading-based 3-way
+    CLAUDE.md merger with interactive conflict UX (no auto-resolution
+    — surface diff + ask `[k]`/`[y]`/`[m]`/`[a]`).
+  - `scripts/upgrade.sh` — orchestrator with `--dry-run` / `--apply` /
+    `--status` / `--rollback <backup-id>` modes.
+  - `install.sh write_version_marker` — writes `~/.claude/.kit-version`
+    + `.kit-cache/CLAUDE.md` snapshot on every install for 3-way
+    merge on next upgrade.
+  - `uninstall.sh` cleanup — also removes `.kit-version`,
+    `.kit-version.history.jsonl`, `.kit-cache/`, `.kit-conflicts/`.
+
+- **Kit self-published as a marketplace** at
+  `.claude-plugin/marketplace.json`. New plugin
+  `claude-code-kit@claude-code-kit` under `plugins/claude-code-kit/`
+  ships four skills:
+  - `upgrade` — orchestrates `/claude-code-kit:upgrade`
+  - `rollback` — `/claude-code-kit:rollback <backup-id>`
+  - `status` — `/claude-code-kit:status` reports install + drift +
+    unresolved conflicts + backups
+  - `fix-notion-mcp-port` — `/claude-code-kit:fix-notion-mcp-port`
+    (Phase B)
+
+- **Notion MCP port-pinning recipe** (Phase B):
+  `plugins/claude-code-kit/scripts/fix-notion-mcp-port.sh` re-registers
+  the bundled Notion MCP with a pinned OAuth callback port (default
+  51234, configurable via `CLAUDE_NOTION_PORT` env or positional arg)
+  so enterprise Notion workspaces with member-install allow-list can
+  approve a stable `redirect_uri`. Documents the upstream
+  `claude-code#55067` caveat (re-auth may break the pin — re-run the
+  script when it does). New `docs/notion-mcp-pinning.md` covers
+  end-to-end user + admin recipe.
+
+- **`docs/upgrading.md`** — full upgrade guide: when to use upgrade
+  vs install, merge semantics per key, CLAUDE.md 3-way decision
+  matrix, conflict UX, rollback layers, status drift detection,
+  common patterns.
+
+- **New tests (40 cases across 5 files), all GREEN:**
+  - `tests/test_intelligent_settings_merge.py` (9 cases): empty live →
+    clean install, custom plugin/marketplace/env preserved, conflict
+    on env user-wins, idempotent, unknown top-level keys preserved,
+    effortLevel user-wins-if-set + kit-default-when-absent
+  - `tests/test_intelligent_claude_md_merge.py` (8 cases): cases 5,
+    7, 8, 10, 11, 12 from the plan (conflict-surfaced, clean-apply,
+    user-modified-preserved, `[m]` writes conflict file, unresolved
+    blocks upgrade, status lists conflicts) + user-only-section
+    preserved + dry-run no-write
+  - `tests/test_fix_notion_port.py` (8 cases): default port 51234,
+    positional + env-var overrides, positional wins, invalid port
+    rejected, missing claude CLI aborts, idempotent remove-then-add
+  - `tests/test_kit_marketplace.py` (9 cases): marketplace.json
+    schema, plugin scaffold present, skills have frontmatter,
+    marketplace listed in settings + install.sh, plus 5 rollback
+    cases in `tests/test_rollback.py` (cases 13-17 from the plan)
+
+- **README §"Upgrading from a prior install"** new section + the
+  `Plugins` row updated 21→22 to include `claude-code-kit`.
+
+### Changed
+- `scripts/merge-settings.py` is now a deprecation shim that delegates
+  to `scripts/intelligent_settings_merge.py` with the kit's default
+  merge policy. Existing `install.sh:merge_settings` callers are
+  unaffected (same `<kit-template> <user-settings>` arg shape).
+- `install.sh` MARKETPLACES array adds `dthanos-datastealth/claude-code-kit`
+  (the kit's own self-marketplace), so `install.sh` registers all 6
+  marketplaces (was 5) and installs 22 plugins (was 21).
+- 3 existing tests updated to reflect the +1 marketplace / +1 plugin:
+  `test_install_marketplaces.py`, `test_install_merge_settings.py`,
+  `test_install_plugins.py`.
+
+### Added (prior — separate entry from this iteration)
 - **Doc-sync pass propagating tracker discipline + recent fixes into
   affected docs** (no behavior change): `docs/philosophy.md` gains
   Principle 7 "Tracker as collaboration substrate"; `docs/workflow.md`

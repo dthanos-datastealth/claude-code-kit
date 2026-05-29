@@ -1,0 +1,29 @@
+{
+  "format_version": 1,
+  "description": "Per-key merge policy for ~/.claude/settings.json. Consumed by scripts/intelligent_settings_merge.py. Replaces the hard-coded REPLACE behavior in the deprecated scripts/merge-settings.py.",
+  "policies": {
+    "env": {
+      "strategy": "union_dict",
+      "winner_on_conflict": "user",
+      "rationale": "Kit ships broadly-needed env defaults (UV_NATIVE_TLS=1 for corporate-TLS proxies); user-set vars (e.g., NODE_EXTRA_CA_CERTS) must survive upgrade."
+    },
+    "enabledPlugins": {
+      "strategy": "union_dict",
+      "winner_on_conflict": "user",
+      "rationale": "User may have manually enabled plugins the kit doesn't ship (e.g., sourcegraph); upgrade must not disable them. Kit adds new entries but never removes user entries."
+    },
+    "extraKnownMarketplaces": {
+      "strategy": "union_dict",
+      "winner_on_conflict": "user",
+      "rationale": "User may have added custom marketplaces (e.g., internal org marketplace); upgrade must preserve them. Kit re-asserts its own marketplaces but doesn't touch user-added ones."
+    },
+    "effortLevel": {
+      "strategy": "scalar_user_wins_if_set",
+      "rationale": "If user has explicitly set effortLevel, preserve. If absent, take kit default."
+    }
+  },
+  "default_strategy_for_unlisted_keys": {
+    "strategy": "preserve_user",
+    "rationale": "Any top-level key not in this policy is treated as user-owned and untouched by upgrade. Kit never introduces new top-level keys without adding them here first."
+  }
+}

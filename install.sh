@@ -10,6 +10,11 @@ log()  { printf '\033[1;34m[cck]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[cck]\033[0m %s\n' "$*" >&2; }
 err()  { printf '\033[1;31m[cck]\033[0m %s\n' "$*" >&2; }
 
+# Shared backup / version-marker helpers (kit_backup_files, kit_write_version_marker,
+# kit_cache_snapshot, kit_log_history). Used by install.sh AND scripts/upgrade.sh.
+# shellcheck source=scripts/_kit_backup.sh
+. "${REPO_DIR}/scripts/_kit_backup.sh"
+
 require() {
     local tool="$1"
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -20,21 +25,11 @@ require() {
 }
 
 backup_existing() {
-    local ts
-    ts="$(date -u +'%Y-%m-%dT%H-%M-%SZ')"
-    local backup_dir="${CLAUDE_HOME}/backups/${ts}"
-    local backed_up_anything=0
-
-    for f in CLAUDE.md settings.json; do
-        if [ -f "${CLAUDE_HOME}/${f}" ]; then
-            mkdir -p "${backup_dir}"
-            cp "${CLAUDE_HOME}/${f}" "${backup_dir}/${f}"
-            log "  Backed up ${f} -> ${backup_dir}/${f}"
-            backed_up_anything=1
-        fi
-    done
-
-    if [ "${backed_up_anything}" -eq 0 ]; then
+    local bk
+    bk="$(kit_backup_files)"
+    if [ -n "${bk}" ]; then
+        log "  Backed up CLAUDE.md + settings.json -> ${bk}"
+    else
         log "Backup: nothing to back up (fresh install)"
     fi
 }
@@ -102,6 +97,7 @@ MARKETPLACES=(
     "multica-ai/andrej-karpathy-skills"
     "JuliusBrussee/caveman"
     "Optimal-AI/optibot-skill"
+    "dthanos-datastealth/claude-code-kit"
 )
 
 register_marketplaces() {
@@ -190,6 +186,13 @@ preflight() {
     log "Preflight: OK"
 }
 
+write_version_marker() {
+    log "Writing ~/.claude/.kit-version + cache snapshot..."
+    kit_write_version_marker
+    kit_cache_snapshot
+    kit_log_history install
+}
+
 main() {
     preflight
     backup_existing
@@ -200,6 +203,7 @@ main() {
     register_marketplaces
     install_plugins
     prewarm_npx_mcps
+    write_version_marker
     log "Done. Restart Claude Code. See ~/.claude/docs/workflow.md for next steps."
 }
 

@@ -23,6 +23,7 @@ EXPECTED_PLUGINS = {
     "berry@berry-marketplace",
     "andrej-karpathy-skills@karpathy-skills",
     "caveman@caveman",
+    "claude-code-kit@claude-code-kit",
 }
 
 

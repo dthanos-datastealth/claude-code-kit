@@ -1,0 +1,25 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "claude-code-kit",
+  "description": "Self-publishing marketplace for the claude-code-kit's own upgrade, rollback, status, and recipe skills.",
+  "owner": {
+    "name": "dthanos-datastealth"
+  },
+  "plugins": [
+    {
+      "name": "claude-code-kit",
+      "description": "Upgrade, rollback, status, and recipe skills for claude-code-kit installations. Provides /claude-code-kit:upgrade (intelligent merge over existing ~/.claude/), :rollback (restore specific backup), :status (drift + conflict report), and :fix-notion-mcp-port (workaround for Notion enterprise OAuth allow-list).",
+      "author": {
+        "name": "dthanos-datastealth"
+      },
+      "category": "tooling",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/dthanos-datastealth/claude-code-kit.git",
+        "path": "plugins/claude-code-kit",
+        "ref": "main"
+      },
+      "homepage": "https://github.com/dthanos-datastealth/claude-code-kit"
+    }
+  ]
+}

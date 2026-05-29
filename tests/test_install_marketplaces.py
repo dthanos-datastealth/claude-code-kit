@@ -1,7 +1,7 @@
 from tests.helpers import run_install
 
 
-def test_registers_five_marketplaces():
+def test_registers_all_kit_marketplaces():
     r = run_install()
     log = r.claude_log.read_text()
     lines = [ln for ln in log.splitlines() if "marketplace add" in ln]
@@ -10,4 +10,5 @@ def test_registers_five_marketplaces():
     assert any("multica-ai/andrej-karpathy-skills" in ln for ln in lines)
     assert any("JuliusBrussee/caveman" in ln for ln in lines)
     assert any("Optimal-AI/optibot-skill" in ln for ln in lines)
-    assert len(lines) == 5
+    assert any("dthanos-datastealth/claude-code-kit" in ln for ln in lines)
+    assert len(lines) == 6

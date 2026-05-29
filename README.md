@@ -9,7 +9,7 @@ high-discipline setup with a single command:
 1. **A scrubbed global `CLAUDE.md`** that encodes the workflow philosophy
    (TDD-first, evidence-before-assertions, mandatory code-search order, Berry
    verification as a hard gate, spec-driven development as an optional layer).
-2. **A merged `settings.json`** that enables 21 curated plugins from 5
+2. **A merged `settings.json`** that enables 22 curated plugins from 6
    marketplaces and sets `effortLevel: max` — without overwriting your
    existing `env` block.
 3. **A complete documentation layer** explaining *why* every plugin, MCP,
@@ -30,11 +30,11 @@ flowchart LR
     direction TB
     cmd[install.sh]
     tmpl[claude/CLAUDE.md<br/>scrubbed template]
-    sets[claude/settings.json<br/>21 plugins · 5 marketplaces<br/>effortLevel: max]
+    sets[claude/settings.json<br/>22 plugins · 6 marketplaces<br/>effortLevel: max]
     mem[claude/memory/MEMORY.md<br/>auto-memory index]
     docs[docs/<br/>philosophy · workflow · prereqs ·<br/>corporate-tls · memory-system ·<br/>tracker-system · tools/ ×23]
     sc[scripts/<br/>merge-settings · lint-scrubbing · lint-tools-docs ·<br/>lint-plugin-marketplaces · lint-mcp-hardcoded-paths ·<br/>diff-against-live · test-install-isolated]
-    tests[tests/<br/>36 pytest cases ·<br/>isolated-HOME harness]
+    tests[tests/<br/>76 pytest cases ·<br/>isolated-HOME harness]
   end
 
   cmd -->|preflight| pre{All prereqs on PATH?}
@@ -43,14 +43,14 @@ flowchart LR
   backup --> copy[Copy CLAUDE.md template]
   copy --> merge[Merge settings.json preserving user env block]
   merge --> memi[Install MEMORY.md never overwrites]
-  memi --> mp[Register 5 marketplaces]
-  mp --> pl[Install 21 plugins via claude plugin install]
+  memi --> mp[Register 6 marketplaces]
+  mp --> pl[Install 22 plugins via claude plugin install]
   pl --> ready[Restart Claude Code]
 
   tmpl -.copied to.-> claudeHome[(.claude/CLAUDE.md)]
   sets -.merged to.-> settingsHome[(.claude/settings.json)]
   mem -.copied if absent.-> memHome[(.claude/memory/MEMORY.md)]
-  pl -.installed.-> pluginsHome[(.claude/plugins/ - 21 plugins)]
+  pl -.installed.-> pluginsHome[(.claude/plugins/ - 22 plugins)]
 
   classDef store fill:#1f2937,stroke:#9ca3af,color:#f3f4f6
   classDef action fill:#0f766e,stroke:#5eead4,color:#f0fdfa
@@ -232,11 +232,11 @@ local spec or the diff.
 | Layer | Contents |
 |---|---|
 | **Workflow** | `CLAUDE.md` (~210 lines) enforcing TDD-first, evidence-before-assertions, the MANDATORY code-search order (`graph_continue` → LSP → Read/Grep — bash grep/find/cat/sed/awk forbidden), Berry as a hard gate, and the optional spec-kit layer with a 9-step agent playbook. |
-| **Plugins (21)** | 17 from `anthropics/claude-plugins-official`: superpowers, feature-dev, code-simplifier, context7, claude-md-management, frontend-design, explanatory-output-style, notion, gopls-lsp, typescript-lsp, **jdtls-lsp** (Java), playwright, chrome-devtools-mcp, microsoft-docs, huggingface-skills, security-guidance, remember. 1 from `Optimal-AI/optibot-skill`: optibot (performance review). 1 from `dthanos-datastealth/hallbayes`: berry (evidence verifier; this is a Claude-Code-packaged fork of upstream `leochlon/hallbayes`). 1 from `multica-ai/andrej-karpathy-skills`. 1 from `JuliusBrussee/caveman`: caveman (token-savings terse-output mode). |
+| **Plugins (22)** | 17 from `anthropics/claude-plugins-official`: superpowers, feature-dev, code-simplifier, context7, claude-md-management, frontend-design, explanatory-output-style, notion, gopls-lsp, typescript-lsp, **jdtls-lsp** (Java), playwright, chrome-devtools-mcp, microsoft-docs, huggingface-skills, security-guidance, remember. 1 from `Optimal-AI/optibot-skill`: optibot (performance review). 1 from `dthanos-datastealth/hallbayes`: berry (evidence verifier; this is a Claude-Code-packaged fork of upstream `leochlon/hallbayes`). 1 from `multica-ai/andrej-karpathy-skills`. 1 from `JuliusBrussee/caveman`: caveman (token-savings terse-output mode). 1 from `dthanos-datastealth/claude-code-kit` (self-published): claude-code-kit (the kit's own upgrade/rollback/status/fix-notion-mcp-port skills — see `docs/upgrading.md`). |
 | **Berry verifier** | Defaults to OpenRouter `openai/gpt-4o-mini` (configured via `~/.berry/config.json` + `~/.berry/mcp_env.json`); self-hosted `llama.cpp` remains supported as the offline alternative. |
 | **Memory system** | `MEMORY.md` index template at `~/.claude/memory/`, plus `docs/memory-system.md` explaining the 4 memory types (user, feedback, project, reference), the index format, and the 200-line cap. |
 | **Tracker discipline** | The kit's quality loop runs on a coupled `Task` tool + `docs/TRACKER.md` substrate: agents claim work, surface findings as new tasks, and update `docs/TRACKER.md` in lockstep so any human reads one file to see full multi-iteration state. `claude/CLAUDE.md` ships the Phase Start Protocol (EnterPlanMode → approval → execute), Pre-Dispatch Protocol (coordinator creates Dev + V + O tasks upfront), Verification Agent Protocol (steps A–G including hot-path `[WIRE-PATH MISS]` check), and Optimization Agent Protocol (dual-graph + LSP redundancy check). `docs/tracker-system.md` is the full schema + examples. |
-| **Per-tool rationale** | 23 markdown files under `docs/tools/` (one per plugin / MCP / skill / external dependency) following a strict 5-section schema enforced by `scripts/lint-tools-docs.py`. |
+| **Per-tool rationale** | 24 markdown files under `docs/tools/` (one per plugin / MCP / skill / external dependency) following a strict 5-section schema enforced by `scripts/lint-tools-docs.py`. |
 | **Settings** | `effortLevel: max` merged in; your existing `env` block (including any corporate-CA bundle vars) preserved byte-for-byte. |
 
 ---
@@ -250,10 +250,53 @@ cd claude-code-kit
 ```
 
 Then restart Claude Code. Verify with `claude plugin list` — you should
-see all 21 plugins.
+see all 22 plugins.
 
 For corporate networks with TLS interception, see
 [`docs/corporate-tls.md`](docs/corporate-tls.md) before running install.
+
+---
+
+## Upgrading from a prior install
+
+`install.sh` is safe for fresh installs but its default merge logic
+REPLACES `enabledPlugins`, `extraKnownMarketplaces`, and `effortLevel`
+keys — running it against a live `~/.claude/` with custom plugins or
+marketplaces would destroy that state.
+
+For upgrades on an existing install, use the kit's upgrade tooling:
+
+```bash
+# In an active Claude Code session:
+/claude-code-kit:upgrade          # interactive: dry-run + prompt + apply
+
+# Or directly from the kit checkout:
+bash scripts/upgrade.sh --dry-run # preview the diff
+bash scripts/upgrade.sh --apply   # backup + merge + write
+bash scripts/upgrade.sh --status  # report drift + unresolved conflicts
+```
+
+The upgrade tool:
+- Preserves user-added plugins, marketplaces, and env vars (UNION
+  merge, user-wins-on-conflict, per
+  [`scripts/merge-policy.json`](scripts/merge-policy.json))
+- Does heading-based 3-way merge on `CLAUDE.md` (per
+  [`claude/CLAUDE.md.manifest.json`](claude/CLAUDE.md.manifest.json));
+  user-added sections outside the manifest are preserved verbatim
+- Surfaces conflicts and asks per-section (no auto-resolution)
+- Writes timestamped backups before any change; rollback via
+  `/claude-code-kit:rollback` or restore manually from
+  `~/.claude/backups/`
+
+Full guide: [`docs/upgrading.md`](docs/upgrading.md).
+
+For Notion MCP enterprise allow-list issues (workspace requires
+admin-approved redirect URIs — see
+[`docs/notion-mcp-pinning.md`](docs/notion-mcp-pinning.md)):
+
+```bash
+/claude-code-kit:fix-notion-mcp-port
+```
 
 ---
 
@@ -284,16 +327,23 @@ optional tools (LSP binaries, `ripgrep`, `jq`, `shellcheck`, `specify`).
 2. Back up existing `~/.claude/CLAUDE.md` and `~/.claude/settings.json` to
    `~/.claude/backups/<ISO-timestamp>/`.
 3. Copy `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`.
-4. Merge `claude/settings.json` into `~/.claude/settings.json` —
-   `enabledPlugins`, `extraKnownMarketplaces`, and `effortLevel` are
-   replaced from the kit. For the `env` block, **the kit's defaults are
-   layered UNDER your existing env entries** (your entries always win on
-   conflict). See "Corporate TLS handling" below for the one kit default
-   that ships today and why.
+4. Merge `claude/settings.json` into `~/.claude/settings.json` via
+   `scripts/merge-settings.py` (which now delegates to
+   `scripts/intelligent_settings_merge.py` per `scripts/merge-policy.json`).
+   The merge is UNION-on-conflict with user-wins: `enabledPlugins`,
+   `extraKnownMarketplaces`, and `env` keep all user entries and add
+   missing kit entries on top; `effortLevel` is user-wins-if-set;
+   other top-level keys preserved untouched. See "Corporate TLS handling"
+   below for the kit default that ships today and why. (Earlier versions
+   of `install.sh` REPLACED these keys destructively; the current shim +
+   policy is upgrade-safe — see [`docs/upgrading.md`](docs/upgrading.md).)
 5. Install `claude/memory/MEMORY.md` at `~/.claude/memory/MEMORY.md` only
    if you don't already have one. Never overwrites.
-6. Register the five plugin marketplaces (with one retry on network blip).
-7. Install all 21 plugins (with one retry per plugin on failure).
+6. Register the six plugin marketplaces (with one retry on network blip).
+7. Install all 22 plugins (with one retry per plugin on failure).
+8. Write `~/.claude/.kit-version` + snapshot `~/.claude/.kit-cache/CLAUDE.md`
+   for future 3-way upgrade merges; append an install event to
+   `~/.claude/.kit-version.history.jsonl`.
 8. Print next steps.
 
 **Does NOT:**
@@ -403,7 +453,7 @@ mode flags (`lite`, `full`, `ultra`, `wenyan`).
 After steps 1–4, run:
 
 ```bash
-claude plugin list                              # should show 21 plugins enabled (incl. caveman@caveman)
+claude plugin list                              # should show 22 plugins enabled (incl. caveman@caveman, claude-code-kit@claude-code-kit)
 which gopls typescript-language-server jdtls    # all three resolve
 jdtls --help                                    # JVM mismatch surfaces here if any
 ```
@@ -595,10 +645,10 @@ claude-code-kit/
 ├── install.sh                         Bootstrap entry point
 ├── uninstall.sh                       Restore from latest backup
 ├── pyproject.toml                     pytest config
-├── .github/workflows/ci.yml           shellcheck + lints + 34 pytest cases
+├── .github/workflows/ci.yml           shellcheck + lints + 76 pytest cases
 ├── claude/                            Files copied/merged into ~/.claude/
 │   ├── CLAUDE.md                      Scrubbed opinionated template
-│   ├── settings.json                  21 plugins, 5 marketplaces, effortLevel: max
+│   ├── settings.json                  22 plugins, 6 marketplaces, effortLevel: max
 │   └── memory/MEMORY.md               Empty index with type sections
 ├── docs/
 │   ├── philosophy.md                  Why each rule exists
@@ -607,7 +657,7 @@ claude-code-kit/
 │   ├── corporate-tls.md               CA bundle setup for intercepted networks
 │   ├── memory-system.md               Auto-memory schema and conventions
 │   ├── tracker-system.md              docs/TRACKER.md schema + agent dispatch + V/O protocols
-│   └── tools/                         23 per-tool rationale docs (5-section schema)
+│   └── tools/                         24 per-tool rationale docs (5-section schema)
 │       ├── superpowers.md             Workflow-discipline skills
 │       ├── berry.md                   Evidence verifier (OpenRouter default)
 │       ├── feature-dev.md             7-phase feature workflow
