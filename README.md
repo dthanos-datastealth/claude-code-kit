@@ -1,7 +1,7 @@
 # claude-code-kit
 
 Opinionated bootstrap kit for creating a complete, evidence-first Claude
-Code development environment on a clean macOS or Linux machine.
+Code agentic development engineering environment on a clean macOS or Linux machine.
 
 The kit ships three things together so a new machine reaches a working,
 high-discipline setup with a single command:
@@ -9,7 +9,7 @@ high-discipline setup with a single command:
 1. **A scrubbed global `CLAUDE.md`** that encodes the workflow philosophy
    (TDD-first, evidence-before-assertions, mandatory code-search order, Berry
    verification as a hard gate, spec-driven development as an optional layer).
-2. **A merged `settings.json`** that enables 21 curated plugins from 4
+2. **A merged `settings.json`** that enables 21 curated plugins from 5
    marketplaces and sets `effortLevel: max` — without overwriting your
    existing `env` block.
 3. **A complete documentation layer** explaining *why* every plugin, MCP,
@@ -34,7 +34,7 @@ flowchart LR
     mem[claude/memory/MEMORY.md<br/>auto-memory index]
     docs[docs/<br/>philosophy · workflow · prereqs ·<br/>corporate-tls · memory-system ·<br/>tracker-system · tools/ ×23]
     sc[scripts/<br/>merge-settings · lint-scrubbing · lint-tools-docs ·<br/>lint-plugin-marketplaces · lint-mcp-hardcoded-paths ·<br/>diff-against-live · test-install-isolated]
-    tests[tests/<br/>34 pytest cases ·<br/>isolated-HOME harness]
+    tests[tests/<br/>36 pytest cases ·<br/>isolated-HOME harness]
   end
 
   cmd -->|preflight| pre{All prereqs on PATH?}
