@@ -1,9 +1,0 @@
-[project]
-name = "acc-eval"
-version = "0.0.0"
-description = "Evaluation harness for privacy-preserving PII adjudication methods"
-requires-python = ">=3.11"
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "-ra --strict-markers"
