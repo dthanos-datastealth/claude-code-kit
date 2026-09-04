@@ -33,9 +33,10 @@ workaround surfaced (e.g., your Notion workspace doesn't have
 member-install restrictions and the random-port flow works fine).
 
 **Source:**
-Self-published from this repo: `dthanos-datastealth/claude-code-kit`
-marketplace, plugin path `plugins/claude-code-kit/`. Skill files at
-`plugins/claude-code-kit/skills/{upgrade,rollback,status,fix-notion-mcp-port}.md`,
+Self-published from this repo: <https://github.com/dthanos-datastealth/claude-code-kit>,
+registered as the `claude-code-kit` marketplace, plugin path
+`plugins/claude-code-kit/`. Skill files at
+`plugins/claude-code-kit/skills/{upgrade,rollback,status,fix-notion-mcp-port}/SKILL.md`,
 script at `plugins/claude-code-kit/scripts/fix-notion-mcp-port.sh`,
 underlying mergers at `scripts/intelligent-settings-merge.py` and
 `scripts/intelligent-claude-md-merge.py`.

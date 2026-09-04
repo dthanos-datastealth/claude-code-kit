@@ -98,6 +98,19 @@ else
     exit 3
 fi
 
+# Skill-layout lint: a plugin whose skills are flat skills/<name>.md files
+# instead of skills/<name>/SKILL.md ships skills Claude Code never discovers —
+# silently, with no error. Only a populated cache can reveal this, which is why
+# it runs here rather than in CI.
+log "Scanning installed plugins for undiscoverable skill layouts..."
+if python3 "${REPO_DIR}/scripts/lint-plugin-skill-layout.py" "${TEST_HOME}/.claude"; then
+    ok "  Every installed plugin skill is at a discoverable path"
+else
+    err "  Skill-layout lint failed (see output above)"
+    err "  Tempdir kept at ${TEST_HOME} for diagnosis"
+    exit 4
+fi
+
 log "Leak check: verifying real ~/.claude/ is untouched..."
 REAL_CLAUDE_MD_AFTER=$(file_mtime "${REAL_CLAUDE_HOME}/CLAUDE.md")
 REAL_SETTINGS_AFTER=$(file_mtime "${REAL_CLAUDE_HOME}/settings.json")

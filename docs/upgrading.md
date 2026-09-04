@@ -147,7 +147,7 @@ section is preserved verbatim across upgrades and never conflicts.
 - `scripts/intelligent-settings-merge.py` — settings.json merger
 - `scripts/intelligent-claude-md-merge.py` — CLAUDE.md merger
 - `scripts/upgrade.sh` — orchestrator
-- `plugins/claude-code-kit/skills/{upgrade,rollback,status}.md` — slash
+- `plugins/claude-code-kit/skills/{upgrade,rollback,status}/SKILL.md` — slash
   command skills
 - `uninstall.sh` — nuclear option (also cleans up `.kit-*` state files
   introduced by the upgrade tool)

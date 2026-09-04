@@ -43,9 +43,11 @@ jobs:
       - name: Run pytest suite
         run: python3 -m pytest tests/ -v
 
-      # NOTE: lint-mcp-hardcoded-paths.py and scripts/test-upgrade-isolated.sh
-      # both need a populated plugin cache (an actual install via the real
-      # `claude` CLI) and so are NOT in CI. They run locally:
+      # NOTE: lint-mcp-hardcoded-paths.py, lint-plugin-skill-layout.py and
+      # scripts/test-upgrade-isolated.sh all need a populated plugin cache (an
+      # actual install via the real `claude` CLI) and so are NOT in CI. In CI the
+      # cache glob would match nothing and the lints would exit 0 vacuously.
+      # They run locally:
       #   - scripts/test-install-isolated.sh — fresh-install path
       #   - scripts/test-upgrade-isolated.sh — upgrade path with simulated
       #     user state mutations + leak check + per-key preservation asserts

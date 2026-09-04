@@ -45,12 +45,20 @@ def test_plugin_manifest_present_and_valid():
     assert "description" in d
 
 
+EXPECTED_SKILLS = {"upgrade", "rollback", "status", "fix-notion-mcp-port"}
+
+
 def test_required_skills_present():
-    """Plugin must ship the 4 documented skills."""
-    required = {"upgrade.md", "rollback.md", "status.md", "fix-notion-mcp-port.md"}
-    actual = {p.name for p in SKILLS_DIR.glob("*.md")}
-    missing = required - actual
-    assert not missing, f"missing skills: {missing}"
+    """Plugin must ship the 4 documented skills, each as skills/<name>/SKILL.md.
+
+    Claude Code discovers plugin skills only at that path; a flat
+    skills/<name>.md never loads. scripts/lint-plugin-skill-layout.py enforces
+    the same invariant across every installed plugin.
+    """
+    actual = {d.name for d in SKILLS_DIR.iterdir() if (d / "SKILL.md").is_file()}
+    assert actual == EXPECTED_SKILLS, f"skill set drifted: {actual}"
+    assert not list(SKILLS_DIR.glob("*.md")), \
+        "a flat *.md directly under skills/ is undiscoverable"
 
 
 def test_required_scripts_present():
@@ -60,7 +68,10 @@ def test_required_scripts_present():
 
 def test_skills_have_frontmatter():
     """Every skill file must start with YAML frontmatter (--- name ... ---)."""
-    for skill in SKILLS_DIR.glob("*.md"):
+    skills = sorted(SKILLS_DIR.glob("*/SKILL.md"))
+    assert len(skills) == len(EXPECTED_SKILLS), \
+        f"expected {len(EXPECTED_SKILLS)} SKILL.md files, found {len(skills)}"
+    for skill in skills:
         text = skill.read_text()
         assert text.startswith("---\n"), f"{skill.name} missing frontmatter"
         body = text.split("---\n", 2)
@@ -68,6 +79,17 @@ def test_skills_have_frontmatter():
         front = body[1]
         assert "name:" in front, f"{skill.name} frontmatter missing 'name:' field"
         assert "description:" in front, f"{skill.name} frontmatter missing 'description:' field"
+
+
+def test_plugin_version_is_bumped_past_the_broken_layout():
+    """Plugin caches are keyed by version: an unchanged version string means
+    existing installs keep the cached copy and /plugin update skips the
+    plugin, so the skill-layout fix would reach nobody without a bump."""
+    from packaging.version import Version
+
+    version = json.loads(PLUGIN_MANIFEST.read_text())["version"]
+    assert Version(version) > Version("1.0.0"), \
+        f"version {version} must exceed the 1.0.0 that shipped the flat layout"
 
 
 def test_marketplace_listed_in_kit_settings():

@@ -13,6 +13,14 @@ The upstream fork was fixed but the local cache stayed dirty; this
 lint would have surfaced the bug the moment a plugin landed with
 such a path.
 
+The `command` field is judged more strictly than `env` values, because the
+two fail differently. An `env` value like `/opt/homebrew/...` is portable
+across users on one OS, which is all an env var has to be. A `command` is the
+interpreter Claude Code executes: an absolute one is unportable across
+*platforms*, so a plugin pinning `/opt/homebrew/bin/uvx` cannot start on Linux
+at all. That is a real shipped failure the owner-path patterns below cannot
+see, since `/opt/homebrew` names no user.
+
 Usage:
   lint-mcp-hardcoded-paths.py <claude-home>
   lint-mcp-hardcoded-paths.py ~/.claude   # default if no arg
@@ -25,6 +33,9 @@ import json
 import re
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))
+from _plugin_cache import resolve_cache_root  # noqa: E402
 
 # Patterns that indicate an owner-specific absolute path. We deliberately
 # allow `/opt/homebrew/...`, `/usr/local/...`, `/etc/...`, etc. — those are
@@ -67,9 +78,31 @@ def scan_text(text: str) -> list[tuple[str, str]]:
     return findings
 
 
+# A plugin's `command` must resolve through PATH or through a variable Claude
+# Code expands per machine. Anything else pins one platform's filesystem.
+ALLOWED_COMMAND_PREFIXES = ("${CLAUDE_PLUGIN_ROOT}", "${HOME}", "$HOME")
+
+
+def scan_commands(payload: dict) -> list[tuple[str, str]]:
+    """Return [(server, command)] for each non-portable `command` value."""
+    findings: list[tuple[str, str]] = []
+    servers = payload.get("mcpServers")
+    if not isinstance(servers, dict):
+        return findings
+    for name, spec in servers.items():
+        if not isinstance(spec, dict):
+            continue
+        command = spec.get("command")
+        if not isinstance(command, str) or "/" not in command:
+            continue
+        if command.startswith(ALLOWED_COMMAND_PREFIXES):
+            continue
+        findings.append((str(name), command))
+    return findings
+
+
 def main() -> int:
-    claude_home = Path(sys.argv[1] if len(sys.argv) > 1 else "~/.claude").expanduser()
-    plugins_cache = claude_home / "plugins" / "cache"
+    plugins_cache = resolve_cache_root(sys.argv[1] if len(sys.argv) > 1 else None)
     if not plugins_cache.exists():
         print(f"OK: no plugin cache at {plugins_cache} (nothing to scan)")
         return 0
@@ -98,6 +131,18 @@ def main() -> int:
             for match, why in findings:
                 rel = mcp.relative_to(plugins_cache)
                 errors.append(f"{rel}: {why!r} hardcoded path: {match!r}")
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            payload = {}
+        for server, command in scan_commands(payload):
+            rel = mcp.relative_to(plugins_cache)
+            errors.append(
+                f"{rel}: mcpServers.{server}.command is an absolute path "
+                f"({command!r}); it cannot resolve on another platform. Use a "
+                f"bare executable name resolved from PATH, or a "
+                f"${{CLAUDE_PLUGIN_ROOT}}-relative path."
+            )
 
     if errors:
         print("\nHardcoded owner-specific paths found:", file=sys.stderr)
