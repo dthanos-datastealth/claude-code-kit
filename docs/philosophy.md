@@ -175,13 +175,18 @@ sessions from collapsing under their own context weight.
 **How the kit enforces it:**
 
 - `claude/CLAUDE.md` declares the search order mandatory.
-- The dual-graph MCP ([`docs/tools/dual-graph-mcp.md`](tools/dual-graph-mcp.md))
-  is registered automatically and exposed via `graph_continue`, which
-  returns a structured suggestion before the agent has a chance to grep.
 - The Go and TypeScript LSPs ([`docs/tools/lsp-gopls.md`](tools/lsp-gopls.md),
   [`docs/tools/lsp-typescript.md`](tools/lsp-typescript.md)) are
   pre-configured so that structured queries are available without per-project
   setup.
+- The dual-graph MCP ([`docs/tools/dual-graph-mcp.md`](tools/dual-graph-mcp.md))
+  is a **required external prerequisite that you register yourself** with
+  `claude mcp add`; `install.sh` does not install or register it. See
+  [`docs/prereqs.md`](prereqs.md) section 10 for the recipe. Once registered it
+  is exposed via `graph_continue`, which returns a structured suggestion before
+  the agent has a chance to grep. Without it, step 1 of the search order is a
+  no-op and the order collapses to LSP then grep — the discipline this section
+  describes is only as real as that registration.
 
 **Pitfalls:**
 
