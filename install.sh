@@ -15,11 +15,44 @@ err()  { printf '\033[1;31m[cck]\033[0m %s\n' "$*" >&2; }
 # shellcheck source=scripts/_kit_backup.sh
 . "${REPO_DIR}/scripts/_kit_backup.sh"
 
+# Directories a prerequisite installer commonly writes to. `curl ... | sh`
+# installers export PATH for their own process only, so a tool installed in one
+# shell invocation is invisible to a later, separate ./install.sh invocation
+# even though it is on disk. When that happens, say where it is and how to fix
+# it rather than reporting it missing.
+#
+# Override with CCK_PREREQ_SEARCH_DIRS (colon-separated) — the tests rely on
+# this, because two of the defaults are not HOME-relative and would otherwise
+# find the developer's own binaries.
+: "${CCK_PREREQ_SEARCH_DIRS:=${HOME}/.local/bin:${HOME}/.cargo/bin:${HOME}/bin:${HOME}/.npm-global/bin:/opt/homebrew/bin:/usr/local/bin}"
+
+# Echo the directory holding an executable $1, searching the list above.
+find_off_path() {
+    local tool="$1" dir
+    local IFS=:
+    for dir in ${CCK_PREREQ_SEARCH_DIRS}; do
+        [ -n "${dir}" ] || continue
+        if [ -x "${dir}/${tool}" ]; then
+            printf '%s' "${dir}"
+            return 0
+        fi
+    done
+    return 1
+}
+
 require() {
-    local tool="$1"
+    local tool="$1" found
     if ! command -v "$tool" >/dev/null 2>&1; then
         err "missing prerequisite: $tool"
-        err "  Install it before re-running. See docs/prereqs.md."
+        if found="$(find_off_path "$tool")"; then
+            err "  Found it at ${found}/${tool}, but that directory is not on your PATH."
+            err "  An installer that writes there exports PATH only for its own"
+            err "  process, so this invocation cannot see it. Fix either way:"
+            err "    export PATH=\"${found}:\$PATH\"   # this shell, then re-run"
+            err "    or start a new login shell and re-run"
+        else
+            err "  Install it before re-running. See docs/prereqs.md."
+        fi
         exit 1
     fi
 }

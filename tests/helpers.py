@@ -45,8 +45,19 @@ def run_install(
     preexisting_settings: str | None = None,
     extra_path_tools: list[str] | None = None,
     omit_claude_cli: bool = False,
+    seed_claude_in: str | None = None,
+    extra_env: dict[str, str] | None = None,
 ) -> RunResult:
     """Invoke install.sh in an isolated HOME.
+
+    `extra_path_tools` writes into fake_bin, which IS on PATH. To reproduce the
+    real-world preflight failure — a prerequisite installed on disk but not on
+    the PATH the installer inherits — use `seed_claude_in` instead: it plants an
+    executable `claude` at $HOME/<that dir>, which is deliberately left off
+    PATH. Pair it with `omit_claude_cli=True` so nothing satisfies `command -v`.
+
+    `extra_env` merges into the child environment, for pointing the installer's
+    search list at a controlled directory.
 
     Returns: RunResult with returncode, captured streams, paths, and the
     log of how the fake `claude` CLI was invoked.
@@ -82,11 +93,17 @@ def run_install(
             stub.write_text("#!/usr/bin/env bash\nexit 0\n")
             stub.chmod(0o755)
 
+    if seed_claude_in is not None:
+        seeded_dir = home / seed_claude_in
+        seeded_dir.mkdir(parents=True, exist_ok=True)
+        write_fake_claude(seeded_dir, claude_log)
+
     env = {
         "HOME": str(home),
         "PATH": f"{fake_bin}:/usr/bin:/bin",
         "LANG": "C.UTF-8",
     }
+    env.update(extra_env or {})
     proc = subprocess.run(
         ["bash", str(INSTALL_SH)],
         env=env,

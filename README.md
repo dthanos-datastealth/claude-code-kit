@@ -302,7 +302,11 @@ admin-approved redirect URIs — see
 
 ## Prereqs
 
-Required on `$PATH` before `install.sh` will run:
+Required on `$PATH` before `install.sh` will run. If you install one of these
+in a separate shell — a `curl ... | sh` installer writing to `~/.local/bin`
+exports `PATH` for its own process only — re-export it before running the
+installer, or start a new login shell; see
+[`docs/prereqs.md`](docs/prereqs.md#installing-prerequisites-and-running-installsh-in-separate-shells).
 
 | Tool | Why |
 |---|---|
@@ -323,7 +327,8 @@ optional tools (LSP binaries, `ripgrep`, `jq`, `shellcheck`, `specify`).
 **Does, in order, idempotently:**
 
 1. Preflight-check required tools on `$PATH`. Exits with remediation if any
-   are missing.
+   are missing — including, when the tool is on disk but off `PATH`, the
+   directory it was found in and the `export` line that fixes it.
 2. Back up existing `~/.claude/CLAUDE.md` and `~/.claude/settings.json` to
    `~/.claude/backups/<ISO-timestamp>/`.
 3. Copy `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`.

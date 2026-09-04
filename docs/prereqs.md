@@ -540,7 +540,34 @@ shellcheck --version | head -2
 Any failing line is a prerequisite to install before running `install.sh`.
 
 `install.sh` itself does not install prerequisites; it assumes they are
-present on the `PATH` and fails silently at use-time if they are not.
+present on the `PATH` it inherits.
+
+### Installing prerequisites and running `install.sh` in separate shells
+
+A `curl ... | sh` installer that writes into `~/.local/bin` (or `~/.cargo/bin`)
+exports `PATH` for **its own process only**. Nothing persists that change, so a
+later, separate `./install.sh` invocation searches the PATH it inherited and
+reports the tool missing even though it is sitting on disk:
+
+```
+[cck] missing prerequisite: claude
+```
+
+This bites on an already-running machine rather than a fresh throwaway build
+box, because on a build box the two steps usually share one shell. Either
+re-export in the shell you are about to run the installer from:
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+./install.sh
+```
+
+or start a new login shell so your profile puts the directory on `PATH`, then
+re-run. Preflight now checks the usual install directories and, when it finds
+the tool in one of them, prints the path and the `export` line rather than only
+reporting it missing. `hash -r` does not help here: a fresh `bash install.sh`
+starts with an empty hash table, so the missing piece is the `PATH` entry
+itself, not a stale lookup.
 
 ---
 
