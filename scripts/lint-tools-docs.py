@@ -26,6 +26,25 @@ REQUIRED_SECTIONS = [
 TITLE_RE = re.compile(r"^# \S.* — \S.*$", re.MULTILINE)
 
 
+# A `**Source:**` section that exists but names nothing leaves a reader with no
+# way to obtain the tool. That is how the dual-graph MCP — the FIRST step of
+# CLAUDE.md's mandatory search order — shipped documented but unobtainable: the
+# section was present, so the schema check passed, while its body said only to
+# follow "the upstream project's" instructions. Require a locator: a URL or bare
+# domain with a path, which is what every other Source section already carries.
+LOCATOR_RE = re.compile(r"[\w-]+\.(?:com|org|io|dev|sh|ai)/\S")
+
+
+def source_body(text: str) -> str:
+    """Text between the `**Source:**` header and the next bold section header."""
+    start = text.find("**Source:**")
+    if start == -1:
+        return ""
+    rest = text[start + len("**Source:**") :]
+    nxt = re.search(r"^\*\*[^*]+:\*\*", rest, re.MULTILINE)
+    return rest[: nxt.start()] if nxt else rest
+
+
 def check(name: str, text: str) -> list[str]:
     errs = []
     if not TITLE_RE.search(text):
@@ -33,6 +52,11 @@ def check(name: str, text: str) -> list[str]:
     for section in REQUIRED_SECTIONS:
         if f"**{section}**" not in text:
             errs.append(f"{name}: missing required section header '**{section}**'")
+    if f"**{REQUIRED_SECTIONS[3]}**" in text and not LOCATOR_RE.search(source_body(text)):
+        errs.append(
+            f"{name}: '**Source:**' names no locator — add the URL, repository or "
+            f"package a reader can actually fetch the tool from"
+        )
     return errs
 
 

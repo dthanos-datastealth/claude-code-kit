@@ -316,12 +316,72 @@ LSP+grep.
 **Version requirement:** Whatever the upstream project publishes as
 current.
 
-**Install:** This kit does not bundle the dual-graph MCP. Follow the
-upstream project's setup instructions to land an `mcp-graph-server`
-binary on disk (typical pattern: clone the upstream repo, create a
-Python venv, `pip install -e .`, which writes `mcp-graph-server` into
-`venv/bin/`). The kit's `install.sh` does not attempt to install it on
-your behalf because the upstream distribution model is project-specific.
+**What satisfies this requirement.** Any MCP server exposing the tool contract
+below satisfies `CLAUDE.md`; the kit is not tied to one implementation. The
+contract is the requirement, and it is what to check a candidate against:
+
+| Tool | Used by `CLAUDE.md` for |
+|---|---|
+| `graph_continue` | the mandatory first call for any lookup |
+| `graph_scan` | one-time project indexing when `needs_project=true` |
+| `graph_read` | reading a recommended file, or `file::symbol` |
+| `fallback_rg` | the capped supplementary search |
+| `graph_register_edit` | recording edits after a change |
+| `graph_add_memory` | writing decisions/facts to the context store |
+
+`graph_continue` must return `needs_project`, `confidence`,
+`recommended_files`, `max_supplementary_greps` and `max_supplementary_files`,
+because the rules branch on all five.
+
+**Reference implementation: `graperoot`.** The `mcp-graph-server` binary is a
+console script of the `graperoot` package on PyPI. Two ways to get it:
+
+```sh
+# Reproducible, no auto-updater — what this kit recommends.
+uv tool install graperoot        # or: pip install graperoot into a venv
+```
+
+That provides `mcp-graph-server` and `mcp-graph-server-stdio`. Upstream's own
+documented path is instead a shell installer (`curl … | bash`, PowerShell, or
+Scoop) which creates a launcher plus a private venv under `~/.dual-graph/`;
+that launcher is the vehicle this kit has actually been run against, and it
+self-updates (see below). Pick the PyPI path for a pinned, auditable install;
+pick upstream's installer if you want the launcher's extra tooling.
+
+Check a wheel exists for your interpreter and OS floor before committing to the
+PyPI path — the project ships compiled per-interpreter wheels, and a host below
+the macOS floor those arm64 wheels are tagged for falls back to building a
+Cython project from source:
+
+```sh
+pip download --only-binary=:all: graperoot -d /tmp/gr-probe
+```
+
+**Before you adopt it, know what you are adopting.** This is a third-party
+dependency with an unusual profile for a code-navigation tool, and the kit is
+naming it rather than leaving it unnamed:
+
+- **Proprietary and closed-source.** PyPI reports `License: Proprietary`, and
+  the engine ships as compiled Cython wheels. The public repository
+  (<https://github.com/kunal12203/Codex-CLI-Compact>) carries the launchers
+  under Apache-2.0, not the engine.
+- **Self-updating.** Upstream documents that the launcher checks for updates on
+  every run and applies them without asking, fetching from its own distribution
+  channel and replacing both the launcher scripts and the compiled wheel. That
+  is why an installed launcher can report a different version than PyPI
+  resolves. Upstream documents `graperoot --no-auto-update` to stop it.
+- **Telemetry on by default.** Upstream documents a version check, a heartbeat
+  carrying a machine id and platform, a one-time feedback prompt, and anonymous
+  crash reports (error type, failing step, OS, Python and tool versions), with
+  `graperoot --no-telemetry` to opt out.
+- Both opt-out flags are described by the current upstream README. They are
+  absent from the older launcher this kit was originally run against, so check
+  `graperoot --help` on the version you actually installed rather than assuming
+  the flag exists.
+
+If that profile is not acceptable for your environment, implement or substitute
+any server satisfying the contract above — that is precisely why the contract,
+not the package, is the requirement.
 
 See [`docs/tools/dual-graph-mcp.md`](tools/dual-graph-mcp.md) for the
 rationale and the MCP tools the kit's `CLAUDE.md` rules reference.
@@ -329,10 +389,33 @@ rationale and the MCP tools the kit's `CLAUDE.md` rules reference.
 **Register with Claude Code (once you have the binary path):**
 
 ```sh
-# Substitute /absolute/path/to/mcp-graph-server with where the install
-# landed it (e.g. ~/.dual-graph/venv/bin/mcp-graph-server).
-claude mcp add dual-graph /absolute/path/to/mcp-graph-server -- --stdio
+# Resolve the binary rather than pasting a path, and fail loudly if it is not
+# on PATH — `uv tool install` puts it in ~/.local/bin, which is exactly the
+# directory the PATH callout in this document is about, so an unguarded
+# substitution here would register an empty path and produce a server that
+# never starts.
+GS="$(command -v mcp-graph-server)"
+test -n "$GS" || { echo "mcp-graph-server not on PATH — see the PATH callout below"; exit 1; }
+claude mcp add dual-graph "$GS" -- --stdio
 ```
+
+If you installed via upstream's launcher instead, the binary lives in that
+private venv and is not on `PATH`; pass its absolute path
+(`~/.dual-graph/venv/bin/mcp-graph-server`) in place of `"$GS"`.
+
+The kit has been run with two environment variables set on the registration,
+which scope the index to a directory tree:
+
+```sh
+claude mcp add dual-graph "$GS" \
+  -e DG_DATA_DIR=/path/to/index -e DUAL_GRAPH_PROJECT_ROOT=/path/to/repos -- --stdio
+```
+
+Neither name appears in upstream's documented environment list (which covers
+`DG_HARD_MAX_READ_CHARS`, `DG_TURN_READ_BUDGET_CHARS`,
+`DG_FALLBACK_MAX_CALLS_PER_TURN`, `DG_RETRIEVE_CACHE_TTL_SEC` and
+`DG_MCP_PORT`) — they are recorded here because they are what a working
+registration uses, not because upstream specifies them.
 
 The `--` separator is required so that `--stdio` is passed as an
 argument to the MCP binary rather than parsed by `claude mcp add`

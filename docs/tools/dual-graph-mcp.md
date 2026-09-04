@@ -47,13 +47,20 @@ Disable for nothing else. Even on small changes the graph saves enough context
 to pay for itself many times over.
 
 **Source:**
-NOT bundled with this kit — the dual-graph MCP server is an external
-prerequisite. Install it separately following its upstream documentation, then
-register it with the Claude Code CLI via `claude mcp add` so the graph tools
-appear in the MCP namespace. The kit's `CLAUDE.md` assumes it is installed and
-will instruct Claude to call its tools; if absent, those calls fail and Claude
-falls back to grep-based exploration (which costs more in tokens and breaks
-the kit's intended workflow).
+NOT bundled with this kit — an external prerequisite you install and register
+yourself. The reference implementation is the `graperoot` package on PyPI
+(<https://pypi.org/project/graperoot/>), whose repository is
+<https://github.com/kunal12203/Codex-CLI-Compact>; it provides the
+`mcp-graph-server` binary the registration points at. Any MCP server exposing
+the same tool contract works just as well. `install.sh` neither installs nor
+registers it. [`docs/prereqs.md`](../prereqs.md) section 10 owns the recipe, the
+tool contract, and the supply-chain profile you should read before adopting it
+— including that the engine is proprietary and closed-source, self-updates
+without asking, and emits telemetry by default.
+
+If it is absent, `CLAUDE.md` still instructs Claude to call the graph tools,
+those calls fail, and exploration falls back to grep — more tokens, and the
+kit's intended workflow broken.
 
 **Cost / footprint:**
 - Disk: ~50 MB index per medium-sized repository, stored under a project-local
@@ -62,7 +69,14 @@ the kit's intended workflow).
   depending on repo size.
 - CPU: a one-time `graph_scan` is the only heavy operation; subsequent
   `graph_continue` and `graph_read` calls are cheap lookups.
-- Network: none — the server runs entirely on the local machine.
-- Dependencies: a working Python runtime and whatever the upstream
-  installation instructions specify (typically tree-sitter parsers for the
-  languages you want indexed).
+- Network: **indexing and queries are local, but the tool is not silent.**
+  Upstream documents a version check, a heartbeat carrying a machine id and
+  platform, a one-time feedback prompt, anonymous crash reports, and a launcher
+  that checks for updates on every run and applies them without asking, from
+  its own distribution channel. `graperoot --no-telemetry` and
+  `graperoot --no-auto-update` are the documented opt-outs; confirm they exist
+  in `graperoot --help` on the version you installed. Your code is not
+  uploaded; the process is not offline either.
+- Dependencies: a working Python runtime. The engine ships as compiled
+  per-interpreter wheels, so check `pip download --only-binary=:all: graperoot`
+  covers your interpreter and OS before relying on the PyPI install path.
