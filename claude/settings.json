@@ -13,7 +13,8 @@
     "berry-marketplace": {
       "source": {
         "source": "github",
-        "repo": "dthanos-datastealth/hallbayes"
+        "repo": "dthanos-datastealth/hallbayes",
+        "ref": "prerelease"
       }
     },
     "karpathy-skills": {
@@ -37,7 +38,8 @@
     "claude-code-kit": {
       "source": {
         "source": "github",
-        "repo": "dthanos-datastealth/claude-code-kit"
+        "repo": "dthanos-datastealth/claude-code-kit",
+        "ref": "prerelease"
       }
     }
   },

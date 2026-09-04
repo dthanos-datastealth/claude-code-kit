@@ -124,18 +124,40 @@ install_memory_index() {
     fi
 }
 
-MARKETPLACES=(
-    "anthropics/claude-plugins-official"
-    "dthanos-datastealth/hallbayes"
-    "multica-ai/andrej-karpathy-skills"
-    "JuliusBrussee/caveman"
-    "Optimal-AI/optibot-skill"
-    "dthanos-datastealth/claude-code-kit"
-)
+# The marketplace list is derived from claude/settings.json's
+# extraKnownMarketplaces rather than duplicated here — the same way
+# install_plugins() derives from enabledPlugins. One source means the release
+# channel (the per-entry "ref") is declared in exactly one file, and the array
+# can no longer drift from the settings the installer writes.
+#
+# Emitted as an explicit https URL: the `owner/repo` shorthand clones over SSH
+# by default, which fails on a box with no key loaded. CLAUDE_CODE_PLUGIN_PREFER_HTTPS
+# covers any other code path that still takes the shorthand.
+marketplace_specs() {
+    python3 -c "
+import json
+d = json.load(open('${REPO_DIR}/claude/settings.json'))
+for name, entry in (d.get('extraKnownMarketplaces') or {}).items():
+    src = entry.get('source') or {}
+    if src.get('source') != 'github' or not src.get('repo'):
+        raise SystemExit(f'unsupported marketplace source for {name}: {src!r}')
+    spec = 'https://github.com/' + src['repo'] + '.git'
+    if src.get('ref'):
+        spec += '#' + src['ref']
+    print(spec)
+"
+}
 
 register_marketplaces() {
-    log "Registering plugin marketplaces..."
-    for mp in "${MARKETPLACES[@]}"; do
+    log "Registering plugin marketplaces (reads extraKnownMarketplaces from claude/settings.json)..."
+    export CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1
+    local specs
+    if ! specs="$(marketplace_specs)"; then
+        err "  failed to derive the marketplace list from claude/settings.json"
+        return 1
+    fi
+    while IFS= read -r mp; do
+        [ -z "${mp}" ] && continue
         if claude plugin marketplace add "${mp}" 2>&1; then
             log "  + ${mp}"
         else
@@ -147,7 +169,7 @@ register_marketplaces() {
                 return 1
             fi
         fi
-    done
+    done <<< "${specs}"
 }
 
 # Pre-warm npm cache for npx-based MCP servers (playwright, chrome-devtools,

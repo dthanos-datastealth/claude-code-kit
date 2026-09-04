@@ -102,11 +102,16 @@ def test_marketplace_listed_in_kit_settings():
         "claude-code-kit plugin not enabled in settings.json"
 
 
-def test_marketplace_listed_in_install_sh():
-    """install.sh MARKETPLACES array must include the kit's own marketplace."""
+def test_install_sh_derives_marketplaces_from_settings():
+    """install.sh no longer duplicates the marketplace list: it derives it from
+    claude/settings.json's extraKnownMarketplaces, so the release channel is
+    declared in one file and the two can no longer drift. The kit's own
+    marketplace is covered by test_marketplace_listed_in_kit_settings."""
     install_sh = (REPO / "install.sh").read_text()
-    assert "dthanos-datastealth/claude-code-kit" in install_sh, \
-        "kit's own marketplace not registered in install.sh"
+    assert "extraKnownMarketplaces" in install_sh, \
+        "install.sh must read the marketplace list from the settings template"
+    assert "MARKETPLACES=(" not in install_sh, \
+        "the duplicated array is what drifted; it must not come back"
 
 
 VALID_EFFORT_LEVELS = {"low", "medium", "high", "xhigh"}
@@ -143,3 +148,65 @@ def test_enabled_plugin_keys_name_a_registered_marketplace():
     for key in d["enabledPlugins"]:
         assert "@" in key, f"{key}: enabledPlugins keys are name@marketplace"
         assert key.split("@", 1)[1] in known, f"{key}: marketplace not registered"
+
+
+CHANNEL_ENTRIES = ("claude-code-kit", "berry-marketplace")
+
+
+def _current_branch() -> str:
+    """Resolve the branch this checkout represents.
+
+    GITHUB_BASE_REF first: on a pull_request event GITHUB_REF_NAME is
+    "<n>/merge" and the checkout is a detached merge commit, so a REF_NAME-keyed
+    check would never fire on the promote PR — which is the one PR this test
+    exists for. The base ref is the branch the refs must match.
+    """
+    import os
+    import subprocess
+
+    for var in ("GITHUB_BASE_REF", "GITHUB_HEAD_REF", "GITHUB_REF_NAME"):
+        value = os.environ.get(var, "").strip()
+        if value:
+            return value
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=REPO, text=True, capture_output=True, check=True,
+        ).stdout.strip()
+    except (subprocess.CalledProcessError, OSError):
+        return ""
+    return out
+
+
+def test_channel_refs_match_branch():
+    """The kit and Berry entries must be pinned to the branch they ship from.
+
+    Promoting prerelease -> main without flipping these would leave stable
+    users pointed at the prerelease channel, so this test is what makes the
+    promote PR fail until the refs are updated.
+    """
+    import pytest
+
+    branch = _current_branch()
+    if branch in ("", "HEAD"):
+        pytest.skip("branch not resolvable (detached HEAD outside CI)")
+
+    settings = _kit_settings()["extraKnownMarketplaces"]
+    for name in CHANNEL_ENTRIES:
+        src = settings[name]["source"]
+        assert "ref" in src, (
+            f"{name}: no ref pins the channel — an entry without one follows the "
+            f"default branch silently, which is the drift this test prevents"
+        )
+        assert src["ref"] == branch, (
+            f"{name}: ref={src['ref']!r} but this is the {branch!r} branch"
+        )
+
+    marketplace = json.loads(MARKETPLACE.read_text())
+    for plugin in marketplace["plugins"]:
+        src = plugin["source"]
+        if isinstance(src, dict) and "ref" in src:
+            assert src["ref"] == branch, (
+                f"{plugin['name']}: marketplace.json ref={src['ref']!r} but this "
+                f"is the {branch!r} branch"
+            )

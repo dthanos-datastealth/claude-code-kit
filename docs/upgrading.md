@@ -36,6 +36,47 @@ The presence of `~/.claude/.kit-version` is the upgrade-tool's signal
 that intelligent merge is needed. `install.sh` writes this marker on
 every install.
 
+## Release channels: testing before stable
+
+Every change lands on the `prerelease` branch first. The two channels are the
+same marketplaces at a different `ref`, so switching channel means re-pointing
+the marketplace registrations — the marketplace *names* never change, and a
+second `marketplace add` under an existing name replaces it.
+
+`scripts/upgrade.sh` deliberately does **not** register marketplaces or install
+plugins (it merges settings and CLAUDE.md), so switching branch and re-running
+it does not move you between channels. Do both halves:
+
+```sh
+# Existing machine: stable -> prerelease
+git switch prerelease
+claude plugin marketplace add https://github.com/dthanos-datastealth/claude-code-kit.git#prerelease
+claude plugin marketplace add https://github.com/dthanos-datastealth/hallbayes.git#prerelease
+# then, in a Claude Code session:  /plugin update
+bash scripts/upgrade.sh --apply        # settings + CLAUDE.md half
+```
+
+```sh
+# Brand-new machine, straight onto the channel
+git clone -b prerelease https://github.com/dthanos-datastealth/claude-code-kit.git
+cd claude-code-kit && ./install.sh
+```
+
+```sh
+# Back to stable
+git switch main
+claude plugin marketplace add https://github.com/dthanos-datastealth/claude-code-kit.git#main
+claude plugin marketplace add https://github.com/dthanos-datastealth/hallbayes.git#main
+# then:  /plugin update
+bash scripts/upgrade.sh --apply
+```
+
+`/claude-code-kit:status` reports which channel and commit the current install
+came from, so you can confirm the switch took effect. Promoting a channel is a
+pull request from `prerelease` to `main` that flips the `ref` values and the
+plugin versions; a test in the suite fails until they are flipped, so a promote
+cannot silently leave stable users pointed at the prerelease channel.
+
 ## Merge semantics
 
 ### `settings.json` (per `scripts/merge-policy.json`)

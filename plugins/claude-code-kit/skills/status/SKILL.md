@@ -17,6 +17,9 @@ Report install state, drift, and unresolved conflicts.
 ## What it reports
 
 - Installed kit version (from `~/.claude/.kit-version`)
+- Which release channel and commit the install came from (`channel`,
+  `commit`) — a prerelease tester and a stable user are otherwise
+  indistinguishable from this output
 - Whether live `CLAUDE.md` and `settings.json` SHA matches the recorded
   SHA (drift detection — user has manually edited a kit-owned file)
 - Unresolved conflicts in `~/.claude/.kit-conflicts/`

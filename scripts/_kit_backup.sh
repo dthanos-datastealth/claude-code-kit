@@ -30,17 +30,22 @@ kit_backup_files() {
 # rollback path).
 kit_write_version_marker() {
     local rollback_target="${1:-}"
-    local ts sha_md sha_settings sha_manifest
+    local ts sha_md sha_settings sha_manifest channel commit
     ts="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
     sha_md="$(shasum -a 256 "${CLAUDE_HOME}/CLAUDE.md" 2>/dev/null | awk '{print $1}')"
     sha_settings="$(shasum -a 256 "${CLAUDE_HOME}/settings.json" 2>/dev/null | awk '{print $1}')"
     sha_manifest="$(shasum -a 256 "${REPO_DIR}/claude/CLAUDE.md.manifest.json" 2>/dev/null | awk '{print $1}')"
+    # Which channel this install came from, so `:status` can answer it without
+    # the reader inspecting the checkout. Tolerates a non-git checkout (tarball)
+    # the same way the shasum calls above tolerate a missing file.
+    channel="$(git -C "${REPO_DIR}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
+    commit="$(git -C "${REPO_DIR}" rev-parse --short HEAD 2>/dev/null || echo unknown)"
     local extra=""
     if [ -n "${rollback_target}" ]; then
         extra=",\n  \"rolled_back_to\": \"${rollback_target}\""
     fi
-    printf '{\n  "installed_at": "%s",\n  "manifest_sha256": "%s",\n  "claude_md_sha256": "%s",\n  "settings_sha256": "%s"%b\n}\n' \
-        "${ts}" "${sha_manifest}" "${sha_md}" "${sha_settings}" "${extra}" > "${CLAUDE_HOME}/.kit-version"
+    printf '{\n  "installed_at": "%s",\n  "channel": "%s",\n  "commit": "%s",\n  "manifest_sha256": "%s",\n  "claude_md_sha256": "%s",\n  "settings_sha256": "%s"%b\n}\n' \
+        "${ts}" "${channel}" "${commit}" "${sha_manifest}" "${sha_md}" "${sha_settings}" "${extra}" > "${CLAUDE_HOME}/.kit-version"
 }
 
 # Snapshot the kit's CLAUDE.md into ~/.claude/.kit-cache/ for future

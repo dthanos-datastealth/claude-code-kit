@@ -44,3 +44,17 @@ def test_install_succeeds_with_no_npx():
     assert "npx not on PATH" in combined or "Pre-warm complete" in combined, (
         f"prewarm should either pre-warm or skip with warning; saw neither in:\n{combined}"
     )
+
+
+def test_version_marker_records_the_release_channel():
+    """`:status` reads this file verbatim, so the channel an install came from
+    has to be in it — otherwise a tester on the prerelease channel and a user
+    on stable produce indistinguishable status output."""
+    import json
+
+    r = run_install()
+    marker = json.loads((r.home / ".claude" / ".kit-version").read_text())
+    assert marker["channel"], "channel must be recorded"
+    assert marker["commit"], "commit must be recorded"
+    # rolled_back_to is the rollback slot and must not be reused for this.
+    assert "rolled_back_to" not in marker

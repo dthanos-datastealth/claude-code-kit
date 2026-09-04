@@ -36,16 +36,24 @@ REPO = Path(__file__).resolve().parents[1]
 SETTINGS = REPO / "claude" / "settings.json"
 
 
-def fetch_marketplace_plugins(repo: str) -> set[str] | None:
+def fetch_marketplace_plugins(repo: str, ref: str | None = None) -> set[str] | None:
     """Fetch a marketplace's plugin name list from its upstream marketplace.json.
 
+    Honours the entry's `ref`. Without it this check would validate the default
+    branch while the installer registers a different one, so a release channel
+    could be broken and still pass: the whole point of the ref is that the two
+    branches carry different content.
+
     Returns the set of plugin names, or None if the repo has no
-    .claude-plugin/marketplace.json (which is itself a kit-config bug —
-    you can't `claude plugin marketplace add` a repo without that file).
+    .claude-plugin/marketplace.json at that ref (which is itself a kit-config
+    bug — you can't `claude plugin marketplace add` a repo without that file).
     """
+    path = f"repos/{repo}/contents/.claude-plugin/marketplace.json"
+    if ref:
+        path += f"?ref={ref}"
     try:
         out = subprocess.run(
-            ["gh", "api", f"repos/{repo}/contents/.claude-plugin/marketplace.json", "--jq", ".content"],
+            ["gh", "api", path, "--jq", ".content"],
             check=True, capture_output=True, text=True,
         ).stdout.strip()
     except subprocess.CalledProcessError:
@@ -62,22 +70,40 @@ def main() -> int:
     enabled = {k: v for k, v in (settings.get("enabledPlugins") or {}).items() if v is True}
     marketplaces = settings.get("extraKnownMarketplaces") or {}
 
-    # Build: marketplace-name → upstream owner/repo
-    mkt_to_repo: dict[str, str] = {}
+    # Build: marketplace-name → (upstream owner/repo, ref or None)
+    mkt_to_repo: dict[str, tuple[str, str | None]] = {}
     for name, cfg in marketplaces.items():
         src = (cfg.get("source") or {})
         if src.get("source") == "github" and src.get("repo"):
-            mkt_to_repo[name] = src["repo"]
+            mkt_to_repo[name] = (src["repo"], src.get("ref"))
 
     # Fetch each marketplace's published plugin list
     print(f"Checking {len(enabled)} plugins against {len(mkt_to_repo)} marketplaces...")
     mkt_plugins: dict[str, set[str] | None] = {}
-    for name, repo in mkt_to_repo.items():
-        plugins = fetch_marketplace_plugins(repo)
+    for name, (repo, ref) in mkt_to_repo.items():
+        where = f"{repo}@{ref}" if ref else repo
+        plugins = fetch_marketplace_plugins(repo, ref)
+        if plugins is None and ref:
+            # A pinned ref that does not resolve upstream is usually a channel
+            # branch that has not been pushed yet, not a broken marketplace.
+            # Validate the default branch instead and say plainly that the
+            # channel is unpublished, rather than reporting the marketplace
+            # unreachable — a wrong diagnosis for the common case.
+            fallback = fetch_marketplace_plugins(repo)
+            if fallback is not None:
+                print(
+                    f"  NOTE: {name} ref {ref!r} not published yet on {repo}; "
+                    f"validated against the default branch instead"
+                )
+                mkt_plugins[name] = fallback
+                continue
         if plugins is None:
-            print(f"  ERROR: {name} ({repo}) has no .claude-plugin/marketplace.json", file=sys.stderr)
+            print(
+                f"  ERROR: {name} ({where}) has no .claude-plugin/marketplace.json",
+                file=sys.stderr,
+            )
         else:
-            print(f"  {name} ({repo}): {len(plugins)} plugins published")
+            print(f"  {name} ({where}): {len(plugins)} plugins published")
         mkt_plugins[name] = plugins
 
     # For each enabled plugin, assert it appears in its declared marketplace
@@ -92,12 +118,14 @@ def main() -> int:
             continue
         published = mkt_plugins[mkt_name]
         if published is None:
-            errors.append(f"{entry}: marketplace {mkt_name!r} ({mkt_to_repo[mkt_name]}) has no marketplace.json — unreachable")
+            repo, ref = mkt_to_repo[mkt_name]
+            where = f"{repo}@{ref}" if ref else repo
+            errors.append(f"{entry}: marketplace {mkt_name!r} ({where}) has no marketplace.json — unreachable")
             continue
         if plugin_name not in published:
             errors.append(
                 f"{entry}: plugin {plugin_name!r} NOT in marketplace {mkt_name!r} "
-                f"({mkt_to_repo[mkt_name]}). Published plugins: "
+                f"({mkt_to_repo[mkt_name][0]}). Published plugins: "
                 f"{sorted(published)[:10]}{'...' if len(published) > 10 else ''}"
             )
 
