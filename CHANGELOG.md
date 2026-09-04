@@ -6,6 +6,43 @@ contract changes; untagged for CLAUDE.md/docs edits.
 
 ## [Unreleased]
 
+### Fixed
+- **Plugin skills that never loaded.** All four of the kit plugin's skills were
+  flat `skills/<name>.md` files. Claude Code discovers plugin skills only at
+  `skills/<name>/SKILL.md`, so none of them had ever loaded on any install, and
+  the plugin's own tests asserted the flat shape. Moved to the directory form,
+  plugin version bumped so version-keyed caches pick it up, and
+  `scripts/lint-plugin-skill-layout.py` added so the class cannot return in any
+  plugin.
+- **`effortLevel: max` is not a valid setting value.** The key accepts
+  `low`/`medium`/`high`/`xhigh`; `max` is a per-session level selected with
+  `/effort`, and an invalid value is dropped with a validation error when
+  delivered through managed settings. Template ships `xhigh`, and the assertion
+  that hard-pinned the old literal now reads the template.
+- **Preflight reported a prerequisite missing while it sat on disk.** An
+  installer writing to `~/.local/bin` exports PATH for its own process only, so
+  a separate `./install.sh` invocation could not see the tool. Preflight now
+  names the directory it found it in and the `export` line that fixes it.
+- **The dual-graph MCP was documented but never named.** `docs/prereqs.md`
+  section 10 now names the reference implementation, states the tool contract
+  any substitute must satisfy, and discloses that the engine is proprietary,
+  self-updating and telemetry-on-by-default. `lint-tools-docs.py` now requires
+  a `**Source:**` section to name a locator, which is what let the omission
+  pass CI.
+- **`docs/philosophy.md` claimed the dual-graph MCP registers itself.**
+  `install.sh` registers no MCP server. Corrected and guarded by a test.
+- **An absolute `command` in a plugin's `.mcp.json` is now a lint failure.**
+  Unportable across platforms even when it names no user, which is how a
+  plugin pinning a Homebrew path shipped and could not start on Linux.
+
+### Added
+- **Prerelease channel.** Changes land on the `prerelease` branch first; the
+  channel is the same marketplaces at a different `ref`, declared once in
+  `claude/settings.json`. `install.sh` derives its marketplace list from there
+  instead of duplicating it, `lint-plugin-marketplaces.py` validates at the
+  ref, the version marker records channel and commit, and a test fails a
+  promote that does not flip the refs. Recipe in `docs/upgrading.md`.
+
 ### Added (Iter-2)
 - **A7 closes: CI lint + isolated upgrade test + helper consolidation.**
   Resolves 3 items deferred from Iter-1:

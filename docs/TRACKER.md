@@ -3,7 +3,71 @@
 > Per-project tracker per `~/.claude/docs/tracker-system.md`. Single source of
 > truth for in-flight work, V/O findings, and iteration state.
 
-## Last Updated: 2026-05-29 Iter-2 — CLOSED
+## Last Updated: 2026-09-04 Iter-3 — IN PROGRESS
+
+| Aspect | State |
+|---|---|
+| Active phase | Iter-3 PR-A: deployment-report defects + prerelease channel |
+| Plan | Kept outside this repo (rev 8; Berry run 8f9226272b97fcdf, spans S0–S10, 0 flagged) — see note below |
+| Dev branch | `prerelease` |
+| Quality Loop State | dev done (111/111 GREEN, all lints clean); V+O pending on this revision |
+| Open conflicts | none |
+
+### Iter-3 note: the plan is deliberately not committed here
+
+The convention is that plans live in `docs/plans/`. This one does not, and the
+reason is worth recording rather than silently working around: this repository
+is public, `scripts/lint-scrubbing.py` exists to keep company and customer
+names out of it, and the plan's enterprise-distribution sections name the
+private internal marketplace and the organisation repeatedly — five hits from
+the scrubbing lint. Scrubbing those sections would remove the part of the plan
+that carries the actual decisions.
+
+So the plan stays outside the repo and this tracker carries the findings and
+their disposition, which is what a reader here needs. If a plan of this kind
+should be version-controlled in future, the private marketplace repository is
+the right home for it, not the public kit.
+
+### Iter-3 origin
+
+A deployment onto one Mac plus three EC2 boxes produced a report of six
+defects. Review of that report found two more (F5b, F7) and corrected the
+premise of one (F6). Seven review rounds ran against the plan before execution;
+the last was a workflow (five verification lenses, adversarial refutation,
+three optimization lenses, completeness critic) returning 128 findings, of
+which 15 were blockers. Each blocker was re-verified by hand against the raw
+documentation and the repositories: five held, two did not.
+
+### Iter-3 PR-A findings and disposition
+
+| ID | Finding | Disposition |
+|---|---|---|
+| F1 | Dual-graph MCP documented but never named; `claude mcp add` recipe took an unobtainable path | FIXED — prereqs.md §10 names `graperoot`, states the tool contract, discloses the supply-chain profile; locator rule added to lint-tools-docs.py |
+| F2 | `missing prerequisite: claude` while the binary is on disk but off PATH | FIXED — require() searches common install dirs and prints the path plus the export remedy; `hash -r` deliberately not suggested |
+| F3 | philosophy.md claimed the dual-graph MCP "is registered automatically" | FIXED — bullet corrected and separated from the pre-configured LSPs; guarded by tests/test_docs_consistency.py, verified non-vacuous against the shipped text |
+| F4 | Berry `.mcp.json` pins `/opt/homebrew/bin/uvx`; the kit lint could not see it | FIXED kit-side — command-field rule in lint-mcp-hardcoded-paths.py; upstream half is PR-B |
+| F5b | The kit's own four plugin skills were flat files and had never loaded | FIXED — moved to `skills/<name>/SKILL.md`, plugin version bumped, tests repointed; scripts/lint-plugin-skill-layout.py added, RED against the real plugin before the move |
+| F7 | Template shipped `effortLevel: max`, which the key does not accept | FIXED — `xhigh`; the assertion that hard-pinned `max` now reads the template; four README statements corrected |
+| K9 | Release channel was implicit in three places | FIXED — derived from the settings template; self-check fails a promote that does not flip the refs |
+
+### Iter-3 corrections to the plan itself, recorded
+
+Two blockers the review produced did not survive hand-verification, and the
+mistakes are recorded because both were mine, not the reviewers':
+
+- An earlier revision asserted that Organization settings › Plugins does not
+  reach the CLI. That treated the admin article's omission of the CLI as a
+  denial; `plugin-marketplaces.md` documents org distribution as a Claude Code
+  mechanism. The question of whether org-distributed plugins load in a terminal
+  session is genuinely unanswered by the docs and is now an empirical step.
+- The same revision quoted a sentence stating managed `enabledPlugins` cannot
+  install plugins. That sentence exists in no Claude Code document; it came
+  from a page-summarizing fetch. The real, verbatim constraint is narrower.
+
+Load-bearing documentation claims are now taken from the raw
+`code.claude.com/docs/en/<page>.md` and quoted with a line number.
+
+## Iter-2 — CLOSED (2026-05-29)
 
 | Aspect | State |
 |---|---|
