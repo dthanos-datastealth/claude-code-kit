@@ -10,7 +10,7 @@ high-discipline setup with a single command:
    (TDD-first, evidence-before-assertions, mandatory code-search order, Berry
    verification as a hard gate, spec-driven development as an optional layer).
 2. **A merged `settings.json`** that enables 22 curated plugins from 6
-   marketplaces and sets `effortLevel: max` — without overwriting your
+   marketplaces and sets `effortLevel: xhigh` — without overwriting your
    existing `env` block.
 3. **A complete documentation layer** explaining *why* every plugin, MCP,
    skill, and rule is in the kit, plus the workflow the kit assumes you want
@@ -30,7 +30,7 @@ flowchart LR
     direction TB
     cmd[install.sh]
     tmpl[claude/CLAUDE.md<br/>scrubbed template]
-    sets[claude/settings.json<br/>22 plugins · 6 marketplaces<br/>effortLevel: max]
+    sets[claude/settings.json<br/>22 plugins · 6 marketplaces<br/>effortLevel: xhigh]
     mem[claude/memory/MEMORY.md<br/>auto-memory index]
     docs[docs/<br/>philosophy · workflow · prereqs ·<br/>corporate-tls · memory-system ·<br/>tracker-system · tools/ ×23]
     sc[scripts/<br/>merge-settings · intelligent-settings-merge · intelligent-claude-md-merge · upgrade ·<br/>lint-scrubbing · lint-tools-docs · lint-plugin-marketplaces · lint-mcp-hardcoded-paths · lint-merge-policy ·<br/>diff-against-live · test-install-isolated · test-upgrade-isolated]
@@ -237,7 +237,7 @@ local spec or the diff.
 | **Memory system** | `MEMORY.md` index template at `~/.claude/memory/`, plus `docs/memory-system.md` explaining the 4 memory types (user, feedback, project, reference), the index format, and the 200-line cap. |
 | **Tracker discipline** | The kit's quality loop runs on a coupled `Task` tool + `docs/TRACKER.md` substrate: agents claim work, surface findings as new tasks, and update `docs/TRACKER.md` in lockstep so any human reads one file to see full multi-iteration state. `claude/CLAUDE.md` ships the Phase Start Protocol (EnterPlanMode → approval → execute), Pre-Dispatch Protocol (coordinator creates Dev + V + O tasks upfront), Verification Agent Protocol (steps A–G including hot-path `[WIRE-PATH MISS]` check), and Optimization Agent Protocol (dual-graph + LSP redundancy check). `docs/tracker-system.md` is the full schema + examples. |
 | **Per-tool rationale** | 24 markdown files under `docs/tools/` (one per plugin / MCP / skill / external dependency) following a strict 5-section schema enforced by `scripts/lint-tools-docs.py`. |
-| **Settings** | `effortLevel: max` merged in; your existing `env` block (including any corporate-CA bundle vars) preserved byte-for-byte. |
+| **Settings** | `effortLevel: xhigh` merged in; your existing `env` block (including any corporate-CA bundle vars) preserved byte-for-byte. |
 
 ---
 
@@ -660,7 +660,7 @@ claude-code-kit/
 ├── .github/workflows/ci.yml           shellcheck + lints + 76 pytest cases
 ├── claude/                            Files copied/merged into ~/.claude/
 │   ├── CLAUDE.md                      Scrubbed opinionated template
-│   ├── settings.json                  22 plugins, 6 marketplaces, effortLevel: max
+│   ├── settings.json                  22 plugins, 6 marketplaces, effortLevel: xhigh
 │   └── memory/MEMORY.md               Empty index with type sections
 ├── docs/
 │   ├── philosophy.md                  Why each rule exists

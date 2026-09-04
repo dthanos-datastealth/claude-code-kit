@@ -3,6 +3,7 @@ claude-code-kit plugin scaffold."""
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -84,3 +85,39 @@ def test_marketplace_listed_in_install_sh():
     install_sh = (REPO / "install.sh").read_text()
     assert "dthanos-datastealth/claude-code-kit" in install_sh, \
         "kit's own marketplace not registered in install.sh"
+
+
+VALID_EFFORT_LEVELS = {"low", "medium", "high", "xhigh"}
+
+
+def _kit_settings():
+    return json.loads((REPO / "claude" / "settings.json").read_text())
+
+
+def test_effort_level_is_a_valid_value():
+    """`max` is not accepted by the effortLevel key; managed settings drop an
+    invalid key with a validation error, so an invalid template value would be
+    silently lost org-wide. `max` is session-only, via /effort."""
+    level = _kit_settings().get("effortLevel")
+    assert level in VALID_EFFORT_LEVELS, (
+        f"effortLevel={level!r} is not one of {sorted(VALID_EFFORT_LEVELS)}"
+    )
+
+
+def test_marketplace_sources_are_github_with_optional_ref():
+    """install.sh derives its marketplace list from these entries, so every
+    source must carry the shape that derivation understands."""
+    for name, entry in _kit_settings()["extraKnownMarketplaces"].items():
+        src = entry.get("source", {})
+        assert src.get("source") == "github", f"{name}: unsupported source type {src!r}"
+        assert re.fullmatch(r"[^/\s]+/[^/\s]+", src.get("repo", "")), \
+            f"{name}: repo must be owner/name, got {src.get('repo')!r}"
+        assert set(src) <= {"source", "repo", "ref"}, f"{name}: unexpected source keys {set(src)}"
+
+
+def test_enabled_plugin_keys_name_a_registered_marketplace():
+    d = _kit_settings()
+    known = set(d["extraKnownMarketplaces"])
+    for key in d["enabledPlugins"]:
+        assert "@" in key, f"{key}: enabledPlugins keys are name@marketplace"
+        assert key.split("@", 1)[1] in known, f"{key}: marketplace not registered"

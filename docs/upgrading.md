@@ -46,6 +46,11 @@ every install.
 | `enabledPlugins` | UNION (dicts merged) | User |
 | `extraKnownMarketplaces` | UNION (dicts merged) | User |
 | `effortLevel` | Scalar; user-wins-if-set | User if explicitly set, else kit |
+
+The kit ships `effortLevel: xhigh`. The persisted key accepts `low`, `medium`,
+`high` and `xhigh` only — `max` is a per-session level you select with `/effort`,
+and an invalid value here is dropped with a validation error when the key is
+delivered through managed settings.
 | All other top-level keys | Preserve user verbatim | n/a (kit doesn't touch) |
 
 Concrete: if you've enabled `sourcegraph@claude-plugins-official` and the

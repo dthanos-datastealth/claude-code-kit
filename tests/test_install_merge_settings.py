@@ -51,9 +51,16 @@ def test_settings_merge_adds_marketplaces():
 
 
 def test_settings_merge_sets_effort_level():
+    """Read the expected value from the kit template rather than pinning a
+    literal, so the assertion tracks the template instead of re-pinning it."""
+    from pathlib import Path
+
+    kit = json.loads(
+        (Path(__file__).resolve().parents[1] / "claude" / "settings.json").read_text()
+    )
     r = run_install()
     merged = json.loads((r.home / ".claude" / "settings.json").read_text())
-    assert merged["effortLevel"] == "max"
+    assert merged["effortLevel"] == kit["effortLevel"]
 
 
 def test_settings_merge_creates_when_no_preexisting():
