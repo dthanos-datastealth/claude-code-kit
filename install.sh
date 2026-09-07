@@ -130,10 +130,6 @@ install_memory_index() {
 # install_plugins() derives from enabledPlugins. One source means the release
 # channel (the per-entry "ref") is declared in exactly one file, and the array
 # can no longer drift from the settings the installer writes.
-#
-# Emitted as an explicit https URL: the `owner/repo` shorthand clones over SSH
-# by default, which fails on a box with no key loaded. CLAUDE_CODE_PLUGIN_PREFER_HTTPS
-# covers any other code path that still takes the shorthand.
 marketplace_specs() {
     python3 -c "
 import json
@@ -249,7 +245,8 @@ preflight() {
 
 write_version_marker() {
     log "Writing ~/.claude/.kit-version + cache snapshot..."
-    kit_write_version_marker
+    # "" is the optional rollback target: a fresh install has none.
+    kit_write_version_marker ""
     kit_cache_snapshot
     kit_log_history install
 }

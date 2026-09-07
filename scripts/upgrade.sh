@@ -141,7 +141,7 @@ if [ ! -f "${VERSION_FILE}" ]; then
     exec bash "${REPO_DIR}/install.sh"
 fi
 
-log "Existing install detected: $(cat "${VERSION_FILE}" 2>/dev/null | tr -d '\n')"
+log "Existing install detected: $(tr -d '\n' < "${VERSION_FILE}" 2>/dev/null || true)"
 log "Mode: ${MODE}"
 
 # ---------- upgrade ----------
@@ -176,7 +176,7 @@ fi
 # Update kit cache + version marker
 if [ "${MODE}" = "apply" ]; then
     kit_cache_snapshot
-    kit_write_version_marker
+    kit_write_version_marker ""   # no rollback target on a forward upgrade
     kit_log_history upgrade "backup=${BK##*/}"
     log "Upgrade complete. Version marker updated."
 fi

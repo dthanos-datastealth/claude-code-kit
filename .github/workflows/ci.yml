@@ -19,8 +19,19 @@ jobs:
       - name: Install pytest
         run: pip install pytest
 
-      - name: Install shellcheck
-        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      # Pinned, not apt. The distro package moves independently of whatever a
+      # developer has locally, and that skew hid a red CI for a month: a newer
+      # local shellcheck stopped emitting two findings the runner's older build
+      # still failed on, so `shellcheck` passed on every machine except this
+      # one. Pinning makes a local run authoritative. Bump deliberately.
+      - name: Install shellcheck (pinned)
+        env:
+          SHELLCHECK_VERSION: v0.10.0
+        run: |
+          curl -fsSL "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" \
+            | tar -xJf - -C /tmp
+          sudo install "/tmp/shellcheck-${SHELLCHECK_VERSION}/shellcheck" /usr/local/bin/shellcheck
+          shellcheck --version
 
       - name: shellcheck install.sh + uninstall.sh + scripts
         run: |
