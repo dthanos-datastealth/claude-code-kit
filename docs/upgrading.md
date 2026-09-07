@@ -127,23 +127,36 @@ never shipped is yours and is preserved verbatim, forever.
 |---|---|---|
 | `env` | UNION (dicts merged) | User |
 | `enabledPlugins` | UNION (dicts merged) | User |
-| `extraKnownMarketplaces` | UNION (dicts merged) | User |
+| `extraKnownMarketplaces` | UNION (dicts merged) | **Kit** |
 | `effortLevel` | Scalar; user-wins-if-set | User if explicitly set, else kit |
+| All other top-level keys | Preserve user verbatim | n/a (kit doesn't touch) |
+
+Concrete: if you've enabled a plugin the kit doesn't ship, the upgrade preserves
+it. Same for any custom env var, and for any marketplace you added under a name
+the kit does not use.
+
+**Marketplaces are the one place the kit wins, and it is deliberate.** A
+marketplace entry carries the release channel as a `ref`. If your older copy won,
+the ref could never change, and `claude plugin marketplace add owner/repo@ref` is
+refused whenever it disagrees with what settings declares for that name — so the
+channel would be unreachable for everyone already installed. The union still
+protects marketplaces you added. What it does not protect is a *kit* marketplace
+you repointed at your own fork: that declaration is restored on upgrade. To hold
+a fork, register it under a name of your own.
 
 The kit ships `effortLevel: xhigh`. The persisted key accepts `low`, `medium`,
 `high` and `xhigh` only — `max` is a per-session level you select with `/effort`,
 and an invalid value here is dropped with a validation error when the key is
 delivered through managed settings.
-| All other top-level keys | Preserve user verbatim | n/a (kit doesn't touch) |
-
-Concrete: if you've enabled `sourcegraph@claude-plugins-official` and the
-kit doesn't ship it, the upgrade preserves it. Same for any custom
-marketplace, any custom env var.
 
 ### `CLAUDE.md` (per `claude/CLAUDE.md.manifest.json`)
 
-The manifest declares which top-level (`##`) and sub-section (`###`)
-headings the kit owns. Heading-based 3-way merge per section:
+The manifest declares every heading the kit owns, at any depth — `##`, `###`
+and `####` alike. Depth matters: a `###` entry does not cover a `####` beneath
+it, so each nested heading needs its own entry. A heading the manifest does not
+list is yours: preserved verbatim, forever, and never replaced by a kit version.
+
+Heading-based 3-way merge per section:
 
 | live == kit_previous | live == kit_new | kit_previous == kit_new | Action |
 |---|---|---|---|

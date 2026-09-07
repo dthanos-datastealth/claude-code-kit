@@ -242,3 +242,34 @@ def test_no_test_name_is_defined_twice_in_a_module():
         "a later definition shadows an earlier one; only the last runs:\n  "
         + "\n  ".join(offenders)
     )
+
+
+def test_upgrading_doc_matches_the_actual_merge_policy():
+    """`docs/upgrading.md` tabulates who wins each settings key. It must agree
+    with `scripts/merge-policy.json`, or it documents a behaviour the kit does
+    not have — which it did: the table still said the user won marketplace
+    conflicts after the policy was changed so the kit could move its own release
+    channel.
+    """
+    import json
+    import re
+    from pathlib import Path
+
+    repo = Path(__file__).resolve().parents[1]
+    policy = json.loads((repo / "scripts" / "merge-policy.json").read_text())["policies"]
+    doc = (repo / "docs" / "upgrading.md").read_text()
+
+    rows = dict(re.findall(r"^\| `(\w+)` \| [^|]+\| ([^|]+)\|$", doc, re.M))
+    assert rows, "no settings-policy table found in docs/upgrading.md"
+
+    mismatches = []
+    for key, rule in policy.items():
+        winner = rule.get("winner_on_conflict")
+        if not winner or key not in rows:
+            continue
+        stated = rows[key].replace("*", "").strip().lower()
+        if not stated.startswith(winner):
+            mismatches.append(f"{key}: policy says {winner!r}, doc says {stated!r}")
+    assert not mismatches, (
+        "docs/upgrading.md disagrees with scripts/merge-policy.json:\n  "
+        + "\n  ".join(mismatches))
