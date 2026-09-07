@@ -348,10 +348,27 @@ that launcher is the vehicle this kit has actually been run against, and it
 self-updates (see below). Pick the PyPI path for a pinned, auditable install;
 pick upstream's installer if you want the launcher's extra tooling.
 
-Check a wheel exists for your interpreter and OS floor before committing to the
-PyPI path — the project ships compiled per-interpreter wheels, and a host below
-the macOS floor those arm64 wheels are tagged for falls back to building a
-Cython project from source:
+The project ships compiled per-interpreter wheels, and the platform coverage is
+narrower than it looks. As published for 3.10.19:
+
+| Python | macOS arm64 | macOS x86_64 | Linux x86_64 | Linux aarch64 | Windows amd64 |
+|---|---|---|---|---|---|
+| 3.10 | none | none | yes | none | yes |
+| 3.11 | `macosx_26_0` | none | yes | none | yes |
+| 3.12 | `macosx_26_0` | none | yes | none | yes |
+| 3.13 | `macosx_26_0` | none | yes | none | yes |
+
+Three of those gaps bite real fleets. **macOS wheels start at `macosx_26_0`**, so
+a Mac on macOS 15 or earlier matches none. **There is no Intel macOS wheel at
+all.** **There is no Linux aarch64 wheel**, so a Graviton EC2 instance gets none
+either; the x86_64 wheels are `manylinux2014` / `manylinux_2_17`.
+
+Where no wheel matches, pip falls back to building a Cython project from source.
+So the PyPI path is clean on Linux x86_64, Windows amd64, and Apple Silicon
+running macOS 26+ on Python 3.11-3.13. Anywhere else, prefer upstream's
+launcher, which ships its own private venv, or leave the dual-graph leg out.
+
+Confirm your own box before committing to the PyPI path:
 
 ```sh
 pip download --only-binary=:all: graperoot -d /tmp/gr-probe
