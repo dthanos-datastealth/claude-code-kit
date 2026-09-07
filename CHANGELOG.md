@@ -69,12 +69,17 @@ contract changes; untagged for CLAUDE.md/docs edits.
   `#### How Claude drives spec-kit` playbook beneath it: 31 orphaned lines
   stayed, refiled under an unrelated section, while the canonical copy lives in
   `docs/tools/spec-kit.md`.
-- **The skill lint silently skipped misplaced skills.** It used frontmatter to
-  decide what counts as a skill, but every frontmatter field is optional — a
-  skill with none still loads, taking its name from the directory and its
-  description from the first paragraph. The lint now reports both kinds and
-  fails only on the confident case, so a third-party build fragment no longer
-  breaks the gate and a frontmatter-less misplaced skill is no longer invisible.
+- **The skill-layout lint could not tell a misplaced skill from a build
+  fragment, and got it wrong in both directions.** Counting every flat `.md`
+  under `skills/` failed the install gate on `caveman`'s `native-core.md`, a
+  prose fragment sitting beside `compile.mjs` with no way to load. Using
+  frontmatter to decide instead then went silent on genuinely misplaced skills,
+  because every frontmatter field is optional — a skill with none still loads,
+  taking its name from the directory and its description from the first
+  paragraph. Neither signal settles it, so the lint no longer pretends
+  otherwise: a flat file with frontmatter is an error, one without is a warning
+  for a human to judge, and a `SKILL.md` in a directory the manifest declares is
+  neither. All six of Berry's genuinely broken skills still fail the gate.
 - **CI had been failing on every run since 7 August, on both branches.** Two
   shellcheck findings — an optional-argument function called bare (SC2119) and
   a `cat file | tr` (SC2002) — failed the runner's apt-installed shellcheck
@@ -94,12 +99,6 @@ contract changes; untagged for CLAUDE.md/docs edits.
   which is what the URL form was reaching for. The isolated-install harness
   caught this against the real CLI; the suite had not, because it only checked
   that each repo name appeared somewhere in the command.
-- **The skill-layout lint flagged files that were never skills.** Any flat
-  `.md` under `skills/` counted, so `caveman`'s `native-core.md` — a prose
-  fragment sitting beside `compile.mjs` and `generated/`, with no frontmatter
-  and no way to load — failed the install gate on someone else's repo. A skill
-  always opens with a `---` frontmatter block, as all six of Berry's genuinely
-  broken flat skills did, so that is now the test.
 - **The isolation harness failed whenever a Claude Code session was running.**
   It compared `~/.claude.json` mtimes, but the CLI rewrites that file's session
   state every few seconds. Measured with no install running at all: the
