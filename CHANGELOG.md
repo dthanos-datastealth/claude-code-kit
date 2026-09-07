@@ -43,6 +43,20 @@ contract changes; untagged for CLAUDE.md/docs edits.
   agent runs the suite while a developer does, in the same checkout, and it was
   observed doing exactly that. Each session now owns a subdirectory and removes
   only its own. The same reproduction is clean afterwards.
+- **The prerelease channel was unreachable for anyone already installed.** A
+  channel is the same marketplace at a different `ref`, but the settings merge
+  gave the user's copy priority for every marketplace including the kit's own,
+  so the new ref never landed — and the CLI then refuses
+  `claude plugin marketplace add owner/repo@ref`, because an add must match what
+  settings declares for that name. The merge policy's own rationale already said
+  the kit re-asserts its own marketplaces; now it does. User-added marketplaces
+  are still untouched.
+- **Upgrading never refreshed `~/.claude/docs/`.** The doc-copy step lived only
+  in the installer, so an upgraded machine ran a current CLAUDE.md against the
+  previous release's reference docs — including a pointer to a file that was
+  never installed. Both scripts now share one implementation.
+- **Upgrading failed on macOS when no cached previous template existed.** Under
+  `set -u`, bash 3.2 treats an empty array expansion as an unbound variable.
 - **An upgrade never delivered this release's substance.** The CLAUDE.md merger
   treats a heading the manifest does not list as the user's own and preserves
   their copy, and fourteen headings the kit ships were unlisted — both agent
