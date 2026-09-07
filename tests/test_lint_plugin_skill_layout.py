@@ -106,3 +106,46 @@ def test_empty_cache_scan_is_not_an_error(tmp_path):
     )
     assert r.returncode == 0
     assert "nothing to scan" in r.stdout
+
+
+# ---------- Only frontmatter-bearing flat files are undiscoverable skills ----------
+#
+# A `skills/` directory can also hold build inputs and prose fragments beside the
+# real skill directories. `caveman` ships `skills/native-core.md` next to
+# `compile.mjs`, `engine-mcp-tools.json` and `generated/`; it carries no YAML
+# frontmatter and was never meant to load. Flagging it is a false positive, and
+# a lint that cries wolf about someone else's repo stops being read.
+#
+# A real skill always opens with a `---` frontmatter block — all six of Berry's
+# flat skills did, which is what made them genuine F5 defects. That is the
+# discriminator.
+
+def test_flat_md_with_frontmatter_is_flagged(tmp_path):
+    """A flat file that really is a skill still fails the lint."""
+    p = _plugin(tmp_path, name="withfm")
+    (p / "skills").mkdir(parents=True, exist_ok=True)
+    (p / "skills" / "berry-plan-and-execute.md").write_text(
+        "---\nname: berry-plan-and-execute\ndescription: Verify each plan step.\n---\n\nBody.\n"
+    )
+    res = _run(p)
+    out = res.stdout + res.stderr
+    assert res.returncode != 0, out
+    assert "berry-plan-and-execute.md" in out
+
+
+def test_flat_md_without_frontmatter_is_not_a_skill(tmp_path):
+    """A frontmatter-less prose fragment under skills/ is a build input."""
+    p = _plugin(tmp_path, name="nofm")
+    (p / "skills").mkdir(parents=True, exist_ok=True)
+    (p / "skills" / "native-core.md").write_text(
+        "Build simplest complete system. Trace behavior and invariants before editing.\n"
+    )
+    (p / "skills" / "real-skill").mkdir()
+    (p / "skills" / "real-skill" / "SKILL.md").write_text(
+        "---\nname: real-skill\ndescription: A real one.\n---\n\nBody.\n"
+    )
+    res = _run(p)
+    assert res.returncode == 0, (
+        "frontmatter-less fragment flagged as an undiscoverable skill:\n"
+        + res.stdout + res.stderr
+    )

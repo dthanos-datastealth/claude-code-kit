@@ -34,6 +34,52 @@ contract changes; untagged for CLAUDE.md/docs edits.
 - **An absolute `command` in a plugin's `.mcp.json` is now a lint failure.**
   Unportable across platforms even when it names no user, which is how a
   plugin pinning a Homebrew path shipped and could not start on Linux.
+- **Fresh installs could not register any marketplace.** Deriving the list from
+  `extraKnownMarketplaces` emitted a `https://…/repo.git` URL while the setting
+  declares a `github` source, and Claude Code refuses an add whose source kind
+  differs from the declaration for that name: *"its network source differs from
+  the one declared for it in settings"*. Adds now use the `owner/repo`
+  shorthand, or `owner/repo@ref` when a channel pins one, which is the matching
+  kind. Cloning still goes over HTTPS via `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`,
+  which is what the URL form was reaching for. The isolated-install harness
+  caught this against the real CLI; the suite had not, because it only checked
+  that each repo name appeared somewhere in the command.
+- **The skill-layout lint flagged files that were never skills.** Any flat
+  `.md` under `skills/` counted, so `caveman`'s `native-core.md` — a prose
+  fragment sitting beside `compile.mjs` and `generated/`, with no frontmatter
+  and no way to load — failed the install gate on someone else's repo. A skill
+  always opens with a `---` frontmatter block, as all six of Berry's genuinely
+  broken flat skills did, so that is now the test.
+- **The isolation harness failed whenever a Claude Code session was running.**
+  It compared `~/.claude.json` mtimes, but the CLI rewrites that file's session
+  state every few seconds. Measured with no install running at all: the
+  whole-file digest and `pluginUsage` both changed inside 70 seconds while
+  `mcpServers` held still. The check now digests `mcpServers`, the only key an
+  install writes, so it still catches a real leak.
+- **Upgrading never removed a section the kit had dropped.** The CLAUDE.md
+  merger walked the user's file and had no branch for a kit-owned heading that
+  the new template no longer contains, so retired guidance survived every
+  upgrade — leaving the replacement and the text it replaced side by side. A
+  section the user had not modified is now removed; one they had edited goes
+  through the conflict path instead of being discarded. Manifest entries for
+  retired headings are tombstones and are deliberately kept: the entry is what
+  marks a section removable.
+
+### Changed
+- **`claude/CLAUDE.md` cut from 503 lines to 338.** The per-plugin catalogue
+  was 290 lines restating what the 24 `docs/tools/*.md` depth references
+  already cover, so it is now a table that says when to reach for each tool and
+  points at them. The Spec-Kit playbook moved into `docs/tools/spec-kit.md`
+  whole. Berry keeps its operational rules inline, since they gate every
+  session. Nothing was dropped without a home.
+- **The three V+O verification standards are documented, not just asserted.**
+  New `docs/verification-standards.md` carries the synthetic-proxy prohibition,
+  the rule that a script can never confirm a visual result, and the O agent's
+  redundant-WORK hunt, each with the incident that produced it — a synthetic
+  "file protected: true" that hid a total raw-PII leak, a re-OCR pass that
+  reported "0 of 9 secrets readable" over a render whose glyph tops were
+  plainly visible, and a preview that re-ran the classifier on every click.
+  `CLAUDE.md` states each as one line and points here.
 
 ### Added
 - **Prerelease channel.** Changes land on the `prerelease` branch first; the

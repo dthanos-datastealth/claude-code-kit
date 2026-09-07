@@ -57,8 +57,28 @@ def declared_skill_dirs(plugin_root: Path) -> set[Path]:
     return {(plugin_root / str(entry)).resolve() for entry in declared}
 
 
+def has_frontmatter(path: Path) -> bool:
+    """True if the file opens with a YAML frontmatter block.
+
+    This is what separates a skill from a prose fragment. Every real skill
+    declares `name` and `description` in frontmatter, so a flat `.md` that has
+    it is a skill that will never load. One without it is a build input or a
+    fragment that shares the directory — `caveman` keeps `native-core.md` next
+    to `compile.mjs` and `generated/` — and was never going to load anyway.
+    """
+    try:
+        with path.open(encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                if line.strip() == "":
+                    continue  # tolerate leading blank lines
+                return line.rstrip("\r\n").strip() == "---"
+    except OSError:
+        return False
+    return False
+
+
 def undiscoverable_skills(plugin_root: Path) -> list[Path]:
-    """Flat `*.md` files directly under the plugin's own top-level `skills/`."""
+    """Flat `*.md` skill files directly under the plugin's own top-level `skills/`."""
     skills_root = plugin_root / "skills"
     if not skills_root.is_dir():
         return []
@@ -68,6 +88,9 @@ def undiscoverable_skills(plugin_root: Path) -> list[Path]:
         if entry.is_file() and entry.suffix == ".md":
             # A declared skill directory's own SKILL.md is discoverable.
             if entry.parent.resolve() in exempt:
+                continue
+            # Only a file that is actually a skill can be an undiscoverable one.
+            if not has_frontmatter(entry):
                 continue
             findings.append(entry)
     return findings

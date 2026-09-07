@@ -41,15 +41,34 @@ file_mtime() {
 
 REAL_CLAUDE_MD_BEFORE=$(file_mtime "${REAL_CLAUDE_HOME}/CLAUDE.md")
 REAL_SETTINGS_BEFORE=$(file_mtime "${REAL_CLAUDE_HOME}/settings.json")
-# ~/.claude.json is the MCP server config (sibling dot-file, NOT under
-# ~/.claude/). HOME-override still isolates it, but track its mtime so
-# this script's leak check catches a regression if a future kit change
-# ever writes to that path outside of HOME-redirection.
-REAL_CLAUDE_DOTJSON_BEFORE=$(file_mtime "${HOME}/.claude.json")
-log "Captured real-HOME mtimes (will verify UNCHANGED after the test):"
+# ~/.claude.json is a sibling dot-file, NOT under ~/.claude/. `claude mcp add`
+# writes its `mcpServers` key, so a kit change could leak in here — but the
+# file also holds the CLI's own session state (caches, counters, tips history,
+# `pluginUsage`), which a Claude Code session running right now rewrites every
+# few seconds. Measured: with no install running at all, the whole-file digest
+# and `pluginUsage` both change inside 70 seconds while `mcpServers` holds
+# still. So the file's mtime says nothing about whether install.sh touched it,
+# and keying on it fails this harness for anyone running it from inside a live
+# session. Digest `mcpServers` alone: it is the only key an install writes.
+dotjson_mcp_servers() {
+    python3 - "$1" <<'PY'
+import hashlib, json, sys
+try:
+    with open(sys.argv[1], encoding="utf-8") as fh:
+        d = json.load(fh)
+except (OSError, ValueError):
+    print("absent")
+    raise SystemExit(0)
+print(hashlib.sha256(
+    json.dumps(d.get("mcpServers", {}), sort_keys=True, separators=(",", ":")).encode()
+).hexdigest())
+PY
+}
+REAL_CLAUDE_DOTJSON_BEFORE=$(dotjson_mcp_servers "${HOME}/.claude.json")
+log "Captured real-HOME state (will verify UNCHANGED after the test):"
 log "  ~/.claude/CLAUDE.md     : ${REAL_CLAUDE_MD_BEFORE}"
 log "  ~/.claude/settings.json : ${REAL_SETTINGS_BEFORE}"
-log "  ~/.claude.json          : ${REAL_CLAUDE_DOTJSON_BEFORE}"
+log "  ~/.claude.json          : mcpServers ${REAL_CLAUDE_DOTJSON_BEFORE:0:12}"
 
 TEST_HOME=$(mktemp -d -t cck-test-XXXXXX)
 log "Isolated HOME: ${TEST_HOME}"
@@ -114,7 +133,7 @@ fi
 log "Leak check: verifying real ~/.claude/ is untouched..."
 REAL_CLAUDE_MD_AFTER=$(file_mtime "${REAL_CLAUDE_HOME}/CLAUDE.md")
 REAL_SETTINGS_AFTER=$(file_mtime "${REAL_CLAUDE_HOME}/settings.json")
-REAL_CLAUDE_DOTJSON_AFTER=$(file_mtime "${HOME}/.claude.json")
+REAL_CLAUDE_DOTJSON_AFTER=$(dotjson_mcp_servers "${HOME}/.claude.json")
 leak=0
 if [ "${REAL_CLAUDE_MD_BEFORE}" != "${REAL_CLAUDE_MD_AFTER}" ]; then
     err "  LEAK: ~/.claude/CLAUDE.md mtime CHANGED (${REAL_CLAUDE_MD_BEFORE} -> ${REAL_CLAUDE_MD_AFTER})"
@@ -125,7 +144,8 @@ if [ "${REAL_SETTINGS_BEFORE}" != "${REAL_SETTINGS_AFTER}" ]; then
     leak=1
 fi
 if [ "${REAL_CLAUDE_DOTJSON_BEFORE}" != "${REAL_CLAUDE_DOTJSON_AFTER}" ]; then
-    err "  LEAK: ~/.claude.json mtime CHANGED (${REAL_CLAUDE_DOTJSON_BEFORE} -> ${REAL_CLAUDE_DOTJSON_AFTER})"
+    err "  LEAK: ~/.claude.json mcpServers CHANGED"
+    err "        (${REAL_CLAUDE_DOTJSON_BEFORE} -> ${REAL_CLAUDE_DOTJSON_AFTER})"
     leak=1
 fi
 if [ "${leak}" -eq 1 ]; then
@@ -133,7 +153,7 @@ if [ "${leak}" -eq 1 ]; then
     err "  Tempdir kept at ${TEST_HOME} for diagnosis"
     exit 2
 fi
-ok "  Real ~/.claude/CLAUDE.md, ~/.claude/settings.json, and ~/.claude.json mtimes UNCHANGED"
+ok "  Real ~/.claude/CLAUDE.md + settings.json mtimes and ~/.claude.json mcpServers UNCHANGED"
 
 ok ""
 ok "==============================================="

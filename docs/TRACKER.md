@@ -3,14 +3,14 @@
 > Per-project tracker per `~/.claude/docs/tracker-system.md`. Single source of
 > truth for in-flight work, V/O findings, and iteration state.
 
-## Last Updated: 2026-09-04 Iter-3 — IN PROGRESS
+## Last Updated: 2026-09-07 Iter-3 — IN PROGRESS
 
 | Aspect | State |
 |---|---|
 | Active phase | Iter-3 PR-A: deployment-report defects + prerelease channel |
 | Plan | Kept outside this repo (rev 8; Berry run 8f9226272b97fcdf, spans S0–S10, 0 flagged) — see note below |
 | Dev branch | `prerelease` |
-| Quality Loop State | dev done (111/111 GREEN, all lints clean); V+O pending on this revision |
+| Quality Loop State | dev done (117/117 GREEN, all lints clean, isolated install PASSES end to end); V+O pending on this revision |
 | Open conflicts | none |
 
 ### Iter-3 note: the plan is deliberately not committed here
@@ -49,6 +49,12 @@ documentation and the repositories: five held, two did not.
 | F5b | The kit's own four plugin skills were flat files and had never loaded | FIXED — moved to `skills/<name>/SKILL.md`, plugin version bumped, tests repointed; scripts/lint-plugin-skill-layout.py added, RED against the real plugin before the move |
 | F7 | Template shipped `effortLevel: max`, which the key does not accept | FIXED — `xhigh`; the assertion that hard-pinned `max` now reads the template; four README statements corrected |
 | K9 | Release channel was implicit in three places | FIXED — derived from the settings template; self-check fails a promote that does not flip the refs |
+| K10a | `claude/CLAUDE.md` at 503 lines against the ~200-line guidance, and about to become non-excludable via managed `claudeMd` | FIXED — 338 lines. The 290-line plugin catalogue restated the 24 `docs/tools/*.md` depth references, so it is now a table saying when to reach for each tool; the Spec-Kit playbook moved whole into `docs/tools/spec-kit.md`; Berry's operational rules stay inline because they gate every session |
+| K10b | The kit's three V+O verification standards existed only as assertions | FIXED — `docs/verification-standards.md` carries each with the incident behind it (synthetic `file protected: true` over a raw-PII leak; re-OCR "0 of 9 secrets readable" over visible glyph tops; a preview re-running the classifier per click); CLAUDE.md states each in one line and points there; shipped via `TOP_LEVEL_DOCS`, which the test now reads from `install.sh` rather than restating |
+| F8 | Upgrade never removed a section the kit had dropped — the merger walked the user's file with no branch for a heading absent from the new template, so retired guidance survived forever beside its replacement | FIXED — unmodified sections are removed, user-edited ones go to the conflict path; manifest entries for retired headings are tombstones and documented as such, since the entry is what makes a section removable |
+| F9 | Fresh installs registered no marketplace: the derived spec was a git URL while settings declares a `github` source, and the CLI refuses a kind mismatch | FIXED — `owner/repo` / `owner/repo@ref` shorthand, HTTPS preserved by `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`. Found by the isolated harness against the real CLI; the unit test had only checked that each repo name appeared somewhere in the command, which both forms satisfy |
+| F10 | Skill-layout lint false-positived on `caveman`'s `native-core.md`, a frontmatter-less prose fragment beside `compile.mjs` | FIXED — a skill opens with a `---` frontmatter block, as all six genuinely broken Berry skills did; that is now the discriminator |
+| F11 | The isolation harness failed whenever a Claude Code session was running | FIXED — it compared `~/.claude.json` mtimes, but the CLI rewrites that file constantly. Measured with no install running: whole-file digest and `pluginUsage` both moved inside 70s while `mcpServers` held still. Now digests `mcpServers` alone |
 
 ### Iter-3 corrections to the plan itself, recorded
 
