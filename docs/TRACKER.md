@@ -71,6 +71,32 @@ documentation and the repositories: five held, two did not.
 | O-15 | worth-fixing — comment claimed 23 tool docs; 24 ship | FIXED — count dropped rather than restated |
 | O-16 | worth-considering — dead `exempt` branch in the skill lint that could not fire for its stated purpose, and suppressed all findings for a plugin declaring `skills: ["skills"]` | FIXED — branch and its now-unused helper removed |
 
+### Iter-3 PR-B findings and disposition (the Berry fork)
+
+Tracked here rather than in the fork, because the fork is a third-party project
+and this is where the deployment report's findings live. Fork branch
+`prerelease`, verified against the tree a fresh `install.sh` actually pulls.
+
+| ID | Finding | Disposition |
+|---|---|---|
+| F4 | `.mcp.json` pinned `/opt/homebrew/bin/uvx`, which cannot resolve on Linux | FIXED — `"command": "uvx"`, resolved from PATH. Confirmed in the installed copy after a fresh isolated install, not only in the repo |
+| F5 | Six workflow skills shipped as flat `skills/<name>.md` and had never loaded on any install | FIXED — all at `skills/<name>/SKILL.md`, now seven (upstream v2 adds an objective-optimization workflow). The installed copy carries all seven; every MCP tool name the skills reference exists in the live 28-tool registry |
+| F5c | `commands/berry-setup.md` had no frontmatter and never loaded | FIXED by deletion — its `claude plugin path` command does not exist. `berry-configure` is the surviving command and keeps credentials in one file |
+| F6 | `ModuleNotFoundError: httpx` on a fresh install | FIXED — `httpx` declared as the `backends` extra and the Gemini/Vertex backends made lazy, so a missing extra is an instruction rather than a traceback. Reproduced live on pristine upstream first: the resolver takes mcp 2.2.0, which moved to httpx2 and no longer supplies `httpx` |
+| Item 5 | Is `openai/gpt-4o-mini` the intended verifier? | CONFIRMED intended (owner). Documented in `docs/tools/berry.md` with the constraint that decides it: Berry scores from token logprobs, and most obvious upgrades do not expose them |
+| — | Upstream v2.0.0 sync | Done by unrelated-histories merge, not force-push, so every box's background pull still fast-forwards. Native packaging upstream deleted was removed; `k8s_wrapper.py` deleted as fork-only dead code |
+
+Verified on the shipping tree: 120 tests pass, `ruff check` and `ruff format
+--check` clean, and `mypy --platform linux src` clean (the one macOS-only error
+is upstream's own `sys.platform` chain and is not present on the platform
+upstream's CI runs). A cold-cache `uvx --from . berry mcp` starts and
+`create_server` returns a FastMCP instance exposing 28 tools.
+
+An upstream fix is prepared but **not opened**: `mcp[cli]` unpinned and `httpx`
+undeclared break `berry mcp` on a fresh install of `leochlon/hallbayes` today,
+reproduced in a clean venv. The branch is local pending a decision, since
+opening it is an outward-facing action on a third-party repository.
+
 ### Iter-3 corrections to the plan itself, recorded
 
 Two blockers the review produced did not survive hand-verification, and the
