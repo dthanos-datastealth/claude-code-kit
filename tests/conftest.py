@@ -13,6 +13,11 @@ from tests.helpers import SESSION_TMP, TMP_ROOT
 
 
 def _pid_alive(pid: int) -> bool:
+    # os.kill(0, ...) addresses the whole process group and os.kill(-n, ...) a
+    # group by id; neither is a directory we could have created, so treat any
+    # non-positive value as not-ours and keep it.
+    if pid <= 0:
+        return True
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
