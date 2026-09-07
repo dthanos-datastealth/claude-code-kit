@@ -114,6 +114,16 @@ contract changes; untagged for CLAUDE.md/docs edits.
   retired headings are tombstones and are deliberately kept: the entry is what
   marks a section removable.
 
+- **The test suite runs in parallel, and does so three times faster.** Giving
+  each pytest session its own scratch directory made the suite parallel-safe for
+  the first time; the same command against the previous tree fails on different
+  tests each run. CI now runs `-n auto`: 142 tests in 9.4s against 28.1s serial.
+- **The test harness stopped paying macOS's first-exec tax 28 times.** It wrote
+  a fresh fake CLI for every install, and macOS charges roughly 180ms the first
+  time any newly created executable runs and nothing thereafter. The fake CLI
+  now takes its log path from the environment, so one script is written per
+  process and each run symlinks to it.
+
 ### Changed
 - **`claude/CLAUDE.md` cut from 503 lines to 341.** The per-plugin catalogue
   was 290 lines restating what the 24 `docs/tools/*.md` depth references

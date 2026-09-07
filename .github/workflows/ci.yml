@@ -22,7 +22,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install pytest
-        run: pip install pytest
+        run: pip install pytest pytest-xdist
 
       # Pinned, not apt. The distro package moves independently of whatever a
       # developer has locally, and that skew hid a red CI for a month: a newer
@@ -57,7 +57,7 @@ jobs:
         run: python3 scripts/lint-merge-policy.py
 
       - name: Run pytest suite
-        run: python3 -m pytest tests/ -v
+        run: python3 -m pytest tests/ -q -n auto
 
       # NOTE: lint-mcp-hardcoded-paths.py, lint-plugin-skill-layout.py and
       # scripts/test-upgrade-isolated.sh all need a populated plugin cache (an

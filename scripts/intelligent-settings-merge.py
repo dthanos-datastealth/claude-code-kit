@@ -35,6 +35,16 @@ from _atomic import atomic_write_json  # noqa: E402
 DEFAULT_POLICY = Path(__file__).parent / "merge-policy.json"
 
 
+def kit_wins(rule: dict) -> bool:
+    """True when the kit's value takes priority for this key's conflicts.
+
+    Stated once: `reclaimed_entries` decides what to report and `apply_policy`
+    decides what to write, and a disagreement between them would produce a note
+    that does not match the merge — worse than no note.
+    """
+    return rule.get("winner_on_conflict", "user") == "kit"
+
+
 def union_dict(kit_val: dict, user_val: dict, winner: str) -> dict:
     """Union two dicts; on key conflict, prefer `winner` ("user" or "kit")."""
     if winner == "user":
@@ -50,22 +60,50 @@ def scalar_user_wins_if_set(kit_val, user_val, user_has_key: bool):
 def reclaimed_entries(kit: dict, user: dict, policy: dict) -> list[str]:
     """Sub-keys whose user value the kit overwrites, as human-readable lines.
 
-    Only kit-wins union keys can do this. It is the one path where an upgrade
-    discards something the user set, so it is reported rather than done in
-    silence — the comparable CLAUDE.md collision gets a conflict prompt.
+    Only kit-wins union keys can do this, and only some of those matter to a
+    reader. Moving release channel rewrites the kit's own declaration of its own
+    marketplace, which is not a loss and should not be announced as one — an
+    untouched user switching channel would otherwise see two "replaced" notes
+    for changes that took nothing from them, which is how the one note that DOES
+    mean "your customization is gone" gets tuned out.
+
+    So the two cases are told apart by where the entry points: same target, the
+    kit updated itself; different target, the user had aimed it somewhere else
+    and that is now undone. Only the second carries the remedy.
     """
     out: list[str] = []
     for key, rule in (policy.get("policies") or {}).items():
-        if rule.get("strategy") != "union_dict" or rule.get("winner_on_conflict") != "kit":
+        if rule.get("strategy") != "union_dict" or not kit_wins(rule):
             continue
         kit_val, user_val = kit.get(key), user.get(key)
         if not isinstance(kit_val, dict) or not isinstance(user_val, dict):
             continue
-        for name, was in user_val.items():
-            if name in kit_val and kit_val[name] != was:
-                out.append(f"{key}.{name}: replaced {json.dumps(was)} "
-                           f"with the kit's {json.dumps(kit_val[name])}")
+        for name, was in sorted(user_val.items()):
+            now = kit_val.get(name)
+            if name not in kit_val or now == was:
+                continue
+            if _same_target(was, now):
+                out.append(f"{key}.{name}: updated to {json.dumps(_target(now))}")
+            else:
+                out.append(
+                    f"{key}.{name}: REPLACED YOUR {json.dumps(_target(was))} with the "
+                    f"kit's {json.dumps(_target(now))}. The kit owns this name. To keep "
+                    f"your own, register it under a different name."
+                )
     return out
+
+
+def _target(entry) -> str:
+    """The thing an entry points at, ignoring how it is fetched."""
+    src = entry.get("source") if isinstance(entry, dict) else None
+    if isinstance(src, dict):
+        return str(src.get("repo") or src.get("url") or src.get("path") or src)
+    return str(src if src is not None else entry)
+
+
+def _same_target(a, b) -> bool:
+    """True when two entries point at the same place, differing only in how."""
+    return _target(a) == _target(b)
 
 
 def apply_policy(kit: dict, user: dict, policy: dict) -> dict:
@@ -86,7 +124,8 @@ def apply_policy(kit: dict, user: dict, policy: dict) -> dict:
                 elif key in kit:
                     merged[key] = kit[key]
                 continue
-            merged[key] = union_dict(kit_val, user_val, rule.get("winner_on_conflict", "user"))
+            merged[key] = union_dict(kit_val, user_val,
+                                     "kit" if kit_wins(rule) else "user")
         elif strategy == "scalar_user_wins_if_set":
             user_has = key in user
             merged[key] = scalar_user_wins_if_set(kit.get(key), user.get(key), user_has)

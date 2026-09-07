@@ -5,7 +5,6 @@ import os
 import shutil
 import subprocess
 import tempfile
-import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -32,19 +31,46 @@ class RunResult:
     claude_log: Path
 
 
+# The fake CLI reads its log path from the environment instead of having it
+# baked in, so the script itself is identical for every run and can be written
+# once per pytest process. That matters more than it looks: macOS charges
+# roughly 180ms the first time a newly created executable is run, and nothing
+# on re-exec, so writing a fresh one for each of the ~28 installs in this suite
+# cost about five seconds. Each run symlinks to the shared copy, and symlinks
+# do not pay the tax.
+_FAKE_CLAUDE_BODY = """\
+#!/usr/bin/env bash
+echo "$@" >> "${CCK_FAKE_CLAUDE_LOG}"
+# Emulate `claude plugin list` returning empty initially
+if [ "$1" = "plugin" ] && [ "$2" = "list" ]; then
+    echo "(no plugins installed)"
+fi
+exit 0
+"""
+
+_shared_fake_claude: Path | None = None
+
+
+def _shared_claude() -> Path:
+    """The one fake `claude` script this process execs, created on first use."""
+    global _shared_fake_claude
+    if _shared_fake_claude is None:
+        SESSION_TMP.mkdir(parents=True, exist_ok=True)
+        path = SESSION_TMP / "fake-claude.sh"
+        path.write_text(_FAKE_CLAUDE_BODY)
+        path.chmod(0o755)
+        _shared_fake_claude = path
+    return _shared_fake_claude
+
+
 def write_fake_claude(bin_dir: Path, log: Path) -> Path:
-    """Write a fake `claude` CLI that logs all invocations to `log`."""
+    """Place a fake `claude` CLI in `bin_dir` that logs invocations to `log`.
+
+    `log` is honoured through CCK_FAKE_CLAUDE_LOG, which run_install sets in the
+    child environment; callers that exec the binary themselves must set it too.
+    """
     fake = bin_dir / "claude"
-    fake.write_text(textwrap.dedent(f"""\
-        #!/usr/bin/env bash
-        echo "$@" >> "{log}"
-        # Emulate `claude plugin list` returning empty initially
-        if [ "$1" = "plugin" ] && [ "$2" = "list" ]; then
-            echo "(no plugins installed)"
-        fi
-        exit 0
-    """))
-    fake.chmod(0o755)
+    fake.symlink_to(_shared_claude())
     return fake
 
 
@@ -110,6 +136,7 @@ def run_install(
         "HOME": str(home),
         "PATH": f"{fake_bin}:/usr/bin:/bin",
         "LANG": "C.UTF-8",
+        "CCK_FAKE_CLAUDE_LOG": str(claude_log),
     }
     env.update(extra_env or {})
     proc = subprocess.run(

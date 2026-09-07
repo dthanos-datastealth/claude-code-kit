@@ -79,7 +79,7 @@ def test_upgrade_installs_docs_the_release_adds(upgraded):
     home = upgraded
     dst = home / ".claude" / "docs"
     for name in _top_level_docs():
-            assert (dst / name).exists(), f"{name} missing from ~/.claude/docs after upgrade"
+        assert (dst / name).exists(), f"{name} missing from ~/.claude/docs after upgrade"
 
     shipped = {p.name for p in (REPO / "docs" / "tools").glob("*.md")}
     installed = {p.name for p in (dst / "tools").glob("*.md")}
@@ -90,9 +90,9 @@ def test_upgrade_refreshes_a_doc_whose_content_changed(upgraded):
     """A doc that already exists must be updated, not left at the old text."""
     home = upgraded
     for rel in ("prereqs.md", "tools/berry.md"):
-            got = (home / ".claude" / "docs" / rel).read_text()
-            assert "OLD CONTENT" not in got, f"{rel} was not refreshed by the upgrade"
-            assert got == (REPO / "docs" / rel).read_text(), f"{rel} does not match the kit"
+        got = (home / ".claude" / "docs" / rel).read_text()
+        assert "OLD CONTENT" not in got, f"{rel} was not refreshed by the upgrade"
+        assert got == (REPO / "docs" / rel).read_text(), f"{rel} does not match the kit"
 
 
 def test_every_doc_claude_md_points_at_is_installed_by_upgrade(upgraded):
@@ -104,3 +104,37 @@ def test_every_doc_claude_md_points_at_is_installed_by_upgrade(upgraded):
     assert named, "CLAUDE.md names no docs; this test would assert nothing"
     missing = sorted(n for n in named if not (dst / n).exists())
     assert not missing, f"CLAUDE.md points at docs the upgrade did not install: {missing}"
+
+
+def test_upgrade_dry_run_changes_nothing():
+    """`--dry-run` is the first command docs/upgrading.md tells a user to run.
+
+    It gained a code path when the settings merge started running in preview
+    mode, and nothing exercised `upgrade.sh --dry-run` itself.
+    """
+    import hashlib
+
+    with tempfile.TemporaryDirectory() as td:
+        home = Path(td)
+        _existing_install(home)
+
+        # Scoped to ~/.claude: running python3 with HOME redirected also fills
+        # $HOME/Library/Caches/com.apple.python with bytecode, which is the
+        # interpreter's doing, not the upgrade's.
+        def digest() -> dict[str, str]:
+            return {
+                str(p.relative_to(home)): hashlib.sha256(p.read_bytes()).hexdigest()
+                for p in sorted((home / ".claude").rglob("*")) if p.is_file()
+            }
+
+        before = digest()
+        res = subprocess.run(
+            ["bash", str(UPGRADE_SH), "--dry-run"],
+            env={"HOME": str(home), "CLAUDE_HOME": str(home / ".claude"),
+                 "PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin", "LANG": "C.UTF-8"},
+            text=True, capture_output=True,
+        )
+        assert res.returncode == 0, res.stderr
+        assert digest() == before, "dry-run wrote to the user's ~/.claude"
+        out = res.stdout + res.stderr
+        assert "dry-run" in out, out

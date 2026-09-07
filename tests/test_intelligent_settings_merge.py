@@ -235,3 +235,37 @@ def test_reclaim_is_reported_in_dry_run_too(temp_settings):
     out = res.stdout + res.stderr
     assert "berry-marketplace" in out, "dry-run did not preview the replacement:\n" + out
     assert temp_settings.read_text() == before, "dry-run must not write"
+
+
+def test_the_kits_own_channel_bump_is_not_announced_as_a_loss(temp_settings):
+    """Moving channel rewrites the kit's declaration of its own marketplace.
+
+    Nothing of the user's is lost, so it must not read like it. Otherwise every
+    channel switch produces "replaced" notes for changes that took nothing, and
+    the one note that does mean "your customization is gone" is outnumbered by
+    noise on exactly the occasion it matters.
+    """
+    kit = json.loads(KIT_SETTINGS.read_text())["extraKnownMarketplaces"]
+    # A user who never touched anything, installed before the refs were added.
+    _write_json(temp_settings, {"extraKnownMarketplaces": {
+        name: {"source": {k: v for k, v in entry["source"].items() if k != "ref"}}
+        for name, entry in kit.items()
+    }})
+    res = _run(KIT_SETTINGS, temp_settings)
+    out = res.stdout + res.stderr
+    assert "REPLACED YOUR" not in out, (
+        "an untouched user was told their settings were replaced:\n" + out)
+    assert "different name" not in out, "the remedy is only for a real loss"
+
+
+def test_a_real_loss_says_so_and_says_what_to_do(temp_settings):
+    """The case that IS a loss must be unmistakable and actionable."""
+    _write_json(temp_settings, {"extraKnownMarketplaces": {
+        "berry-marketplace": {
+            "source": {"source": "github", "repo": "MYFORK/hallbayes", "ref": "my-branch"}}
+    }})
+    res = _run(KIT_SETTINGS, temp_settings)
+    out = res.stdout + res.stderr
+    assert "REPLACED YOUR" in out, out
+    assert "MYFORK/hallbayes" in out, "say what was replaced"
+    assert "different name" in out, "say what to do about it"
