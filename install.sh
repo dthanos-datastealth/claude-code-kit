@@ -81,6 +81,7 @@ copy_templates() {
 TOP_LEVEL_DOCS=(
     "philosophy.md"
     "workflow.md"
+    "verification-standards.md"
     "prereqs.md"
     "corporate-tls.md"
     "memory-system.md"
@@ -141,9 +142,14 @@ for name, entry in (d.get('extraKnownMarketplaces') or {}).items():
     src = entry.get('source') or {}
     if src.get('source') != 'github' or not src.get('repo'):
         raise SystemExit(f'unsupported marketplace source for {name}: {src!r}')
-    spec = 'https://github.com/' + src['repo'] + '.git'
+    # Add by the owner/repo shorthand, matching the declared 'github' source
+    # kind. A https://…/repo.git URL is a DIFFERENT kind, and Claude Code
+    # refuses an add whose source differs from the declaration for that name.
+    # CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1 (exported below) is what keeps the
+    # shorthand cloning over HTTPS instead of SSH on keyless boxes.
+    spec = src['repo']
     if src.get('ref'):
-        spec += '#' + src['ref']
+        spec += '@' + src['ref']
     print(spec)
 "
 }

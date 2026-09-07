@@ -40,7 +40,7 @@ For ANY code navigation, symbol lookup, or codebase exploration, use this order.
 
 ## MANDATORY Quality Loop (TDD → Berry → V+O)
 
-This is the unconditional discipline that runs around **every substantive change** the kit ships, regardless of which workflow (default, `/feature-dev`, or spec-kit) framed it. The plugin sections below describe the *tools*; this section describes the *rules they enforce*.
+This is the unconditional discipline that runs around **every substantive change** the kit ships, regardless of which workflow (default, `/feature-dev`, or spec-kit) framed it. The plugin catalogue below describes the *tools*; this section describes the *rules they enforce*. The reasoning and the incidents behind the prohibitions are in `~/.claude/docs/verification-standards.md`.
 
 ### TDD discipline (always; no exceptions for "small" changes)
 
@@ -73,6 +73,14 @@ The kit's `superpowers:requesting-code-review` skill, `feature-dev:code-reviewer
 - Do not skip V+O on the grounds that "the change is small" — small changes are exactly where unaudited drift accumulates.
 - Do not invent answers when V flags a `[CONCERN]` — gather more evidence or escalate.
 - 3-strike rule applies (see the Berry section below for the canonical statement): if a Berry audit fails three times on the same claim set, STOP and surface partial results. No silent looping.
+- **Never verify a user-facing or protection feature with a synthetic proxy.** Driving your own element, reading back a value you set, dispatching an event straight to a handler, or treating a toast as proof all test a proxy you control. Drive the REAL widget and assert the GROUND TRUTH (for data protection: the outbound request carries zero raw values). If the harness cannot drive the real widget that is a BLOCKER — escalate, do not substitute.
+- **A script can never confirm a visual result.** Any image, rasterised page or painted canvas must be viewed at legible resolution, every page, whole page. Re-OCR, pixel statistics and "0 leaked" counts choose what to look at; they are never confirmation. If a render has not been viewed, say so.
+- **The O agent hunts redundant WORK, not just redundant code** — enumerate every expensive operation in the diff, trace each flow end to end, and state per call site whether it is cached+reused or recomputed. A report without that trace is itself a finding. Pair `optibot` with `code-simplifier` whenever a hot path is touched.
+
+Each of these three exists because a green check hid a real defect. The
+incidents, the exact forbidden patterns and the O agent's finding taxonomy are
+in `~/.claude/docs/verification-standards.md` — read it before arguing that one
+of them does not apply.
 
 ---
 
@@ -161,6 +169,7 @@ For every finding the V agent produces, call `TaskCreate`. On its own task, call
 
 - **Linter sweep:** project's linter on changed code only; 0 NEW issues required. Pre-existing issues in unrelated files = flag-don't-fix.
 - **Mandatory redundancy + duplication check (dual-graph driven):** for every new function/struct/regex/helper/test fixture in the diff: (1) call `graph_continue` with the new symbol name and surrounding terms; (2) `workspaceSymbol` + `findReferences` via LSP to confirm; (3) flag `[REDUNDANT FUNCTION]` if equivalent behavior already exists; `[REDUNDANT CODE PATH]` if logic re-implements another path; `[REDUNDANT TEST]` if invariant already covered by an existing test. The O agent's report MUST show evidence of the dual-graph + LSP search (which symbols, what returned). An O report lacking this evidence is itself a finding.
+- **Mandatory redundant-WORK hunt (first-class — same severity as redundant code):** redundancy is not only duplicated code, it is code that re-executes work an earlier step already did. Enumerate every expensive operation in the diff with `file:line` (network/RPC, LLM or backend classify, DB query, OCR, crypto, file parse, `context.sync()`, any cross-process `await`); trace each flow end to end (`scan → preview → save`); and state per call site whether it is **cached+reused** or **recomputed**. Flag `[REDUNDANT EXPENSIVE CALL]` (blocking), `[UNCACHED RECOMPUTATION]`, `[HOT-PATH N+1 / SYNC-IN-LOOP]` (quantify N), `[REDUNDANT ROUND-TRIP]`, `[RE-INCURRED BLOCKING WAIT]`. A report without the per-call-site trace is itself a finding. When the diff touches a hot path, run `optibot` **in addition to** `code-simplifier` — clarity-only review misses these. Taxonomy and the worked example: `~/.claude/docs/verification-standards.md`.
 - **Best-practice sweep on changed code:** allocation patterns, naming, comment quality (no temporal/phase labels — those belong in TRACKER.md), idiomatic error wrapping.
 - **Tracker updates:** `TaskCreate` for every finding; `TaskUpdate(status="completed")` on own task. Verdict: `APPROVED` or `CHANGES-RECOMMENDED`. Phase closes only when V says PASS AND O says APPROVED on the SAME revision.
 
@@ -175,119 +184,37 @@ For every finding the V agent produces, call `TaskCreate`. On its own task, call
 
 ## Installed Plugins & When to Use Them
 
-For each plugin, MCP, or skill listed below, the kit ships a **per-tool depth-reference document** at `~/.claude/docs/tools/<name>.md` (installed there by the kit's `install.sh`). Each follows a strict 5-section schema — *What it does · Why it's in this kit · When you'd disable it · Source · Cost / footprint*. **Consult the depth-reference when:**
+Every plugin, MCP and skill below has a depth-reference at
+`~/.claude/docs/tools/<name>.md`, installed by `install.sh`, following a strict
+five-section schema: *What it does · Why it's in this kit · When you'd disable
+it · Source · Cost / footprint*. **Read the depth-reference** before invoking a
+tool whose cost you can't recall, when asked "what does X do?" or "should I
+disable X?", when behaviour surprises you (the "when you'd disable it" section
+lists the wrong-tool cases), or when you need the upstream source.
 
-- You're about to invoke a tool whose cost (memory, latency, network, external dependencies) you can't recall from the summary below.
-- The user asks "what does X do?" or "should I disable X?" — the depth-reference contains the authoritative answer with rationale.
-- You hit unexpected behavior and need to know whether it's by design (the "When you'd disable it" section enumerates the wrong-tool-for-the-job cases).
-- You need the upstream source URL (GitHub repo, marketplace identifier) for further reading or to file an issue against the right project.
+`~/.claude/docs/` also holds `philosophy.md` (why each rule exists),
+`workflow.md` (the 10-step recipe), `verification-standards.md` (what counts as
+evidence), `prereqs.md` (per-OS install commands), `corporate-tls.md` and
+`memory-system.md`. If that directory is missing or thinner than the plugin
+list, re-run `install.sh` — `copy_docs` populates it.
 
-The same directory also contains `philosophy.md` (why each rule exists), `workflow.md` (the 10-step procedural recipe), `prereqs.md` (per-OS install commands for external tools), `corporate-tls.md` (CA-bundle setup for intercepted networks), and `memory-system.md` (auto-memory schema). Read those when broader context is needed than the summaries here provide.
-
-If `~/.claude/docs/` is missing or stale (no `tools/` subdirectory, or fewer files than plugins enabled), re-run the kit's `install.sh` — the `copy_docs` step is what populates it.
-
-### Superpowers (Primary Workflow Engine)
-The backbone for all serious development work. Always invoke `/superpowers:using-superpowers` at the start of any new conversation.
-
-| Skill | When to Use |
-|-------|------------|
-| `superpowers:brainstorming` | BEFORE any creative work — features, components, new behavior |
-| `superpowers:writing-plans` | BEFORE touching code on multi-step tasks |
-| `superpowers:using-git-worktrees` | BEFORE feature work that needs isolation |
-| `superpowers:test-driven-development` | BEFORE writing implementation code (RED → GREEN → REFACTOR) |
-| `superpowers:systematic-debugging` | BEFORE proposing fixes for any bug or test failure |
-| `superpowers:executing-plans` | When executing a written plan in a separate session |
-| `superpowers:subagent-driven-development` | When plan has independent parallel tasks |
-| `superpowers:dispatching-parallel-agents` | When 2+ independent tasks can run without shared state |
-| `superpowers:verification-before-completion` | BEFORE claiming work is complete or tests pass |
-| `superpowers:requesting-code-review` | After completing tasks or before merging |
-| `superpowers:receiving-code-review` | When processing review feedback — verify before implementing |
-| `superpowers:finishing-a-development-branch` | When implementation is done and tests pass |
-| `superpowers:writing-skills` | When creating or editing skills |
-
-### Feature Dev (`feature-dev:feature-dev` or `/feature-dev`) — MANDATORY FOR NEW FEATURES
-**Always use this for any new feature implementation.** It runs a structured 7-phase workflow with specialized subagents.
-
-| Phase | What Happens |
-|-------|-------------|
-| 1. Discovery | Clarifies requirements, confirms understanding |
-| 2. Codebase Exploration | Launches parallel `code-explorer` agents to map architecture |
-| 3. Clarifying Questions | **Asks all ambiguities before designing** — never skips this |
-| 4. Architecture Design | Parallel `code-architect` agents present approaches + trade-offs |
-| 5. Implementation | Builds only after explicit user approval |
-| 6. Quality Review | Parallel `code-reviewer` agents check simplicity, bugs, conventions |
-| 7. Summary | Documents decisions and next steps |
-
-**Mandatory triggers:** Any time the user says "add", "build", "create", "implement", or "new feature".
-**Do NOT skip phases** — especially Phase 3 (clarifying questions) and the approval gate before Phase 5.
-
-### Language Servers (LSP) — Active Automatically
-These provide code intelligence (go-to-definition, find references, error checking) and are active when working in the relevant files. No manual invocation needed.
-
-- **gopls-lsp** — Go files (`.go`). Requires: `go install golang.org/x/tools/gopls@latest`
-- **typescript-lsp** — TypeScript/JavaScript files (`.ts`, `.tsx`, `.js`, `.jsx`, `.mts`, `.mjs`). Requires: `npm install -g typescript-language-server typescript`
-- **jdtls-lsp** — Java files (`.java`). Requires the `jdtls` launcher on `$PATH` plus a **JDK 21+** runtime (upstream Eclipse JDT.LS minimum). macOS install: `brew install jdtls` (Homebrew pulls a current JDK as a dependency; pin explicitly with `brew install openjdk@21 jdtls` only if you need that specific JDK version on your PATH for other reasons).
-
-If LSP features aren't working, verify the server binaries are installed and on `$PATH`.
-
-### Playwright (Browser Automation)
-MCP server for browser automation and E2E testing. Use for:
-- Writing and running end-to-end tests
-- Automating browser interactions (form fills, clicks, screenshots)
-- Testing web UIs without manual intervention
-
-### Context7 (Live Documentation)
-MCP that fetches up-to-date, version-specific library docs directly from source. Use it when:
-- Working with any external library or framework
-- Claude's knowledge about an API might be stale
-- Need accurate code examples for a specific version
-
-### Code Simplifier (`/simplify`)
-Reviews changed code for reuse, quality, and efficiency. Invoke after completing an implementation to clean up what was changed.
-
-### Frontend Design (`superpowers:frontend-design` or `/frontend-design`)
-Generates production-grade, distinctive UI — avoids generic AI aesthetics. Use for:
-- Building web components, pages, or full interfaces
-- When design quality matters (not throwaway prototypes)
-- **Never use** generic fonts (Inter, Arial, Roboto) or purple gradients
-
-### Claude MD Management
-Two tools for keeping CLAUDE.md files accurate:
-- `claude-md-management:claude-md-improver` — Audit and improve any CLAUDE.md
-- `/revise-claude-md` — Capture session learnings at end of session
-
-Use `/revise-claude-md` at the end of any session where new patterns, gotchas, or conventions were discovered.
-
-### Notion Integration
-Full Notion workspace access via MCP. Key slash commands:
-- `/Notion:search` — Search workspace
-- `/Notion:create-task` — Create task with defaults
-- `/Notion:tasks:build <url>` — Build implementation task from a Notion page
-- `/Notion:tasks:plan <url>` — Create plan from a Notion page
-- `/Notion:tasks:explain-diff` — Document a code change in Notion
-
-Use for: capturing decisions, meeting prep, turning specs into tasks, knowledge documentation.
-
-### Chrome DevTools MCP (`chrome-devtools-mcp`)
-Low-level Chrome DevTools Protocol access — performance traces, network inspection, console capture, accessibility audits, memory snapshots. Use when Playwright's higher-level API is insufficient (LCP debugging, memory leak hunts, real-network-condition emulation). Requires Chrome/Chromium with `--remote-debugging-port` enabled.
-
-### Microsoft Docs (`microsoft-docs`)
-MCP for searching and fetching from Microsoft Learn (Azure, .NET, M365, Windows, Bicep, etc.). Use whenever code touches a Microsoft SDK or API — catches hallucinated `.NET` methods and confirms current signatures. Three sub-tools: `microsoft_docs_search` (breadth), `microsoft_code_sample_search` (working snippets), `microsoft_docs_fetch` (full pages).
-
-### Hugging Face Skills (`huggingface-skills`)
-A bundle of 12+ skills for Hugging Face Hub workflows: model selection by benchmark (`huggingface-best`), local inference (`huggingface-local-models` via llama.cpp), training (sentence-transformers, vision, LLM via TRL/Unsloth on HF Jobs), datasets (`huggingface-datasets`), papers (`huggingface-papers`), Gradio (`huggingface-gradio`), Trackio, ZeroGPU, and the `hf` CLI. Use for any ML-engineering task that touches the Hub. Some skills need `hf` CLI + a Hugging Face API token.
-
-### Security Guidance (`/security-review`)
-Security-aware code review skill that scans pending changes for OWASP-top-10-class issues. Use before merge on any code that handles auth, input parsing, file uploads, secrets, network calls, or DB queries. Complements (not replaces) the general code-review skill.
-
-### Optibot (`optibot`)
-Optimization-focused review skill — targets performance, allocations, complexity. Pairs with `code-simplifier`: simplifier targets *clarity*, optibot targets *speed/cost*. Use after profiling has identified a hot path, or when shipping code into a known throughput / latency budget. Skip for prototypes where perf isn't a concern yet.
-
-### Remember (`/remember`)
-Session-state checkpointing skill. Persists transient task state across session boundaries — bridges the auto-memory system's gap for in-progress work that isn't a "memory" yet but needs to survive a session restart. Use at session end when work is mid-flight; the next session can `/remember` to resume.
-
-### Andrej Karpathy Skills (`andrej-karpathy-skills`)
-Behavioral guidelines (Karpathy-style) for reducing common LLM coding failure modes — overcomplication, surface assumptions, weak success criteria, missing error-class definitions. Low cost, broadly applicable; the kit leaves it on by default. Complements superpowers' workflow discipline with content-specific heuristics.
+| Tool | Reach for it when |
+|---|---|
+| **superpowers** | The backbone. Invoke `/superpowers:using-superpowers` at the start of any conversation. Brainstorm → plan → worktree → TDD → verify → review → finish. |
+| **feature-dev** | **Mandatory for new features.** Any "add/build/create/implement". Seven phases; never skip phase 3 (clarifying questions) or the approval gate before phase 5. |
+| **gopls / typescript / jdtls LSP** | Automatic in matching files. Needs the binary on `$PATH`; jdtls also needs JDK 21+. |
+| **playwright** · **chrome-devtools-mcp** | Browser automation and E2E. Drop to chrome-devtools for CDP-level work: LCP traces, memory snapshots, network conditions. |
+| **context7** · **microsoft-docs** | Live library docs. Use whenever an external API is involved rather than trusting recall; microsoft-docs for anything .NET/Azure/M365. |
+| **code-simplifier** (`/simplify`) · **optibot** | The O role. Simplifier targets clarity, optibot targets speed and cost — pair them on hot paths. |
+| **security-guidance** (`/security-review`) | Before merging anything touching auth, input parsing, uploads, secrets, network or DB. |
+| **frontend-design** | Production-grade UI. Never generic fonts or purple gradients. |
+| **notion** | Capture decisions, turn specs into tasks, meeting prep. |
+| **huggingface-skills** | Any ML-engineering task touching the Hub. |
+| **claude-md-management** | `/revise-claude-md` at the end of a session that discovered new patterns. |
+| **remember** (`/remember`) | Session end with work mid-flight. |
+| **andrej-karpathy-skills** | Always on. Reduces overcomplication and unstated assumptions. |
+| **caveman** | Opt-in terse output when token cost dominates. Never overrides the mandatory rules above — it compresses how work is reported, not whether it meets the gates. |
+| **spec-kit** | Optional spec-first alternative for greenfield or multi-contributor work. The full playbook, including where this kit is stricter than upstream, is in `~/.claude/docs/tools/spec-kit.md`. Do not run it and `/feature-dev` for the same feature. |
 
 ### Berry (Evidence Verification) — MANDATORY
 
@@ -370,98 +297,6 @@ Only `mcp_env.json` is read for credentials; if your `config.json` still has an
 `api_key`, delete that field — everything keeps working.
 
 If verification calls start failing, first check that the OpenRouter key is still valid (`curl -H "Authorization: Bearer $KEY" https://openrouter.ai/api/v1/models | head`), then check OpenRouter status. A self-hosted llama.cpp backend remains an option for offline / air-gapped work — see Berry's upstream docs for the alternative config.
-
----
-
-### Spec-Kit (`specify` CLI) — optional spec-driven alternative
-
-[GitHub `spec-kit`](https://github.com/github/spec-kit) is a CLI (`specify`) that installs a set of `/speckit-*` agent skills into a project's `.claude/skills/` directory and scaffolds a `.specify/` working area. It gives you a more formal spec-first workflow than the kit's default brainstorm → plan → TDD path: a project Constitution at the top, then per-feature Specify → Clarify → Plan → Tasks → Analyze → Implement.
-
-**When to use spec-kit instead of `/superpowers:brainstorming` + `/superpowers:writing-plans`:**
-- New greenfield project where a written Constitution + governance is the bigger win than fast iteration.
-- Multi-contributor work where the specs/plans need to be artifacts other people read.
-- Any feature where stakeholder review of `spec.md` will happen before implementation starts.
-
-**When to stick with the default workflow:**
-- Bugfixes, refactors, single-session changes — spec-kit's ceremony overhead doesn't pay back at small scale.
-- Anything that's already mid-flight in a `/feature-dev` run.
-
-**Setup (per project, one-time):**
-```sh
-specify init --here --integration claude   # writes .claude/skills/speckit-* + .specify/
-```
-
-After init, the slash commands appear after a Claude Code restart:
-- `/speckit-constitution` — project principles (run first, once)
-- `/speckit-specify` — feature spec from a natural-language description
-- `/speckit-clarify` (optional) — drive out ambiguities before planning
-- `/speckit-plan` — tech stack + implementation plan
-- `/speckit-tasks` — actionable task list
-- `/speckit-analyze` (optional) — cross-artifact consistency check
-- `/speckit-implement` — execute all tasks
-
-Berry verification stacks on top of every spec-kit step — the playbook below specifies exactly where (Step 8). The hard prohibitions also forbid bypassing Berry by switching modes.
-
-#### How Claude drives spec-kit on the user's behalf (SDD playbook)
-
-When the user asks for something that fits a spec-driven flow (new feature, greenfield project, multi-step work that will outlive this session), follow this playbook **before** writing any code:
-
-In each step below, behavior labelled **[upstream]** matches the official spec-kit workflow as documented in <https://github.com/github/spec-kit>; behavior labelled **[kit policy]** is stricter than upstream and reflects this kit's discipline. Both layers apply when working in a project that has adopted this kit.
-
-**1. Detect the project's spec-kit state.** Check if `.specify/` exists at the project root.
-- **Exists** → existing spec-kit project; check `.specify/memory/constitution.md` to see if the Constitution is filled in. If not, the user is mid-setup; offer to run `/speckit-constitution`.
-- **Does not exist** → ask the user before running `specify init --here --integration claude`. Initialization writes files into their project, so it needs explicit consent — but once consented, do it via the shell yourself; do not ask the user to run the command. After init, the `/speckit-*` slash commands may not register until the agent re-discovers skills (in most agents this requires a session restart). **Stop and ask the user to restart** rather than guessing — invoking a skill that hasn't loaded yet wastes a turn.
-
-**2. Constitution before first spec [kit policy — stricter than upstream].** If `.specify/memory/constitution.md` is empty or placeholder-only, this kit requires you to run `/speckit-constitution` first (or ask the user to) before any `/speckit-specify`. Upstream's `speckit-implement` skill only requires the Constitution to exist *if present*, but skipping it leaves `/speckit-analyze` with no consistency baseline to check against — which is exactly the gate the kit relies on.
-
-**3. Spec describes WHAT and WHY, not HOW [upstream].** In `/speckit-specify`, focus on user goals, acceptance criteria, and constraints. Do not name a tech stack, framework, or library — those belong in `/speckit-plan`. Upstream is explicit: *"Be as explicit as possible about what you are trying to build and why. Do not focus on the tech stack at this point."* If the user describes the request in tech-stack terms ("build a React app with..."), separate the WHAT from the HOW: capture WHAT in spec, defer HOW to plan.
-
-**4. Clarify when ambiguous [upstream — strongly recommended].** After `/speckit-specify`, scan the produced `spec.md` for open questions, vague requirements, or unstated assumptions. If you find any, run `/speckit-clarify` before proceeding. **Do not invent answers** — clarify gets the user to commit to a single interpretation. The cost of one clarification round is far smaller than the cost of implementing the wrong interpretation.
-
-**5. Plan establishes the HOW [upstream].** Run `/speckit-plan` with the chosen tech stack and architectural decisions. Cite the relevant `docs/tools/*.md` entries for any plugin/MCP/LSP the plan depends on.
-
-**6. Tasks decompose the plan [upstream].** Run `/speckit-tasks` to generate an actionable task list. Upstream organizes tasks by phase and user story, with the rule that each task should be independently testable; upstream does NOT impose a minute bound. The kit's separate `superpowers:writing-plans` discipline does enforce 2–5 minute task granularity, so when you are working in *spec-kit mode* and the upstream output produces coarser tasks, decompose them further before handing off to `/speckit-implement` — the TDD step downstream is easier when tasks are bite-sized.
-
-**7. Analyze before implementing [kit policy — stricter than upstream].** Run `/speckit-analyze` after `/speckit-tasks`. Upstream documents Analyze as *optional*; this kit treats it as mandatory because cross-artifact drift (Constitution ↔ spec ↔ plan ↔ tasks) is the most common spec-driven failure mode, and analyze catches it for the cost of one query.
-
-**8. Implement under Berry [kit overlay].** Run `/speckit-implement` to execute the task list. Spec-kit itself has no verification overlay; this kit adds one: every step routes through `berry-plan-and-execute` per the Berry hard rules — no shortcuts. Test output is always captured as a Berry span (`berry-search-and-learn`) before any "tests pass" claim.
-
-**9. Update spec when intent changes [kit policy — derived from SDD principles].** If the user changes their mind mid-implementation, **update the spec first** (re-run `/speckit-specify` or edit `spec.md` directly), then re-run `/speckit-analyze` to surface what else needs to change. Upstream does not document this explicitly, but the principle is fundamental to spec-driven development — once implementation is allowed to drift from spec, the spec stops being a source of truth and becomes a lie that grows over time.
-
-**Hard prohibitions for spec-driven mode (this kit):**
-- Do not start implementation before the spec is approved by the user.
-- Do not skip `/speckit-analyze` because "the plan looks fine to me."
-- Do not run `/speckit-implement` if the Constitution is empty (kit-policy gate).
-- Do not invent answers to spec ambiguities — always `/speckit-clarify`.
-- Do not bypass Berry gates by switching to spec-driven mode; both layers stack.
-
-**Relationship to `/feature-dev`:** the global guidance "use `/feature-dev` for any new feature" assumes you have NOT opted into spec-kit for the project. When `.specify/` exists, **use spec-kit for new features instead of `/feature-dev`** — they cover the same ground (spec → plan → implement) but spec-kit produces durable on-disk artifacts (`spec.md`, `plan.md`, `tasks.md`) that survive across sessions, while `/feature-dev`'s subagent outputs are session-scoped. Do not run both for the same feature.
-
-If spec-kit isn't initialized and the user's request is small (bugfix, refactor, single-session task), use the default brainstorm → plan → TDD flow instead. Spec-kit overhead does not pay back at small scope.
-
----
-
-### Caveman — terse-output mode for token/context savings
-
-[`caveman`](https://github.com/JuliusBrussee/caveman) is a Claude Code plugin (`caveman@caveman`, shipped via the upstream `JuliusBrussee/caveman` marketplace) that makes the agent reply in radically condensed prose — short sentences, no filler, minimal markdown. Upstream measures the saving at roughly 75% fewer output tokens. The plugin is installed by the kit's `install.sh`; activation is opt-in per session, not always-on.
-
-**When to invoke caveman:**
-- Long working sessions where output tokens dominate cost (e.g. bulk refactors, large doc generation).
-- High-throughput review/triage where you want answers, not explanations.
-- When context is filling up and you need the agent to compress what it says without losing what it does.
-
-**When NOT to invoke caveman:**
-- Explanatory work where reasoning matters (debugging walkthroughs, teaching, design exploration).
-- Code review feedback that the user will read carefully — terse output loses nuance.
-- Any session under the `explanatory-output-style` plugin's `★ Insight` regime (the two styles conflict).
-
-**Install:** automatic — the kit's `install.sh` registers the `JuliusBrussee/caveman` marketplace and installs `caveman@caveman` along with the other 20 plugins. No manual step required. Upstream also offers a one-liner (`curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.sh | bash`) that detects every supported agent on the machine and installs for each, plus extras like the `caveman-shrink` MCP middleware and statusline badge — run that *after* the kit's installer if you want those extras.
-
-**Activate per session:** invoke the plugin explicitly (slash command exposed by the plugin — see the plugin's docs for the current command name) to switch the output style for the rest of that session until cleared. Modes (per upstream): `lite` (drop filler), `full` (default caveman), `ultra` (telegraphic), `wenyan` (classical Chinese, even shorter).
-
-**Hard rule:** caveman never overrides the kit's mandatory rules. Berry verification, evidence-before-assertions, the MANDATORY code-search order, and the spec-kit / Berry hard prohibitions all still apply — caveman compresses *how* the agent reports work, not *whether* the work meets the kit's quality gates.
-
----
 
 ## Workflow Order (For Any Non-Trivial Task)
 
