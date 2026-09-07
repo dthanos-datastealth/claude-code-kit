@@ -32,9 +32,9 @@ flowchart LR
     tmpl[claude/CLAUDE.md<br/>scrubbed template]
     sets[claude/settings.json<br/>22 plugins · 6 marketplaces<br/>effortLevel: xhigh]
     mem[claude/memory/MEMORY.md<br/>auto-memory index]
-    docs[docs/<br/>philosophy · workflow · prereqs ·<br/>corporate-tls · memory-system ·<br/>tracker-system · tools/ ×23]
-    sc[scripts/<br/>merge-settings · intelligent-settings-merge · intelligent-claude-md-merge · upgrade ·<br/>lint-scrubbing · lint-tools-docs · lint-plugin-marketplaces · lint-mcp-hardcoded-paths · lint-merge-policy ·<br/>diff-against-live · test-install-isolated · test-upgrade-isolated]
-    tests[tests/<br/>76 pytest cases ·<br/>isolated-HOME harness]
+    docs[docs/<br/>philosophy · workflow · verification-standards ·<br/>prereqs · corporate-tls · memory-system ·<br/>tracker-system · tools/ ×24]
+    sc[scripts/<br/>merge-settings · intelligent-settings-merge · intelligent-claude-md-merge · upgrade ·<br/>lint-scrubbing · lint-tools-docs · lint-plugin-marketplaces · lint-mcp-hardcoded-paths · lint-plugin-skill-layout · lint-merge-policy ·<br/>diff-against-live · test-install-isolated · test-upgrade-isolated]
+    tests[tests/<br/>119 pytest cases ·<br/>isolated-HOME harness]
   end
 
   cmd -->|preflight| pre{All prereqs on PATH?}
@@ -132,7 +132,9 @@ Three load-bearing rules behind the diagram:
 - **3-strike rule.** If a Berry audit fails three times on the same claim
   set, STOP and surface the partial results. Do not silently loop.
 
-See `docs/workflow.md` for the full 10-step procedure, `docs/philosophy.md`
+See `docs/workflow.md` for the full 10-step procedure,
+`docs/verification-standards.md` for what the kit accepts as evidence,
+`docs/philosophy.md`
 for the reasoning, and `claude/CLAUDE.md` for the exact rules Claude reads
 every session.
 
@@ -235,7 +237,7 @@ local spec or the diff.
 | **Plugins (22)** | 17 from `anthropics/claude-plugins-official`: superpowers, feature-dev, code-simplifier, context7, claude-md-management, frontend-design, explanatory-output-style, notion, gopls-lsp, typescript-lsp, **jdtls-lsp** (Java), playwright, chrome-devtools-mcp, microsoft-docs, huggingface-skills, security-guidance, remember. 1 from `Optimal-AI/optibot-skill`: optibot (performance review). 1 from `dthanos-datastealth/hallbayes`: berry (evidence verifier; this is a Claude-Code-packaged fork of upstream `leochlon/hallbayes`). 1 from `multica-ai/andrej-karpathy-skills`. 1 from `JuliusBrussee/caveman`: caveman (token-savings terse-output mode). 1 from `dthanos-datastealth/claude-code-kit` (self-published): claude-code-kit (the kit's own upgrade/rollback/status/fix-notion-mcp-port skills — see `docs/upgrading.md`). |
 | **Berry verifier** | Defaults to OpenRouter `openai/gpt-4o-mini` (configured via `~/.berry/config.json` + `~/.berry/mcp_env.json`); self-hosted `llama.cpp` remains supported as the offline alternative. |
 | **Memory system** | `MEMORY.md` index template at `~/.claude/memory/`, plus `docs/memory-system.md` explaining the 4 memory types (user, feedback, project, reference), the index format, and the 200-line cap. |
-| **Tracker discipline** | The kit's quality loop runs on a coupled `Task` tool + `docs/TRACKER.md` substrate: agents claim work, surface findings as new tasks, and update `docs/TRACKER.md` in lockstep so any human reads one file to see full multi-iteration state. `claude/CLAUDE.md` ships the Phase Start Protocol (EnterPlanMode → approval → execute), Pre-Dispatch Protocol (coordinator creates Dev + V + O tasks upfront), Verification Agent Protocol (steps A–G including hot-path `[WIRE-PATH MISS]` check), and Optimization Agent Protocol (dual-graph + LSP redundancy check). `docs/tracker-system.md` is the full schema + examples. |
+| **Tracker discipline** | The kit's quality loop runs on a coupled `Task` tool + `docs/TRACKER.md` substrate: agents claim work, surface findings as new tasks, and update `docs/TRACKER.md` in lockstep so any human reads one file to see full multi-iteration state. `claude/CLAUDE.md` ships the Phase Start Protocol (EnterPlanMode → approval → execute), Pre-Dispatch Protocol (coordinator creates Dev + V + O tasks upfront), Verification Agent Protocol (steps A–G including hot-path `[WIRE-PATH MISS]` check), and Optimization Agent Protocol (dual-graph + LSP redundancy check, plus the redundant-WORK hunt that catches a step re-running an expensive call an earlier step already made). `docs/tracker-system.md` is the full schema + examples. |
 | **Per-tool rationale** | 24 markdown files under `docs/tools/` (one per plugin / MCP / skill / external dependency) following a strict 5-section schema enforced by `scripts/lint-tools-docs.py`. |
 | **Settings** | `effortLevel: xhigh` merged in; your existing `env` block (including any corporate-CA bundle vars) preserved byte-for-byte. |
 
@@ -662,7 +664,7 @@ claude-code-kit/
 ├── install.sh                         Bootstrap entry point
 ├── uninstall.sh                       Restore from latest backup
 ├── pyproject.toml                     pytest config
-├── .github/workflows/ci.yml           shellcheck + lints + 76 pytest cases
+├── .github/workflows/ci.yml           shellcheck + lints + 119 pytest cases
 ├── claude/                            Files copied/merged into ~/.claude/
 │   ├── CLAUDE.md                      Scrubbed opinionated template
 │   ├── settings.json                  22 plugins, 6 marketplaces, effortLevel: xhigh
@@ -670,6 +672,7 @@ claude-code-kit/
 ├── docs/
 │   ├── philosophy.md                  Why each rule exists
 │   ├── workflow.md                    The 10-step development loop
+│   ├── verification-standards.md      What counts as evidence, and why
 │   ├── prereqs.md                     Install steps per OS
 │   ├── corporate-tls.md               CA bundle setup for intercepted networks
 │   ├── memory-system.md               Auto-memory schema and conventions
@@ -706,6 +709,7 @@ claude-code-kit/
 │   ├── lint-tools-docs.py             Enforces 5-section schema
 │   ├── lint-plugin-marketplaces.py    Verifies every plugin resolves against its upstream marketplace.json
 │   ├── lint-mcp-hardcoded-paths.py    Scans installed plugins' .mcp.json for owner-specific paths
+│   ├── lint-plugin-skill-layout.py    Catches skills at paths Claude Code never discovers
 │   └── test-install-isolated.sh       Parallel-test install.sh in a temp HOME with leak check + post-install lints
 └── tests/                             pytest with isolated-HOME harness
 ```

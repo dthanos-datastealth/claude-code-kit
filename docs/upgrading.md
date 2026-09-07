@@ -50,11 +50,25 @@ it does not move you between channels. Do both halves:
 ```sh
 # Existing machine: stable -> prerelease
 git switch prerelease
-claude plugin marketplace add https://github.com/dthanos-datastealth/claude-code-kit.git#prerelease
-claude plugin marketplace add https://github.com/dthanos-datastealth/hallbayes.git#prerelease
+export CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1
+claude plugin marketplace add dthanos-datastealth/claude-code-kit@prerelease
+claude plugin marketplace add dthanos-datastealth/hallbayes@prerelease
 # then, in a Claude Code session:  /plugin update
 bash scripts/upgrade.sh --apply        # settings + CLAUDE.md half
 ```
+
+Two details in that snippet are load-bearing, and getting either wrong fails
+the add:
+
+- **Use the `owner/repo@ref` shorthand, not a `https://…/repo.git#ref` URL.**
+  `claude/settings.json` declares each marketplace as a `github` source, and
+  Claude Code refuses an add whose source *kind* differs from the declaration
+  for that name — `Cannot add marketplace "berry-marketplace": its network
+  source differs from the one declared for it in settings`. The shorthand is
+  the matching kind.
+- **Export `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` first.** The shorthand otherwise
+  clones over SSH (`Cloning via SSH: git@github.com:…`), which fails on a box
+  with no key loaded. `install.sh` exports this for you; a manual add does not.
 
 ```sh
 # Brand-new machine, straight onto the channel
@@ -65,8 +79,9 @@ cd claude-code-kit && ./install.sh
 ```sh
 # Back to stable
 git switch main
-claude plugin marketplace add https://github.com/dthanos-datastealth/claude-code-kit.git#main
-claude plugin marketplace add https://github.com/dthanos-datastealth/hallbayes.git#main
+export CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1
+claude plugin marketplace add dthanos-datastealth/claude-code-kit@main
+claude plugin marketplace add dthanos-datastealth/hallbayes@main
 # then:  /plugin update
 bash scripts/upgrade.sh --apply
 ```

@@ -42,3 +42,66 @@ def test_install_sh_really_does_not_register_an_mcp_server():
     install_sh = (REPO / "install.sh").read_text()
     assert "mcp add" not in install_sh
     assert "mcpServers" not in install_sh
+
+
+def test_documented_marketplace_adds_use_the_shorthand_form():
+    """Every `claude plugin marketplace add` we tell a user to run must use the
+    `owner/repo[@ref]` shorthand.
+
+    `claude/settings.json` declares each marketplace as a `github` source, and
+    Claude Code refuses an add whose source kind differs from the declaration
+    for that name. Verified against the real CLI:
+
+        $ claude plugin marketplace add https://github.com/…/hallbayes.git#prerelease
+        ✘ Failed to add marketplace: Cannot add marketplace "berry-marketplace":
+          its network source differs from the one declared for it in settings
+
+    while `dthanos-datastealth/hallbayes@prerelease` is accepted and resolves
+    the right ref. A doc that drifts back to the URL form hands testers a
+    command that cannot work.
+    """
+    import re
+    from pathlib import Path
+
+    repo = Path(__file__).resolve().parents[1]
+    offenders = []
+    for md in sorted(repo.glob("docs/**/*.md")) + [repo / "README.md"]:
+        for i, line in enumerate(md.read_text().splitlines(), 1):
+            m = re.search(r"marketplace add\s+(\S+)", line)
+            if not m:
+                continue
+            spec = m.group(1).strip("`\"'")
+            if spec.startswith(("http://", "https://", "git@")):
+                offenders.append(f"{md.relative_to(repo)}:{i}: {spec}")
+    assert not offenders, (
+        "URL-form marketplace add in user-facing docs; the CLI rejects it "
+        "against a github-declared source:\n  " + "\n  ".join(offenders)
+    )
+
+
+def test_readme_test_count_matches_the_suite():
+    """The README states how many pytest cases the kit ships.
+
+    Stale counts are a recorded past finding here (README claimed 21 plugins /
+    23 docs / 36 tests long after all three had moved). A number nobody checks
+    is a number that drifts, so this asserts it. If you added or removed tests,
+    update the two README occurrences — that is the whole fix.
+    """
+    import re
+    import subprocess
+    from pathlib import Path
+
+    repo = Path(__file__).resolve().parents[1]
+    out = subprocess.run(
+        ["python3", "-m", "pytest", "tests/", "-q", "--collect-only"],
+        cwd=repo, capture_output=True, text=True,
+    ).stdout
+    m = re.search(r"^(\d+) tests collected", out, re.M) or re.search(r"(\d+) tests? collected", out)
+    assert m, f"could not read collected count from pytest output:\n{out[-500:]}"
+    actual = int(m.group(1))
+
+    stated = {int(n) for n in re.findall(r"(\d+) pytest cases", (repo / "README.md").read_text())}
+    assert stated, "README no longer states a pytest case count"
+    assert stated == {actual}, (
+        f"README says {sorted(stated)} pytest cases; the suite collects {actual}"
+    )
