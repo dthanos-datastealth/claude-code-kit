@@ -43,6 +43,24 @@ contract changes; untagged for CLAUDE.md/docs edits.
   agent runs the suite while a developer does, in the same checkout, and it was
   observed doing exactly that. Each session now owns a subdirectory and removes
   only its own. The same reproduction is clean afterwards.
+- **An upgrade never delivered this release's substance.** The CLAUDE.md merger
+  treats a heading the manifest does not list as the user's own and preserves
+  their copy, and fourteen headings the kit ships were unlisted — both agent
+  protocols, all of Berry's operational rules, the TDD and V+O subsections. A
+  clean upgrade kept the previous release's text for every one, so the three
+  verification rules this release adds reached nobody who upgraded. All are
+  listed now, and a clean upgrade reproduces the shipped template byte for byte.
+- **A nested heading survived an upgrade the kit had retired.** Section matching
+  compares depth exactly, so the `### Spec-Kit` tombstone did not cover the
+  `#### How Claude drives spec-kit` playbook beneath it: 31 orphaned lines
+  stayed, refiled under an unrelated section, while the canonical copy lives in
+  `docs/tools/spec-kit.md`.
+- **The skill lint silently skipped misplaced skills.** It used frontmatter to
+  decide what counts as a skill, but every frontmatter field is optional — a
+  skill with none still loads, taking its name from the directory and its
+  description from the first paragraph. The lint now reports both kinds and
+  fails only on the confident case, so a third-party build fragment no longer
+  breaks the gate and a frontmatter-less misplaced skill is no longer invisible.
 - **CI had been failing on every run since 7 August, on both branches.** Two
   shellcheck findings — an optional-argument function called bare (SC2119) and
   a `cat file | tr` (SC2002) — failed the runner's apt-installed shellcheck
