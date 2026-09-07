@@ -4,11 +4,40 @@ The scratch root is shared between concurrent pytest sessions, so each session
 gets its own subdirectory and removes only that. Removing the shared root would
 delete a concurrently-running session's isolated HOMEs out from under it.
 """
+import os
 import shutil
 
 import pytest
 
 from tests.helpers import SESSION_TMP, TMP_ROOT
+
+
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True          # exists, owned by someone else
+    return True
+
+
+def pytest_sessionstart(session):
+    """Reap scratch dirs left by sessions that were killed.
+
+    `pytest_sessionfinish` does not run on SIGKILL, a crash or a CI timeout, so
+    those directories persist with their isolated HOME trees inside — leaking
+    disk, and making the `TMP_ROOT.rmdir()` below fail for every later session.
+    """
+    if not TMP_ROOT.is_dir():
+        return
+    for child in TMP_ROOT.glob("session-*"):
+        try:
+            pid = int(child.name.split("-", 1)[1])
+        except (IndexError, ValueError):
+            continue
+        if not _pid_alive(pid):
+            shutil.rmtree(child, ignore_errors=True)
 
 
 @pytest.fixture(autouse=True)

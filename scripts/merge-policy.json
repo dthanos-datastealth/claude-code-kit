@@ -14,8 +14,8 @@
     },
     "extraKnownMarketplaces": {
       "strategy": "union_dict",
-      "winner_on_conflict": "user",
-      "rationale": "User may have added custom marketplaces (e.g., internal org marketplace); upgrade must preserve them. Kit re-asserts its own marketplaces but doesn't touch user-added ones."
+      "winner_on_conflict": "kit",
+      "rationale": "User-added marketplaces (e.g. an internal org marketplace) must survive an upgrade untouched, which the union gives. But for a marketplace the KIT ships, the kit's declaration wins: the entry carries the release channel as a `ref`, and if the user's older copy won, the channel could never move. That is not theoretical \u2014 `claude plugin marketplace add owner/repo@ref` is refused when settings still declares the marketplace without that ref, so user-wins made the prerelease channel unreachable for every existing install. To point a kit marketplace somewhere else, register it under a different name."
     },
     "effortLevel": {
       "strategy": "scalar_user_wins_if_set",

@@ -22,14 +22,14 @@ def installed():
 
 
 def _top_level_docs() -> list[str]:
-    """The TOP_LEVEL_DOCS array from install.sh.
+    """The TOP_LEVEL_DOCS array from scripts/_kit_docs.sh.
 
     Read from the installer rather than restated here: a hardcoded copy silently
     stops testing whatever the installer gains next.
     """
-    body = (REPO / "install.sh").read_text()
+    body = (REPO / "scripts" / "_kit_docs.sh").read_text()
     block = re.search(r"^TOP_LEVEL_DOCS=\((.*?)^\)", body, re.S | re.M)
-    assert block, "TOP_LEVEL_DOCS array not found in install.sh"
+    assert block, "TOP_LEVEL_DOCS array not found in scripts/_kit_docs.sh"
     names = re.findall(r'"([^"]+)"', block.group(1))
     assert names, "TOP_LEVEL_DOCS parsed as empty"
     return names
@@ -40,7 +40,7 @@ def test_top_level_docs_copied(installed):
     dst = installed.home / ".claude" / "docs"
     assert dst.exists(), "docs dir should exist after install"
     for f in docs:
-        assert (REPO / "docs" / f).exists(), f"{f} is listed in install.sh but missing from docs/"
+        assert (REPO / "docs" / f).exists(), f"{f} is listed in _kit_docs.sh but missing from docs/"
         assert (dst / f).exists(), f"{f} should be installed at ~/.claude/docs/"
 
 

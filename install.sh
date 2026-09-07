@@ -14,6 +14,9 @@ err()  { printf '\033[1;31m[cck]\033[0m %s\n' "$*" >&2; }
 # kit_cache_snapshot, kit_log_history). Used by install.sh AND scripts/upgrade.sh.
 # shellcheck source=scripts/_kit_backup.sh
 . "${REPO_DIR}/scripts/_kit_backup.sh"
+# Reference-doc install (TOP_LEVEL_DOCS, kit_copy_docs), shared with upgrade.sh.
+# shellcheck source=scripts/_kit_docs.sh
+. "${REPO_DIR}/scripts/_kit_docs.sh"
 
 # Directories a prerequisite installer commonly writes to. `curl ... | sh`
 # installers export PATH for their own process only, so a tool installed in one
@@ -72,37 +75,6 @@ copy_templates() {
     mkdir -p "${CLAUDE_HOME}"
     cp "${REPO_DIR}/claude/CLAUDE.md" "${CLAUDE_HOME}/CLAUDE.md"
     log "  CLAUDE.md installed"
-}
-
-# Ship the kit's reference docs into ~/.claude/docs/ so CLAUDE.md
-# can reference them at a stable, machine-local path. Without this
-# step the docs only exist in the cloned kit repo, which Claude
-# Code sessions can't reliably locate.
-TOP_LEVEL_DOCS=(
-    "philosophy.md"
-    "workflow.md"
-    "verification-standards.md"
-    "prereqs.md"
-    "corporate-tls.md"
-    "memory-system.md"
-    "tracker-system.md"
-)
-
-copy_docs() {
-    log "Copying kit reference docs into ${CLAUDE_HOME}/docs/..."
-    local dst="${CLAUDE_HOME}/docs"
-    mkdir -p "${dst}/tools"
-
-    # Top-level guides (skip silently if any are missing from the kit)
-    for f in "${TOP_LEVEL_DOCS[@]}"; do
-        if [ -f "${REPO_DIR}/docs/${f}" ]; then
-            cp "${REPO_DIR}/docs/${f}" "${dst}/${f}"
-        fi
-    done
-
-    # Per-tool rationale docs (explicit glob, fails loudly if missing)
-    cp "${REPO_DIR}/docs/tools/"*.md "${dst}/tools/"
-    log "  Reference docs copied: ${#TOP_LEVEL_DOCS[@]} top-level + tools/"
 }
 
 merge_settings() {
@@ -255,7 +227,7 @@ main() {
     preflight
     backup_existing
     copy_templates
-    copy_docs
+    kit_copy_docs
     merge_settings
     install_memory_index
     register_marketplaces

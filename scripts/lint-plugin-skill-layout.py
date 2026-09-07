@@ -37,6 +37,28 @@ sys.path.insert(0, str(Path(__file__).parent))
 from _plugin_cache import is_pruned, iter_plugin_versions, resolve_cache_root  # noqa: E402
 
 
+def declared_skill_dirs(plugin_root: Path) -> set[Path]:
+    """Directories named by `plugin.json`'s `skills` field.
+
+    Per plugins-reference: an entry "can point to a directory that contains a
+    SKILL.md directly", and the field adds to the default `skills/` scan. So a
+    plugin may legitimately declare `skills: ["./skills"]` with its SKILL.md at
+    `skills/SKILL.md` — that file is discoverable and must not be reported.
+    """
+    manifest = plugin_root / ".claude-plugin" / "plugin.json"
+    if not manifest.is_file():
+        return set()
+    try:
+        declared = json.loads(manifest.read_text()).get("skills")
+    except (json.JSONDecodeError, OSError):
+        return set()
+    if isinstance(declared, str):
+        declared = [declared]
+    if not isinstance(declared, list):
+        return set()
+    return {(plugin_root / str(entry)).resolve() for entry in declared}
+
+
 def has_frontmatter(path: Path) -> bool:
     """True if the file opens with a YAML frontmatter block.
 
@@ -71,16 +93,19 @@ def undiscoverable_skills(plugin_root: Path) -> tuple[list[Path], list[Path]]:
     skills_root = plugin_root / "skills"
     if not skills_root.is_dir():
         return [], []
-    # Only files directly under skills/ are candidates, and a manifest `skills`
-    # entry names a directory one level below that — so a declared skill's own
-    # SKILL.md is never in this loop and needs no exemption. An exemption check
-    # used to sit here; it could not fire for that stated purpose, and the one
-    # case it did fire for defeated the lint, since a plugin declaring
-    # `skills: ["skills"]` matched the root and suppressed all its own findings.
+    # Exempt exactly one thing: the SKILL.md of a directory the manifest
+    # declares. An earlier version exempted any file whose PARENT was declared,
+    # which could never fire for a file directly under skills/ (its parent is
+    # always the root) and did fire for `skills: ["skills"]`, suppressing every
+    # finding for that plugin. Matching the file itself keeps the legitimate
+    # `skills/SKILL.md` case without reopening that hole.
+    exempt = {d / "SKILL.md" for d in declared_skill_dirs(plugin_root)}
     certain: list[Path] = []
     possible: list[Path] = []
     for entry in sorted(skills_root.iterdir()):
         if entry.is_file() and entry.suffix == ".md":
+            if entry.resolve() in exempt:
+                continue
             (certain if has_frontmatter(entry) else possible).append(entry)
     return certain, possible
 
@@ -137,7 +162,11 @@ def main() -> int:
         for e in errors:
             print(f"  ✘ {e}", file=sys.stderr)
         return 1
-    print("\nOK: every plugin skill is at a discoverable skills/<name>/SKILL.md path.")
+    if warnings:
+        print("\nNo undiscoverable skill found. The flat files above were not "
+              "classified — check them by hand.")
+    else:
+        print("\nOK: every plugin skill is at a discoverable skills/<name>/SKILL.md path.")
     return 0
 
 

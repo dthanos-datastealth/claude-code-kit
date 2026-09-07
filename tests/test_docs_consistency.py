@@ -106,9 +106,7 @@ def test_readme_test_count_matches_the_suite():
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 if not node.name.startswith("test_"):
                     continue
-                decorators = ast.dump(ast.Module(body=[], type_ignores=[]))
-                for dec in node.decorator_list:
-                    decorators += ast.dump(dec)
+                decorators = "".join(ast.dump(d) for d in node.decorator_list)
                 assert "parametrize" not in decorators, (
                     f"{path.name}::{node.name} is parametrized; this count no "
                     "longer matches what pytest collects — switch to a "
@@ -124,28 +122,46 @@ def test_readme_test_count_matches_the_suite():
     )
 
 
-def test_scratch_dir_is_per_session_not_shared():
-    """Two pytest sessions in one checkout must not delete each other's HOMEs.
+def test_scratch_dir_is_per_session_not_shared(tmp_path, monkeypatch):
+    """Session teardown must not remove a concurrent session's directory.
 
-    The scratch root is shared, and session teardown removes a directory. When
-    that directory was the shared root, the first session to finish wiped the
-    tree the second was still installing into. Reproduced: a full run with short
-    sessions finishing underneath it reported six failures across four modules,
-    none of them real. Each session now owns a subdirectory and removes only
-    that.
+    Every isolated HOME used to live under one shared `tests/.tmp` that session
+    teardown removed wholesale, so the first pytest session to finish deleted
+    the tree a second was still installing into. Reproduced before the fix: a
+    full run with short sessions finishing underneath it reported six failures
+    across four modules, none of them real.
+
+    Asserted by running the real teardown against a planted sibling, not by
+    reading conftest's source — a check on text you control is the proxy this
+    kit's own verification standards forbid.
     """
+    import importlib.util
     from pathlib import Path
 
     from tests.helpers import SESSION_TMP, TMP_ROOT
 
+    spec = importlib.util.spec_from_file_location(
+        "kit_conftest", Path(__file__).resolve().parent / "conftest.py")
+    conftest = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(conftest)
+
     assert SESSION_TMP != TMP_ROOT, "session scratch dir must not be the shared root"
     assert TMP_ROOT in SESSION_TMP.parents, "session dir should live under the shared root"
 
-    conftest = (Path(__file__).resolve().parent / "conftest.py").read_text()
-    assert "rmtree(SESSION_TMP" in conftest, "teardown must remove the session dir"
-    assert "rmtree(TMP_ROOT" not in conftest, (
-        "teardown must never rmtree the shared root — that is the bug this guards"
-    )
+    sibling = TMP_ROOT / "session-999999"
+    (sibling / "home").mkdir(parents=True, exist_ok=True)
+    marker = sibling / "home" / "CLAUDE.md"
+    marker.write_text("another session is using this")
+    try:
+        conftest.pytest_sessionfinish(session=None, exitstatus=0)
+        assert marker.exists(), (
+            "teardown deleted a concurrent session's files; that is the bug"
+        )
+    finally:
+        import shutil
+        shutil.rmtree(sibling, ignore_errors=True)
+        SESSION_TMP.mkdir(parents=True, exist_ok=True)
+
 
 
 def test_every_enabled_plugin_is_named_in_claude_md():
@@ -165,8 +181,9 @@ def test_every_enabled_plugin_is_named_in_claude_md():
     missing = []
     for key in enabled:
         name = key.split("@", 1)[0]
-        # Accept the plugin name or the words of it (e.g. "chrome-devtools-mcp"
-        # is named as "chrome-devtools-mcp"; "lsp-gopls" appears as "gopls").
+        # Accept the plugin's own name, or its stem with the lsp/mcp affixes
+        # removed — CLAUDE.md names "lsp-gopls" as "gopls" and
+        # "chrome-devtools-mcp" as "chrome-devtools".
         stem = name.replace("-lsp", "").replace("lsp-", "").replace("-mcp", "")
         if name not in body and stem not in body:
             missing.append(name)
@@ -198,3 +215,30 @@ def test_tool_docs_named_in_claude_md_exist():
                                    "constitution.md", "README.md"})
     assert not missing, (
         "CLAUDE.md names these docs but they do not exist:\n  " + "\n  ".join(missing))
+
+
+def test_no_test_name_is_defined_twice_in_a_module():
+    """A redefined test silently replaces the first one, and pytest says nothing.
+
+    This happened here: a rewritten upgrade guard was added above an older copy
+    of the same name, so the older, weaker version was the one that ran and the
+    rewrite never executed. The count is unchanged, the suite is green, and the
+    thing you thought you were testing is not tested.
+    """
+    import ast
+    from collections import Counter
+    from pathlib import Path
+
+    repo = Path(__file__).resolve().parents[1]
+    offenders = []
+    for path in sorted((repo / "tests").glob("test_*.py")):
+        names = [n.name for n in ast.walk(ast.parse(path.read_text()))
+                 if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                 and n.name.startswith("test_")]
+        for name, count in Counter(names).items():
+            if count > 1:
+                offenders.append(f"{path.name}::{name} defined {count} times")
+    assert not offenders, (
+        "a later definition shadows an earlier one; only the last runs:\n  "
+        + "\n  ".join(offenders)
+    )

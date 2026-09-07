@@ -253,5 +253,6 @@
       "match": "prefix",
       "parent": "## Installed Plugins"
     }
-  ]
+  ],
+  "parent_field_note": "`parent` is DESCRIPTIVE ONLY \u2014 it records where a section sits so this file can be read without opening CLAUDE.md. The merger matches on depth and heading text alone and never consults it, so do not rely on it to scope a prefix. A test asserts that no heading in the template matches more than one entry, which is the ambiguity `parent` would otherwise be papering over."
 }

@@ -145,3 +145,46 @@ def test_effort_level_kit_default_when_user_absent(temp_settings):
     kit_effort = json.loads(KIT_SETTINGS.read_text()).get("effortLevel")
     if kit_effort:
         assert merged["effortLevel"] == kit_effort
+
+
+def test_kit_can_move_its_own_marketplace_to_a_new_ref(temp_settings):
+    """An existing install must be able to follow the kit onto a new channel.
+
+    A release channel is the same marketplace at a different `ref`, declared in
+    the kit's own settings template. If an upgrade keeps the user's older
+    declaration for a marketplace the KIT ships, the ref never changes — and
+    `claude plugin marketplace add owner/repo@ref` is then refused, because the
+    CLI requires the add to match what settings declares for that name. The
+    channel becomes unreachable for everyone who already installed.
+
+    Reproduced end to end before this test existed: install from `main`, run the
+    documented switch, and both adds fail with "its network source differs from
+    the one declared for it in settings".
+
+    A marketplace the USER added is still theirs and must survive untouched.
+    """
+    _write_json(temp_settings, {
+        "extraKnownMarketplaces": {
+            # what an install from the previous channel left behind
+            "berry-marketplace": {
+                "source": {"source": "github", "repo": "dthanos-datastealth/hallbayes"}
+            },
+            # the user's own, which the kit must not touch
+            "acme-internal": {
+                "source": {"source": "github", "repo": "acme/claude-plugins"}
+            },
+        }
+    })
+    _run(KIT_SETTINGS, temp_settings)
+    merged = json.loads(temp_settings.read_text())
+    mkts = merged["extraKnownMarketplaces"]
+
+    kit = json.loads(KIT_SETTINGS.read_text())["extraKnownMarketplaces"]
+    for name, entry in kit.items():
+        assert mkts[name]["source"] == entry["source"], (
+            f"{name} kept the old declaration; the kit cannot move its own "
+            f"channel. got {mkts[name]['source']}, kit ships {entry['source']}"
+        )
+    assert mkts["acme-internal"]["source"]["repo"] == "acme/claude-plugins", (
+        "the user's own marketplace was overwritten"
+    )

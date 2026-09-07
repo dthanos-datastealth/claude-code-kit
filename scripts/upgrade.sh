@@ -40,6 +40,9 @@ KIT_SETTINGS="${REPO_DIR}/claude/settings.json"
 
 # shellcheck source=scripts/_kit_backup.sh
 . "${REPO_DIR}/scripts/_kit_backup.sh"
+# Reference-doc install (TOP_LEVEL_DOCS, kit_copy_docs), shared with install.sh.
+# shellcheck source=scripts/_kit_docs.sh
+. "${REPO_DIR}/scripts/_kit_docs.sh"
 
 MODE="apply"
 ROLLBACK_TARGET=""
@@ -151,6 +154,11 @@ fi
 
 # CLAUDE.md merge
 log "CLAUDE.md merge..."
+# Expanded below as ${prev_arg[@]+"${prev_arg[@]}"}: under `set -u`, bash 3.2 —
+# still the system bash on macOS — treats "${prev_arg[@]}" on an EMPTY array as
+# an unbound variable and aborts. That is the path taken by any install with no
+# cached previous CLAUDE.md, so the upgrade failed outright rather than merging
+# without a baseline.
 prev_arg=()
 if [ -f "${KIT_CACHE_DIR}/CLAUDE.md" ]; then
     prev_arg=(--prev "${KIT_CACHE_DIR}/CLAUDE.md")
@@ -159,7 +167,7 @@ python3 "${MERGER_CLAUDE_MD}" "${KIT_CLAUDE_MD}" "${CLAUDE_HOME}/CLAUDE.md" \
     --manifest "${MANIFEST}" \
     --conflict-dir "${CONFLICT_DIR}" \
     --mode "${MODE}" \
-    "${prev_arg[@]}" || rc=$?
+    ${prev_arg[@]+"${prev_arg[@]}"} || rc=$?
 rc=${rc:-0}
 if [ "${rc}" -ne 0 ]; then
     err "CLAUDE.md merge failed (rc=${rc}). Aborting upgrade."
@@ -171,6 +179,16 @@ log "settings.json merge..."
 if [ "${MODE}" = "apply" ]; then
     python3 "${MERGER_SETTINGS}" "${KIT_SETTINGS}" "${CLAUDE_HOME}/settings.json" \
         --policy "${POLICY}"
+fi
+
+# Reference docs. CLAUDE.md points at these by path, so refreshing it without
+# them leaves dangling pointers — which is what happened when copy_docs lived
+# only in install.sh: an upgraded machine got a CLAUDE.md citing a doc it did
+# not have, and kept the previous release's copy of every other one.
+if [ "${MODE}" = "apply" ]; then
+    kit_copy_docs
+else
+    log "(dry-run: would refresh ${CLAUDE_HOME}/docs/)"
 fi
 
 # Update kit cache + version marker

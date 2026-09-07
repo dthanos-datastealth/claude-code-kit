@@ -173,3 +173,52 @@ def test_a_frontmatterless_skill_is_still_reported(tmp_path):
     res = _run(p)
     out = res.stdout + res.stderr
     assert "deploy.md" in out, "a frontmatter-less flat skill was reported nowhere:\n" + out
+
+
+def test_manifest_may_declare_the_skills_root_itself(tmp_path):
+    """`skills: ["./skills"]` with `skills/SKILL.md` is a legal layout.
+
+    plugins-reference: a skill path "can point to a directory that contains a
+    SKILL.md directly", and the field adds to the default `skills/` scan. That
+    SKILL.md is discoverable, so reporting it — with advice to move it to
+    `skills/SKILL/SKILL.md` — is a false positive.
+    """
+    p = _plugin(tmp_path, manifest_extra={"skills": ["./skills"]})
+    (p / "skills").mkdir(parents=True, exist_ok=True)
+    _write(p / "skills" / "SKILL.md")
+    res = _run(p)
+    out = res.stdout + res.stderr
+    assert res.returncode == 0, "a declared skills-root SKILL.md was flagged:\n" + out
+    assert "SKILL.md is a flat file" not in out
+
+
+def test_declaring_the_root_does_not_suppress_other_findings(tmp_path):
+    """The exemption is one file, not a blanket for the plugin.
+
+    An earlier version exempted anything whose parent was declared, so
+    `skills: ["skills"]` matched the root and silenced every finding for that
+    plugin — an escape hatch from the lint.
+    """
+    p = _plugin(tmp_path, name="rootdecl", manifest_extra={"skills": ["./skills"]})
+    (p / "skills").mkdir(parents=True, exist_ok=True)
+    _write(p / "skills" / "SKILL.md")
+    _write(p / "skills" / "rollback.md")          # a real skill, wrong place
+    res = _run(p)
+    out = res.stdout + res.stderr
+    assert res.returncode != 0, "declaring the root suppressed a real finding:\n" + out
+    assert "rollback.md" in out
+    assert "SKILL.md is a flat file" not in out
+
+
+def test_summary_does_not_claim_all_clear_while_warning(tmp_path):
+    """Do not print warnings and then an unqualified all-clear."""
+    p = _plugin(tmp_path, name="warnonly")
+    (p / "skills").mkdir(parents=True, exist_ok=True)
+    (p / "skills" / "fragment.md").write_text("Just prose, no frontmatter.\n")
+    res = _run(p)
+    out = res.stdout + res.stderr
+    assert res.returncode == 0
+    assert "fragment.md" in out
+    assert "OK: every plugin skill is at a discoverable" not in out, (
+        "the summary contradicts the warning above it:\n" + out
+    )

@@ -50,15 +50,23 @@ it does not move you between channels. Do both halves:
 ```sh
 # Existing machine: stable -> prerelease
 git switch prerelease
+bash scripts/upgrade.sh --apply        # FIRST: settings + CLAUDE.md half
+
 export CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1
 claude plugin marketplace add dthanos-datastealth/claude-code-kit@prerelease
 claude plugin marketplace add dthanos-datastealth/hallbayes@prerelease
 # then, in a Claude Code session:  /plugin update
-bash scripts/upgrade.sh --apply        # settings + CLAUDE.md half
 ```
 
-Two details in that snippet are load-bearing, and getting either wrong fails
-the add:
+Three details in that snippet are load-bearing, and getting any of them wrong
+fails the add:
+
+- **Run `scripts/upgrade.sh` before the marketplace adds, not after.** The add
+  is checked against what `~/.claude/settings.json` declares for that name, and
+  `upgrade.sh` is what writes the new `ref` there. Run the adds first and both
+  are refused, because settings still declares the marketplace without a ref.
+  Verified end to end: install from `main`, then follow this recipe in each
+  order.
 
 - **Use the `owner/repo@ref` shorthand, not a `https://…/repo.git#ref` URL.**
   `claude/settings.json` declares each marketplace as a `github` source, and
@@ -79,11 +87,12 @@ cd claude-code-kit && ./install.sh
 ```sh
 # Back to stable
 git switch main
+bash scripts/upgrade.sh --apply        # again, settings half first
+
 export CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1
 claude plugin marketplace add dthanos-datastealth/claude-code-kit@main
 claude plugin marketplace add dthanos-datastealth/hallbayes@main
 # then:  /plugin update
-bash scripts/upgrade.sh --apply
 ```
 
 `/claude-code-kit:status` reports which channel and commit the current install
@@ -91,6 +100,24 @@ came from, so you can confirm the switch took effect. Promoting a channel is a
 pull request from `prerelease` to `main` that flips the `ref` values and the
 plugin versions; a test in the suite fails until they are flipped, so a promote
 cannot silently leave stable users pointed at the prerelease channel.
+
+### When the upgrade stops instead of proceeding
+
+`scripts/upgrade.sh` runs the CLAUDE.md merge non-interactively. If you edited a
+section the kit owns and the kit also changed it, that is a conflict, and with
+no terminal to prompt on the merge exits non-zero and the upgrade aborts with
+your file untouched. Nothing is written and nothing is lost.
+
+This surface grew deliberately. The kit now declares every section it ships,
+including the subsections of the mandatory protocols, because a section it did
+not declare was silently kept at your old version — which is how a release's new
+rules reached nobody who upgraded. The cost is that an edit inside one of those
+subsections now blocks the upgrade rather than being quietly preserved.
+
+To get past it, either run the merge where it can prompt you
+(`python3 scripts/intelligent-claude-md-merge.py claude/CLAUDE.md ~/.claude/CLAUDE.md --prev <cached>`),
+or move your own material into a section of your own — any heading the kit has
+never shipped is yours and is preserved verbatim, forever.
 
 ## Merge semantics
 
