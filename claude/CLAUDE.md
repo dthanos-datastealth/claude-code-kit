@@ -184,10 +184,10 @@ For every finding the V agent produces, call `TaskCreate`. On its own task, call
 
 ## Installed Plugins & When to Use Them
 
-Every plugin, MCP and skill below has a depth-reference at
-`~/.claude/docs/tools/<name>.md`, installed by `install.sh`, following a strict
+Every plugin, MCP and skill below has a depth-reference in
+`~/.claude/docs/tools/`, installed by `install.sh`, following a strict
 five-section schema: *What it does · Why it's in this kit · When you'd disable
-it · Source · Cost / footprint*. **Read the depth-reference** before invoking a
+it · Source · Cost / footprint*. The table names the file where it is not simply the tool's own name. **Read the depth-reference** before invoking a
 tool whose cost you can't recall, when asked "what does X do?" or "should I
 disable X?", when behaviour surprises you (the "when you'd disable it" section
 lists the wrong-tool cases), or when you need the upstream source.
@@ -202,8 +202,8 @@ list, re-run `install.sh` — `copy_docs` populates it.
 |---|---|
 | **superpowers** | The backbone. Invoke `/superpowers:using-superpowers` at the start of any conversation. Brainstorm → plan → worktree → TDD → verify → review → finish. |
 | **feature-dev** | **Mandatory for new features.** Any "add/build/create/implement". Seven phases; never skip phase 3 (clarifying questions) or the approval gate before phase 5. |
-| **gopls / typescript / jdtls LSP** | Automatic in matching files. Needs the binary on `$PATH`; jdtls also needs JDK 21+. |
-| **playwright** · **chrome-devtools-mcp** | Browser automation and E2E. Drop to chrome-devtools for CDP-level work: LCP traces, memory snapshots, network conditions. |
+| **gopls / typescript / jdtls LSP** (`lsp-gopls.md`, `lsp-typescript.md`, `jdtls-lsp.md`) | Automatic in matching files. Needs the binary on `$PATH`; jdtls also needs JDK 21+. |
+| **playwright** (`playwright-mcp.md`) · **chrome-devtools-mcp** | Browser automation and E2E. Drop to chrome-devtools for CDP-level work: LCP traces, memory snapshots, network conditions. |
 | **context7** · **microsoft-docs** | Live library docs. Use whenever an external API is involved rather than trusting recall; microsoft-docs for anything .NET/Azure/M365. |
 | **code-simplifier** (`/simplify`) · **optibot** | The O role. Simplifier targets clarity, optibot targets speed and cost — pair them on hot paths. |
 | **security-guidance** (`/security-review`) | Before merging anything touching auth, input parsing, uploads, secrets, network or DB. |
@@ -212,6 +212,7 @@ list, re-run `install.sh` — `copy_docs` populates it.
 | **huggingface-skills** | Any ML-engineering task touching the Hub. |
 | **claude-md-management** | `/revise-claude-md` at the end of a session that discovered new patterns. |
 | **remember** (`/remember`) | Session end with work mid-flight. |
+| **claude-code-kit** | This kit's own plugin. `/claude-code-kit:status` reports the installed channel, version and commit; `:upgrade` and `:rollback` drive the upgrade scripts; `:fix-notion-mcp-port` repairs the Notion re-auth port. |
 | **andrej-karpathy-skills** | Always on. Reduces overcomplication and unstated assumptions. |
 | **caveman** | Opt-in terse output when token cost dominates. Never overrides the mandatory rules above — it compresses how work is reported, not whether it meets the gates. |
 | **spec-kit** | Optional spec-first alternative for greenfield or multi-contributor work. The full playbook, including where this kit is stricter than upstream, is in `~/.claude/docs/tools/spec-kit.md`. Do not run it and `/feature-dev` for the same feature. |
@@ -317,7 +318,9 @@ If verification calls start failing, first check that the OpenRouter key is stil
 ---
 
 ## Explanatory Output Style
-A SessionStart hook is active that adds `★ Insight` blocks after code. These explain:
+The `explanatory-output-style` plugin installs a SessionStart hook that adds
+`★ Insight` blocks after code. Depth-reference:
+`~/.claude/docs/tools/explanatory-output-style.md`. These explain:
 - Why specific implementation choices were made
 - Patterns and trade-offs relevant to this codebase
 - Non-obvious decisions

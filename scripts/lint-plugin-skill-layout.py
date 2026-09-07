@@ -37,34 +37,20 @@ sys.path.insert(0, str(Path(__file__).parent))
 from _plugin_cache import is_pruned, iter_plugin_versions, resolve_cache_root  # noqa: E402
 
 
-def declared_skill_dirs(plugin_root: Path) -> set[Path]:
-    """Skill directories named by `plugin.json`'s `skills` field.
-
-    Each entry names a directory that itself contains SKILL.md, so its SKILL.md
-    is discoverable and must not be reported as a flat file.
-    """
-    manifest = plugin_root / ".claude-plugin" / "plugin.json"
-    if not manifest.is_file():
-        return set()
-    try:
-        declared = json.loads(manifest.read_text()).get("skills")
-    except (json.JSONDecodeError, OSError):
-        return set()
-    if isinstance(declared, str):
-        declared = [declared]
-    if not isinstance(declared, list):
-        return set()
-    return {(plugin_root / str(entry)).resolve() for entry in declared}
-
-
 def has_frontmatter(path: Path) -> bool:
     """True if the file opens with a YAML frontmatter block.
 
-    This is what separates a skill from a prose fragment. Every real skill
-    declares `name` and `description` in frontmatter, so a flat `.md` that has
-    it is a skill that will never load. One without it is a build input or a
-    fragment that shares the directory — `caveman` keeps `native-core.md` next
-    to `compile.mjs` and `generated/` — and was never going to load anyway.
+    This does NOT decide whether a file is a skill — the docs are explicit that
+    every frontmatter field is optional (skills.md:330 "All fields are
+    optional"; `name` defaults to the directory name at :338; `description`
+    falls back to the first paragraph at :339), so a skill loads without any.
+
+    It decides only how confident the report can be. A flat `.md` carrying
+    frontmatter is a skill at a path that cannot load, and is reported as an
+    error. One without it may be a skill or may be a build fragment sharing the
+    directory — `caveman` keeps `native-core.md` beside `compile.mjs` and
+    `generated/` — so it is reported as a warning for a human to judge, rather
+    than failing the gate on another project's layout.
     """
     try:
         with path.open(encoding="utf-8", errors="replace") as fh:
@@ -77,33 +63,44 @@ def has_frontmatter(path: Path) -> bool:
     return False
 
 
-def undiscoverable_skills(plugin_root: Path) -> list[Path]:
-    """Flat `*.md` skill files directly under the plugin's own top-level `skills/`."""
+def undiscoverable_skills(plugin_root: Path) -> tuple[list[Path], list[Path]]:
+    """Flat `*.md` files directly under the plugin's own top-level `skills/`.
+
+    Returns (certain, possible): those carrying frontmatter, and those not.
+    """
     skills_root = plugin_root / "skills"
     if not skills_root.is_dir():
-        return []
-    exempt = declared_skill_dirs(plugin_root)
-    findings = []
+        return [], []
+    # Only files directly under skills/ are candidates, and a manifest `skills`
+    # entry names a directory one level below that — so a declared skill's own
+    # SKILL.md is never in this loop and needs no exemption. An exemption check
+    # used to sit here; it could not fire for that stated purpose, and the one
+    # case it did fire for defeated the lint, since a plugin declaring
+    # `skills: ["skills"]` matched the root and suppressed all its own findings.
+    certain: list[Path] = []
+    possible: list[Path] = []
     for entry in sorted(skills_root.iterdir()):
         if entry.is_file() and entry.suffix == ".md":
-            # A declared skill directory's own SKILL.md is discoverable.
-            if entry.parent.resolve() in exempt:
-                continue
-            # Only a file that is actually a skill can be an undiscoverable one.
-            if not has_frontmatter(entry):
-                continue
-            findings.append(entry)
-    return findings
+            (certain if has_frontmatter(entry) else possible).append(entry)
+    return certain, possible
 
 
-def scan(plugin_root: Path, label: str, errors: list[str]) -> None:
+def scan(plugin_root: Path, label: str, errors: list[str],
+         warnings: list[str]) -> None:
     if is_pruned(plugin_root, plugin_root.parent):
         return
-    for flat in undiscoverable_skills(plugin_root):
+    certain, possible = undiscoverable_skills(plugin_root)
+    for flat in certain:
         errors.append(
             f"{label}: skills/{flat.name} is a flat file — Claude Code discovers "
             f"skills only at skills/<name>/SKILL.md, so this never loads. Move it "
             f"to skills/{flat.stem}/SKILL.md (or to commands/ if it is a command)."
+        )
+    for flat in possible:
+        warnings.append(
+            f"{label}: skills/{flat.name} is a flat file with no frontmatter. If "
+            f"it is a skill it never loads and belongs at skills/{flat.stem}/"
+            f"SKILL.md; if it is a build input or a fragment, it is fine where it is."
         )
 
 
@@ -125,8 +122,15 @@ def main() -> int:
         print(f"Scanning {len(roots)} installed plugin versions under {cache_root}/...", flush=True)
 
     errors: list[str] = []
+    warnings: list[str] = []
     for root, label in roots:
-        scan(root, label, errors)
+        scan(root, label, errors, warnings)
+
+    if warnings:
+        print("\nFlat markdown under skills/, no frontmatter — check these by hand:",
+              file=sys.stderr)
+        for w in warnings:
+            print(f"  ! {w}", file=sys.stderr)
 
     if errors:
         print("\nUndiscoverable plugin skills found:", file=sys.stderr)

@@ -86,24 +86,41 @@ def test_readme_test_count_matches_the_suite():
     23 docs / 36 tests long after all three had moved). A number nobody checks
     is a number that drifts, so this asserts it. If you added or removed tests,
     update the two README occurrences — that is the whole fix.
+
+    Counted by parsing the test files, not by spawning `pytest --collect-only`:
+    this session has already collected those tests, so re-collecting them in a
+    subprocess is work the run just did. The two agree exactly while the suite
+    uses no `parametrize`, which the assertion below enforces.
     """
+    import ast
     import re
-    import subprocess
     from pathlib import Path
 
     repo = Path(__file__).resolve().parents[1]
-    out = subprocess.run(
-        ["python3", "-m", "pytest", "tests/", "-q", "--collect-only"],
-        cwd=repo, capture_output=True, text=True,
-    ).stdout
-    m = re.search(r"^(\d+) tests collected", out, re.M) or re.search(r"(\d+) tests? collected", out)
-    assert m, f"could not read collected count from pytest output:\n{out[-500:]}"
-    actual = int(m.group(1))
+    tests_dir = repo / "tests"
+
+    total = 0
+    for path in sorted(tests_dir.glob("test_*.py")):
+        tree = ast.parse(path.read_text())
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if not node.name.startswith("test_"):
+                    continue
+                decorators = ast.dump(ast.Module(body=[], type_ignores=[]))
+                for dec in node.decorator_list:
+                    decorators += ast.dump(dec)
+                assert "parametrize" not in decorators, (
+                    f"{path.name}::{node.name} is parametrized; this count no "
+                    "longer matches what pytest collects — switch to a "
+                    "collection-based count"
+                )
+                total += 1
+    assert total, "found no test functions to count"
 
     stated = {int(n) for n in re.findall(r"(\d+) pytest cases", (repo / "README.md").read_text())}
     assert stated, "README no longer states a pytest case count"
-    assert stated == {actual}, (
-        f"README says {sorted(stated)} pytest cases; the suite collects {actual}"
+    assert stated == {total}, (
+        f"README says {sorted(stated)} pytest cases; the suite defines {total}"
     )
 
 
@@ -129,3 +146,55 @@ def test_scratch_dir_is_per_session_not_shared():
     assert "rmtree(TMP_ROOT" not in conftest, (
         "teardown must never rmtree the shared root — that is the bug this guards"
     )
+
+
+def test_every_enabled_plugin_is_named_in_claude_md():
+    """An agent reads CLAUDE.md, not settings.json, to learn what it has.
+
+    A plugin the kit installs but never names is invisible: it ships, costs
+    context, and no session knows to reach for it. The kit's own plugin was in
+    exactly that state — enabled, with a depth-doc, and mentioned nowhere.
+    """
+    import json
+    from pathlib import Path
+
+    repo = Path(__file__).resolve().parents[1]
+    body = (repo / "claude" / "CLAUDE.md").read_text().lower()
+    enabled = json.loads((repo / "claude" / "settings.json").read_text())["enabledPlugins"]
+
+    missing = []
+    for key in enabled:
+        name = key.split("@", 1)[0]
+        # Accept the plugin name or the words of it (e.g. "chrome-devtools-mcp"
+        # is named as "chrome-devtools-mcp"; "lsp-gopls" appears as "gopls").
+        stem = name.replace("-lsp", "").replace("lsp-", "").replace("-mcp", "")
+        if name not in body and stem not in body:
+            missing.append(name)
+    assert not missing, (
+        "these plugins are enabled in settings.json but named nowhere in "
+        "claude/CLAUDE.md, so no session knows they exist:\n  " + "\n  ".join(missing)
+    )
+
+
+def test_tool_docs_named_in_claude_md_exist():
+    """CLAUDE.md points at depth-references by filename; each must resolve.
+
+    Three rows relied on a `<name>.md` convention that three files do not
+    follow — playwright-mcp.md, lsp-gopls.md, lsp-typescript.md — so an agent
+    obeying the stated rule got a dead path.
+    """
+    import re
+    from pathlib import Path
+
+    repo = Path(__file__).resolve().parents[1]
+    body = (repo / "claude" / "CLAUDE.md").read_text()
+    named = set(re.findall(r"`([a-z0-9][\w.-]*\.md)`", body))
+    tool_docs = {p.name for p in (repo / "docs" / "tools").glob("*.md")}
+    top_docs = {p.name for p in (repo / "docs").glob("*.md")}
+
+    missing = sorted(n for n in named if n not in tool_docs and n not in top_docs
+                     and n not in {"CLAUDE.md", "AGENTS.md", "TRACKER.md", "MEMORY.md",
+                                   "GEMINI.md", "spec.md", "plan.md", "tasks.md",
+                                   "constitution.md", "README.md"})
+    assert not missing, (
+        "CLAUDE.md names these docs but they do not exist:\n  " + "\n  ".join(missing))

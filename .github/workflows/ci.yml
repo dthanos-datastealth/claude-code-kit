@@ -10,6 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history: the CLAUDE.md upgrade test replays the real merge from
+          # the previous version of the template, which it reads out of git. A
+          # shallow clone makes it skip, and a gate that skips is not a gate.
+          fetch-depth: 0
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5

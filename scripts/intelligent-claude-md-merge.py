@@ -70,6 +70,11 @@ def parse_sections(text: str) -> list[dict]:
     if current is not None:
         sections.append(current)
     for s in sections:
+        # `has_body` distinguishes "no lines at all" from "one empty line".
+        # Joining [""] yields "", so without this a section whose body is a
+        # single blank line serialises as no body, and the round trip silently
+        # loses that line — the H1's trailing blank, every time.
+        s["has_body"] = bool(s["body_lines"])
         s["body"] = "\n".join(s["body_lines"])
         del s["body_lines"]
     return sections
@@ -81,7 +86,7 @@ def serialize_sections(sections: list[dict]) -> str:
     for s in sections:
         if s["heading_line"]:
             parts.append(s["heading_line"])
-        if s["body"]:
+        if s["body"] or s.get("has_body"):
             parts.append(s["body"])
     return "\n".join(parts) if parts else ""
 
@@ -224,7 +229,8 @@ def merge(live_text: str, prev_text: str, new_text: str, manifest: dict,
         decision = decide(live_body, prev_body, new_body)
         if decision == "take_new":
             new_section = new_by_heading.get(h, section)
-            out.append({"heading_line": h, "depth": d, "body": new_section["body"]})
+            out.append({"heading_line": h, "depth": d, "body": new_section["body"],
+                        "has_body": new_section.get("has_body", False)})
         elif decision in ("keep_live", "noop"):
             out.append(section)
         elif decision == "conflict":
@@ -235,7 +241,9 @@ def merge(live_text: str, prev_text: str, new_text: str, manifest: dict,
             choice = prompt_conflict(h, live_body, prev_body, new_body,
                                       conflict_dir or Path("."))
             if choice == "take_new":
-                out.append({"heading_line": h, "depth": d, "body": new_by_heading[h]["body"]})
+                out.append({"heading_line": h, "depth": d,
+                            "body": new_by_heading[h]["body"],
+                            "has_body": new_by_heading[h].get("has_body", False)})
             elif choice == "keep_live":
                 out.append(section)
             elif choice == "wrote_conflict":

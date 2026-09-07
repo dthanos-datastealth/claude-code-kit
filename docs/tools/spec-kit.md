@@ -4,7 +4,8 @@
 GitHub's [`spec-kit`](https://github.com/github/spec-kit) is a CLI
 (`specify`) that scaffolds a spec-driven development workflow into any
 project. Running `specify init --here --integration claude` installs
-nine `/speckit-*` agent skills into `.claude/skills/` and creates a
+one agent skill per `/speckit-*` command into `.claude/skills/` — ten
+core commands upstream — and creates a
 `.specify/` directory with templates, scripts, and a Constitution
 slot. The skills drive a Constitution → Specify → (Clarify) → Plan →
 Tasks → (Analyze) → Implement loop, with `.specify/` as the on-disk
@@ -104,25 +105,15 @@ If spec-kit isn't initialized and the user's request is small (bugfix, refactor,
 specify init --here --integration claude   # writes .claude/skills/speckit-* + .specify/
 ```
 
-The `/speckit-*` commands appear after a Claude Code restart:
-`/speckit-constitution` (run first, once), `/speckit-specify`, `/speckit-clarify`,
-`/speckit-plan`, `/speckit-tasks`, `/speckit-analyze`, `/speckit-implement`.
+The commands appear after a Claude Code restart. Upstream documents ten core
+commands: `constitution` (run first, once), `specify`, `clarify`, `plan`,
+`tasks`, `taskstoissues`, `analyze`, `checklist`, `implement` and `converge`.
+The playbook above uses the seven that carry the kit's gates; `checklist`,
+`taskstoissues` and `converge` are optional and unchanged by kit policy.
 
-### Hard prohibitions for spec-driven mode
-
-- Do not start implementation before the user approves the spec.
-- Do not skip `/speckit-analyze` because "the plan looks fine to me".
-- Do not run `/speckit-implement` with an empty Constitution (kit-policy gate).
-- Do not invent answers to spec ambiguities — always `/speckit-clarify`.
-- Do not bypass Berry gates by switching to spec-driven mode; both layers stack.
-
-### Relationship to `/feature-dev`
-
-The kit's "use `/feature-dev` for any new feature" guidance assumes you have not
-adopted spec-kit for the project. When `.specify/` exists, use spec-kit instead:
-they cover the same ground, but spec-kit produces durable on-disk artifacts
-(`spec.md`, `plan.md`, `tasks.md`) that outlive the session, where
-`/feature-dev`'s subagent output is session-scoped. Never run both for one
-feature. For a bugfix, refactor or single-session task, use the default
-brainstorm → plan → TDD flow — spec-kit's ceremony does not pay back at that
-scale.
+**Check the separator before you type one.** Upstream's README shows the core
+commands both as `/speckit.constitution` and as `/speckit-constitution`, and
+the bundled bug and assess extensions use the hyphen form
+(`/speckit-bug-fix`, `/speckit-assess-intake`). The form your project actually
+has is whatever `specify init` wrote into `.claude/skills/` — list that
+directory rather than guessing, because a wrong separator is a silent no-op.

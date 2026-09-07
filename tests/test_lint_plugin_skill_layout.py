@@ -117,7 +117,7 @@ def test_empty_cache_scan_is_not_an_error(tmp_path):
 # a lint that cries wolf about someone else's repo stops being read.
 #
 # A real skill always opens with a `---` frontmatter block — all six of Berry's
-# flat skills did, which is what made them genuine F5 defects. That is the
+# flat skills did, which is what made them genuine defects. That is the
 # discriminator.
 
 def test_flat_md_with_frontmatter_is_flagged(tmp_path):
@@ -133,8 +133,15 @@ def test_flat_md_with_frontmatter_is_flagged(tmp_path):
     assert "berry-plan-and-execute.md" in out
 
 
-def test_flat_md_without_frontmatter_is_not_a_skill(tmp_path):
-    """A frontmatter-less prose fragment under skills/ is a build input."""
+def test_flat_md_without_frontmatter_warns_but_does_not_fail(tmp_path):
+    """A frontmatter-less flat file is reported, but does not fail the gate.
+
+    It cannot be classified with confidence: the docs make every frontmatter
+    field optional (skills.md:330, :338, :339), so a skill loads without any,
+    yet `caveman` ships `native-core.md` as a build fragment beside
+    `compile.mjs`. Failing would break the install gate on another project's
+    layout; staying silent would hide a genuinely misplaced skill. So: warn.
+    """
     p = _plugin(tmp_path, name="nofm")
     (p / "skills").mkdir(parents=True, exist_ok=True)
     (p / "skills" / "native-core.md").write_text(
@@ -145,7 +152,24 @@ def test_flat_md_without_frontmatter_is_not_a_skill(tmp_path):
         "---\nname: real-skill\ndescription: A real one.\n---\n\nBody.\n"
     )
     res = _run(p)
-    assert res.returncode == 0, (
-        "frontmatter-less fragment flagged as an undiscoverable skill:\n"
-        + res.stdout + res.stderr
-    )
+    out = res.stdout + res.stderr
+    assert res.returncode == 0, "a frontmatter-less fragment must not fail the gate:\n" + out
+    assert "native-core.md" in out, "it must still be reported for a human to judge"
+    assert "no frontmatter" in out
+
+
+def test_a_frontmatterless_skill_is_still_reported(tmp_path):
+    """The case that must never be silent: a real skill, no frontmatter, flat.
+
+    `skills.md:330` — "All fields are optional." `:338` — `name` defaults to the
+    directory name. `:339` — `description` falls back to the first paragraph. So
+    this file IS a skill and still cannot load where it sits. An earlier version
+    of this lint skipped it entirely.
+    """
+    p = _plugin(tmp_path, name="fmless")
+    (p / "skills").mkdir(parents=True, exist_ok=True)
+    (p / "skills" / "deploy.md").write_text(
+        "Deploy the service to production.\n\nRun the checks first, then ship.\n")
+    res = _run(p)
+    out = res.stdout + res.stderr
+    assert "deploy.md" in out, "a frontmatter-less flat skill was reported nowhere:\n" + out

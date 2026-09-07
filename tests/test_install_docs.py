@@ -2,9 +2,23 @@
 import re
 from pathlib import Path
 
+import pytest
+
 from tests.helpers import run_install
 
 REPO = Path(__file__).resolve().parents[1]
+
+
+@pytest.fixture(scope="module")
+def installed():
+    """One install for the whole module.
+
+    Three tests here each ran their own `install.sh` with identical arguments
+    and only read from the result — about 2.4s of repeating work the first call
+    had already done. Nothing in this module mutates the installed tree, so one
+    install serves all three.
+    """
+    return run_install()
 
 
 def _top_level_docs() -> list[str]:
@@ -21,10 +35,9 @@ def _top_level_docs() -> list[str]:
     return names
 
 
-def test_top_level_docs_copied():
+def test_top_level_docs_copied(installed):
     docs = _top_level_docs()
-    r = run_install()
-    dst = r.home / ".claude" / "docs"
+    dst = installed.home / ".claude" / "docs"
     assert dst.exists(), "docs dir should exist after install"
     for f in docs:
         assert (REPO / "docs" / f).exists(), f"{f} is listed in install.sh but missing from docs/"
@@ -42,11 +55,10 @@ def test_verification_standards_doc_is_shipped():
     )
 
 
-def test_per_tool_docs_copied():
-    r = run_install()
-    tools_dst = r.home / ".claude" / "docs" / "tools"
+def test_per_tool_docs_copied(installed):
+    tools_dst = installed.home / ".claude" / "docs" / "tools"
     assert tools_dst.exists(), "docs/tools dir should exist"
-    # Spot-check a few that must be present (we ship 23 total)
+    # Spot-check a few that must be present
     for f in (
         "berry.md",
         "spec-kit.md",
@@ -57,11 +69,9 @@ def test_per_tool_docs_copied():
         assert (tools_dst / f).exists(), f"{f} should be installed at ~/.claude/docs/tools/"
 
 
-def test_docs_count_matches_kit_repo():
-    r = run_install()
-    tools_dst = r.home / ".claude" / "docs" / "tools"
-    from pathlib import Path
-    repo_tools = Path(__file__).resolve().parents[1] / "docs" / "tools"
+def test_docs_count_matches_kit_repo(installed):
+    tools_dst = installed.home / ".claude" / "docs" / "tools"
+    repo_tools = REPO / "docs" / "tools"
     repo_files = sorted(p.name for p in repo_tools.glob("*.md"))
     dst_files = sorted(p.name for p in tools_dst.glob("*.md"))
     assert dst_files == repo_files, (

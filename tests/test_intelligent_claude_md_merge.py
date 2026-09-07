@@ -5,6 +5,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+import pytest
+
 REPO = Path(__file__).resolve().parents[1]
 MERGER = REPO / "scripts" / "intelligent-claude-md-merge.py"
 MANIFEST = REPO / "claude" / "CLAUDE.md.manifest.json"
@@ -278,3 +280,152 @@ def test_removed_kit_section_that_user_modified_is_not_silently_deleted(tmp_path
     assert res.returncode != 0 or "MY OWN Playwright notes." in user.read_text(), (
         "user's own edits to a kit-dropped section were discarded without a conflict"
     )
+
+
+def test_real_upgrade_leaves_no_heading_the_kit_removed(tmp_path):
+    """Upgrade the SHIPPED template from its previous version and assert that
+    every heading the kit dropped is gone from the user's file.
+
+    The synthetic cases above cover one removal at one depth. This covers the
+    real template, at every depth, against the real manifest — which is where
+    the gap showed up: `matches_owned` compares depth exactly, so a `###`
+    tombstone does not cover a `####` under it. Nineteen headings were dropped
+    when the plugin catalogue became a table; eighteen were removed and the
+    depth-4 spec-kit playbook heading stayed behind, carrying 31 orphaned lines
+    into every upgraded file while the canonical copy lived in
+    docs/tools/spec-kit.md.
+
+    Any future removal that forgets a tombstone fails here.
+    """
+    import re
+    import subprocess
+
+    repo = Path(__file__).resolve().parents[1]
+
+    def _git(*args):
+        return subprocess.run(["git", "-C", str(repo), *args],
+                              capture_output=True, text=True)
+
+    revs = _git("log", "-2", "--format=%H", "--", "claude/CLAUDE.md")
+    shas = revs.stdout.split()
+    if revs.returncode != 0 or len(shas) < 2:
+        pytest.skip("needs at least two commits touching claude/CLAUDE.md "
+                    "(shallow clone or first commit)")
+
+    prev_text = _git("show", f"{shas[1]}:claude/CLAUDE.md").stdout
+    assert prev_text, "could not read the previous template from git"
+
+    kit_new, user, prev = tmp_path / "new.md", tmp_path / "user.md", tmp_path / "prev.md"
+    kit_new.write_text((repo / "claude" / "CLAUDE.md").read_text())
+    prev.write_text(prev_text)
+    user.write_text(prev_text)  # a clean install of the previous version
+
+    res = _run(kit_new, user, prev=prev)
+    assert res.returncode == 0, res.stderr
+
+    def headings(text):
+        return [ln for ln in text.splitlines() if re.match(r"^#{1,6} ", ln)]
+
+    before, after = headings(prev_text), headings(kit_new.read_text())
+    merged = headings(user.read_text())
+    dropped = [h for h in before if h not in after]
+    stale = [h for h in dropped if h in merged]
+    assert not stale, (
+        "the kit removed these headings but they survived the upgrade; add a "
+        "tombstone to claude/CLAUDE.md.manifest.json at the heading's own depth:\n  "
+        + "\n  ".join(stale)
+    )
+
+
+def _load_merger():
+    import importlib.util
+    repo = Path(__file__).resolve().parents[1]
+    spec = importlib.util.spec_from_file_location(
+        "merger", repo / "scripts" / "intelligent-claude-md-merge.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_every_heading_in_the_shipped_template_is_kit_owned():
+    """A heading the manifest does not list is treated as the USER's, so an
+    upgrade preserves their old copy and never delivers the kit's new one.
+
+    This is the silent direction of the same mechanism the removal tests cover.
+    Fourteen headings were unlisted — including both agent protocols and all of
+    Berry's operational rules — so a clean upgrade kept the previous release's
+    text for every one of them. The rules this release exists to ship reached
+    nobody who upgraded.
+
+    Every `##`-and-deeper heading the kit ships must be listed. The H1 is the
+    document title and is not a section.
+    """
+    import json
+    import re
+
+    repo = Path(__file__).resolve().parents[1]
+    merger = _load_merger()
+    owned = json.loads((repo / "claude" / "CLAUDE.md.manifest.json").read_text())["owned_sections"]
+
+    unowned = []
+    for line in (repo / "claude" / "CLAUDE.md").read_text().splitlines():
+        m = re.match(r"^(#{2,6})\s+\S", line)
+        if not m:
+            continue
+        if merger.matches_owned(line, len(m.group(1)), owned) is None:
+            unowned.append(line)
+
+    assert not unowned, (
+        "these headings ship in claude/CLAUDE.md but the manifest does not own "
+        "them, so an upgrade will keep the user's old text instead of yours. "
+        "Add an entry at each heading's own depth:\n  " + "\n  ".join(unowned)
+    )
+
+
+def test_real_upgrade_delivers_the_new_template_content(tmp_path):
+    """A clean upgrade must actually hand the user what the template says.
+
+    The companion test asserts nothing STALE survives; this asserts nothing NEW
+    is dropped. Both directions failed at once and neither synthetic fixture
+    caught it, because the fixtures exercise one flat heading rather than the
+    shipped file's nesting.
+    """
+    import subprocess
+
+    repo = Path(__file__).resolve().parents[1]
+
+    def _git(*args):
+        return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True)
+
+    revs = _git("log", "-2", "--format=%H", "--", "claude/CLAUDE.md")
+    shas = revs.stdout.split()
+    if revs.returncode != 0 or len(shas) < 2:
+        pytest.skip("needs at least two commits touching claude/CLAUDE.md")
+
+    prev_text = _git("show", f"{shas[1]}:claude/CLAUDE.md").stdout
+    assert prev_text, "could not read the previous template from git"
+    template = (repo / "claude" / "CLAUDE.md").read_text()
+
+    kit_new, user, prev = tmp_path / "new.md", tmp_path / "user.md", tmp_path / "prev.md"
+    kit_new.write_text(template)
+    prev.write_text(prev_text)
+    user.write_text(prev_text)
+
+    res = _run(kit_new, user, prev=prev)
+    assert res.returncode == 0, res.stderr
+    merged = user.read_text()
+
+    # A user who changed nothing should end up with exactly the new template.
+    # Byte-identity is the strongest form of both directions at once: nothing
+    # retired survives, nothing new is dropped, and no line is reordered.
+    if merged != template:
+        import difflib
+        diff = "\n".join(list(difflib.unified_diff(
+            template.splitlines(), merged.splitlines(),
+            "kit template", "what the user gets", lineterm="", n=1))[:40])
+        raise AssertionError(
+            "a clean upgrade did not reproduce the shipped template. Lines only "
+            "in the template were dropped (their section is not manifest-owned); "
+            "lines only in the result are stale (their section needs a "
+            f"tombstone):\n{diff}"
+        )
