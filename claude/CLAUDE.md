@@ -291,7 +291,7 @@ Behavioral guidelines (Karpathy-style) for reducing common LLM coding failure mo
 
 ### Berry (Evidence Verification) — MANDATORY
 
-Berry is an MCP-backed hallucination detection system installed via the `berry@berry-marketplace` plugin. It exposes MCP tools (`start_run`, `add_span`, `add_file_span`, `audit_trace_budget`, `detect_hallucination`, etc.) and six workflow skills that encode when and how to call them.
+Berry is an MCP-backed hallucination detection system installed via the `berry@berry-marketplace` plugin. It exposes MCP tools (`start_run`, `add_span`, `add_file_span`, `audit_trace_budget`, `detect_hallucination`, etc.) and seven workflow skills that encode when and how to call them.
 
 **Skills are the entry points. MCP tools are what the skills call internally.**
 
@@ -328,7 +328,21 @@ The `observed_bits` value is the KL divergence between P(YES | span in context) 
 
 #### Verifier backend
 
-OpenRouter-hosted `openai/gpt-4o-mini` via Berry's OpenAI-compatible client. Two files configure this — `~/.berry/mcp_env.json` is **load-bearing** (Berry's MCP launcher reads these env vars at startup); `~/.berry/config.json` is what the `berry-configure` skill writes for its own bookkeeping. Keep them in sync.
+OpenRouter-hosted `openai/gpt-4o-mini` via Berry's OpenAI-compatible client.
+
+**Always pin `BERRY_VERIFIER_MODEL`.** The fallback takes the first model from
+`GET /v1/models`, which on OpenRouter is arbitrary and probably lacks the token
+logprobs Berry requires. A `flagged` result carrying an `error` key is a broken
+verifier, not a failed claim — check `error` first. The model-choice rationale
+and the logprobs eligibility table live in `~/.claude/docs/tools/berry.md`.
+
+Two files configure this, and they hold different things.
+`~/.berry/mcp_env.json` is **load-bearing**: the MCP launcher reads these env
+vars at startup, and it is the only place credentials belong.
+`~/.berry/config.json` holds permissions — `allowed_roots` (without which
+`add_file_span` refuses to read anything), the `allow_*` flags, audit settings.
+Do not let an API key end up in `config.json`: nothing reads it there, and a
+second copy is a second thing to rotate and to leak.
 
 ```jsonc
 // ~/.berry/mcp_env.json — LOAD-BEARING: read by the MCP launcher
@@ -339,16 +353,21 @@ OpenRouter-hosted `openai/gpt-4o-mini` via Berry's OpenAI-compatible client. Two
   "BERRY_VERIFIER_MODEL": "openai/gpt-4o-mini"
 }
 
-// ~/.berry/config.json — written by berry-configure; informational
+// ~/.berry/config.json — permissions, NOT credentials
 {
-  "verifier": {
-    "backend": "openai",
-    "model": "openai/gpt-4o-mini",
-    "base_url": "https://openrouter.ai/api/v1",
-    "api_key": "<your-openrouter-key>"
-  }
+  "allowed_roots": ["/path/to/your/repos"],
+  "allow_write": false,
+  "allow_exec": false,
+  "allow_web": false,
+  "enforce_verification": true,
+  "audit_log_enabled": true
 }
 ```
+
+An earlier version of this example carried a `verifier` block with the API key
+repeated here. That is what put a second plaintext copy on installed machines.
+Only `mcp_env.json` is read for credentials; if your `config.json` still has an
+`api_key`, delete that field — everything keeps working.
 
 If verification calls start failing, first check that the OpenRouter key is still valid (`curl -H "Authorization: Bearer $KEY" https://openrouter.ai/api/v1/models | head`), then check OpenRouter status. A self-hosted llama.cpp backend remains an option for offline / air-gapped work — see Berry's upstream docs for the alternative config.
 

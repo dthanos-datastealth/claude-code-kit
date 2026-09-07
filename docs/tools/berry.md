@@ -27,7 +27,16 @@ Skills installed:
   "tests pass" claim.
 - `berry-generate-boilerplate` — design intent verified before delivering
   generated code, configs, migrations, or docs.
-- Two more workflow skills covering review and triage flows.
+- `berry-greenfield-prototyping` — prototypes still cite what they assume.
+- `berry-inline-completion-guard` — inline completions checked before they land.
+- `berry-objective-optimization` — a measurable objective driven as a loop of
+  baseline, hypothesis, smallest experiment, measurement, keep-or-revert, with
+  each retained change backed by a stored before-and-after.
+
+Seven, one per workflow playbook. Until recently none of them loaded: they
+shipped as flat `skills/<name>.md` files, and Claude Code discovers plugin
+skills only at `skills/<name>/SKILL.md`. Nothing errored — they were simply
+absent. If a Berry skill does not appear, check that layout first.
 
 MCP tools: `start_run`, `load_run`, `add_span`, `add_file_span`, `list_spans`,
 `get_span`, `search_spans`, `distill_span`, `audit_trace_budget`,
@@ -85,3 +94,50 @@ Install via the kit's `install.sh`, which registers the marketplace and runs
 
 If the verifier endpoint is down, every Berry skill fails fast — that is by
 design. The kit prefers a hard failure to a silently-skipped audit.
+
+---
+
+## Choosing the verifier model
+
+**The verifier must expose token logprobs.** Berry scores a claim from the
+probability distribution over the YES token, so it calls the API with
+`logprobs` and `top_logprobs` set. A model that does not return them cannot run
+the gate at all — `stage_ab.py` raises `"logprobs is None; call the API with
+logprobs enabled"`.
+
+This constraint, not price, is what decides the shortlist. Checked against
+OpenRouter's per-endpoint `supported_parameters`:
+
+| Model | logprobs | price in/out per M |
+|---|---|---|
+| `openai/gpt-4o-mini` | yes, all endpoints | $0.15 / $0.60 |
+| `openai/gpt-4o` | yes | $2.50 / $10.00 |
+| `openai/gpt-4.1-mini`, `gpt-4.1-nano` | **no** | — |
+| `openai/gpt-5-mini` | **no** (nor `temperature`) | — |
+| `anthropic/claude-haiku-4.5` | **no**, all four providers | — |
+
+So the kit's default is deliberate rather than inherited: `openai/gpt-4o-mini`
+is the cheapest model in the OpenAI family that can run this gate. Every
+obvious upgrade is ineligible. Escalate to `openai/gpt-4o` for high-stakes
+gates; it is the same family and keeps logprobs.
+
+Roughly 147 of OpenRouter's ~423 models advertise logprobs, so alternatives do
+exist. Two cautions if you go outside OpenAI. Eligibility is **per endpoint**,
+not per model, so an unpinned model can route to a provider that lacks logprobs
+and fail intermittently — pin the provider as well as the model. And verify
+against the raw `/models/<id>/endpoints` response rather than a summary.
+
+**Always pin `BERRY_VERIFIER_MODEL` explicitly.** Berry's fallback discovers a
+model by taking the first entry from `GET /v1/models`. Against OpenRouter that
+is an arbitrary model, most likely without logprobs.
+
+**Read `error` before you trust `flagged`.** When the verifier call fails,
+Berry returns `{"flagged": true, "under_budget": true, "error": "...",
+"details": []}`. It fails closed, which is right, but `flagged: true` reads
+exactly like a genuine claim failure. A flagged result carrying an `error` key
+is a broken verifier, not evidence against your claim.
+
+To settle a model choice empirically, build a golden set of about twenty
+claim-and-span pairs — ten you know are supported, ten you know are not — run
+`audit_trace_budget` with each candidate, and rank on false negatives first,
+friction second, cost third.
