@@ -12,8 +12,11 @@ Usage:
 
 Behavior:
   * Reads kit template (required) and user file (defaults to {} if absent).
-  * Per-key merge per policy: union_dict + user-wins, scalar_user_wins_if_set,
-    or preserve_user.
+  * Per-key merge per policy: union_dict (winner is per-key — user for `env`
+    and `enabledPlugins`, kit for `extraKnownMarketplaces` so a release channel
+    can move), scalar_user_wins_if_set, or preserve_user.
+  * Reports any key whose user value the kit reclaims; --dry-run reports
+    without writing.
   * Atomic write via tmpfile + os.replace.
   * Idempotent: re-running with same inputs produces byte-identical output.
 """
@@ -42,6 +45,27 @@ def union_dict(kit_val: dict, user_val: dict, winner: str) -> dict:
 def scalar_user_wins_if_set(kit_val, user_val, user_has_key: bool):
     """If user has the key set, take user's; else take kit's."""
     return user_val if user_has_key else kit_val
+
+
+def reclaimed_entries(kit: dict, user: dict, policy: dict) -> list[str]:
+    """Sub-keys whose user value the kit overwrites, as human-readable lines.
+
+    Only kit-wins union keys can do this. It is the one path where an upgrade
+    discards something the user set, so it is reported rather than done in
+    silence — the comparable CLAUDE.md collision gets a conflict prompt.
+    """
+    out: list[str] = []
+    for key, rule in (policy.get("policies") or {}).items():
+        if rule.get("strategy") != "union_dict" or rule.get("winner_on_conflict") != "kit":
+            continue
+        kit_val, user_val = kit.get(key), user.get(key)
+        if not isinstance(kit_val, dict) or not isinstance(user_val, dict):
+            continue
+        for name, was in user_val.items():
+            if name in kit_val and kit_val[name] != was:
+                out.append(f"{key}.{name}: replaced {json.dumps(was)} "
+                           f"with the kit's {json.dumps(kit_val[name])}")
+    return out
 
 
 def apply_policy(kit: dict, user: dict, policy: dict) -> dict:
@@ -89,6 +113,8 @@ def main(argv: list[str]) -> int:
     parser.add_argument("kit_template", type=Path)
     parser.add_argument("user_settings", type=Path)
     parser.add_argument("--policy", type=Path, default=DEFAULT_POLICY)
+    parser.add_argument("--dry-run", action="store_true",
+                        help="report what would change; write nothing")
     args = parser.parse_args(argv)
 
     if not args.kit_template.exists():
@@ -102,7 +128,13 @@ def main(argv: list[str]) -> int:
     user = json.loads(args.user_settings.read_text()) if args.user_settings.exists() else {}
     policy = json.loads(args.policy.read_text())
 
+    for line in reclaimed_entries(kit, user, policy):
+        print(f"  note: {line}", flush=True)
+
     merged = apply_policy(kit, user, policy)
+    if args.dry_run:
+        print("  (dry-run: settings.json not written)", flush=True)
+        return 0
     atomic_write_json(args.user_settings, merged)
     return 0
 

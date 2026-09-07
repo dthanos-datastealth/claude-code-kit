@@ -262,10 +262,16 @@ def test_upgrading_doc_matches_the_actual_merge_policy():
     rows = dict(re.findall(r"^\| `(\w+)` \| [^|]+\| ([^|]+)\|$", doc, re.M))
     assert rows, "no settings-policy table found in docs/upgrading.md"
 
+    documented = {k for k, r in policy.items() if r.get("winner_on_conflict")}
+    undocumented = sorted(documented - set(rows))
+    assert not undocumented, (
+        "these policy keys declare a conflict winner but have no row in the "
+        f"table, so drift in them would go unnoticed: {undocumented}")
+
     mismatches = []
     for key, rule in policy.items():
         winner = rule.get("winner_on_conflict")
-        if not winner or key not in rows:
+        if not winner:
             continue
         stated = rows[key].replace("*", "").strip().lower()
         if not stated.startswith(winner):

@@ -34,7 +34,7 @@ flowchart LR
     mem[claude/memory/MEMORY.md<br/>auto-memory index]
     docs[docs/<br/>philosophy · workflow · verification-standards ·<br/>prereqs · corporate-tls · memory-system ·<br/>tracker-system · tools/ ×24]
     sc[scripts/<br/>merge-settings · intelligent-settings-merge · intelligent-claude-md-merge · upgrade ·<br/>lint-scrubbing · lint-tools-docs · lint-plugin-marketplaces · lint-mcp-hardcoded-paths · lint-plugin-skill-layout · lint-merge-policy ·<br/>diff-against-live · test-install-isolated · test-upgrade-isolated]
-    tests[tests/<br/>137 pytest cases ·<br/>isolated-HOME harness]
+    tests[tests/<br/>139 pytest cases ·<br/>isolated-HOME harness]
   end
 
   cmd -->|preflight| pre{All prereqs on PATH?}
@@ -664,7 +664,7 @@ claude-code-kit/
 ├── install.sh                         Bootstrap entry point
 ├── uninstall.sh                       Restore from latest backup
 ├── pyproject.toml                     pytest config
-├── .github/workflows/ci.yml           shellcheck + lints + 137 pytest cases
+├── .github/workflows/ci.yml           shellcheck + lints + 139 pytest cases
 ├── claude/                            Files copied/merged into ~/.claude/
 │   ├── CLAUDE.md                      Scrubbed opinionated template
 │   ├── settings.json                  22 plugins, 6 marketplaces, effortLevel: xhigh

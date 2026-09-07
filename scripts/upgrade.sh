@@ -176,9 +176,14 @@ fi
 
 # settings.json merge
 log "settings.json merge..."
+# Run in both modes: dry-run writes nothing but reports what the kit would
+# reclaim, which is the one path where an upgrade replaces a value the user set.
 if [ "${MODE}" = "apply" ]; then
     python3 "${MERGER_SETTINGS}" "${KIT_SETTINGS}" "${CLAUDE_HOME}/settings.json" \
         --policy "${POLICY}"
+else
+    python3 "${MERGER_SETTINGS}" "${KIT_SETTINGS}" "${CLAUDE_HOME}/settings.json" \
+        --policy "${POLICY}" --dry-run
 fi
 
 # Reference docs. CLAUDE.md points at these by path, so refreshing it without

@@ -188,3 +188,50 @@ def test_kit_can_move_its_own_marketplace_to_a_new_ref(temp_settings):
     assert mkts["acme-internal"]["source"]["repo"] == "acme/claude-plugins", (
         "the user's own marketplace was overwritten"
     )
+
+
+def test_reclaiming_a_kit_marketplace_is_reported(temp_settings):
+    """Kit-wins is the one place an upgrade discards user state, so say so.
+
+    A user who repointed a kit marketplace at their own fork has that
+    declaration restored on upgrade. That is deliberate and documented, but it
+    happened with no runtime signal at all, while the comparable CLAUDE.md
+    collision gets a full conflict prompt. Silence is the wrong default for the
+    one lossy path.
+    """
+    _write_json(temp_settings, {
+        "extraKnownMarketplaces": {
+            "berry-marketplace": {
+                "source": {"source": "github", "repo": "MYFORK/hallbayes", "ref": "my-branch"}
+            },
+            "acme-internal": {
+                "source": {"source": "github", "repo": "acme/claude-plugins"}
+            },
+        }
+    })
+    res = _run(KIT_SETTINGS, temp_settings)
+    out = res.stdout + res.stderr
+    assert "berry-marketplace" in out, (
+        "replacing the user's own marketplace declaration was silent:\n" + out)
+    assert "MYFORK/hallbayes" in out, "the report should name what it replaced"
+    assert "acme-internal" not in out, "an untouched user marketplace must not be reported"
+
+
+def test_reclaim_is_reported_in_dry_run_too(temp_settings):
+    """`--dry-run` is what the docs offer for previewing an upgrade."""
+    _write_json(temp_settings, {
+        "extraKnownMarketplaces": {
+            "berry-marketplace": {
+                "source": {"source": "github", "repo": "MYFORK/hallbayes", "ref": "my-branch"}
+            }
+        }
+    })
+    before = temp_settings.read_text()
+    res = subprocess.run(
+        ["python3", str(MERGER), str(KIT_SETTINGS), str(temp_settings),
+         "--policy", str(POLICY), "--dry-run"],
+        text=True, capture_output=True,
+    )
+    out = res.stdout + res.stderr
+    assert "berry-marketplace" in out, "dry-run did not preview the replacement:\n" + out
+    assert temp_settings.read_text() == before, "dry-run must not write"

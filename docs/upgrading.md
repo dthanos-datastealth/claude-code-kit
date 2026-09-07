@@ -20,9 +20,12 @@ bash scripts/upgrade.sh --dry-run # preview
 bash scripts/upgrade.sh --apply   # commit
 ```
 
-The upgrade tool preserves your custom plugins, marketplaces, env
+The upgrade tool preserves your custom plugins, the marketplaces you added, env
 vars, and any CLAUDE.md section the kit doesn't own (per the manifest
-in `claude/CLAUDE.md.manifest.json`).
+in `claude/CLAUDE.md.manifest.json`). The one exception is a marketplace the
+kit itself ships that you repointed at your own fork: that declaration is
+restored, because it carries the release channel. See
+[Merge semantics](#merge-semantics).
 
 ## When to use this vs `install.sh`
 

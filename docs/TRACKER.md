@@ -82,6 +82,13 @@ documentation and the repositories: five held, two did not.
 | V-14 | CONCERN — the non-interactive abort surface widened with the new ownership entries | DOCUMENTED in `docs/upgrading.md`: what aborts, why the surface grew, and that any heading the kit never shipped stays the user's forever |
 | O-17 | worth-considering — the scratch-dir test asserted on conftest's source text, the proxy shape this kit's own standards forbid | FIXED — asserts teardown behaviour against a planted sibling session directory |
 | O-18 | trivial — a killed session's scratch directory leaked and blocked cleanup permanently | FIXED — reaped at session start when its PID is gone |
+| V-15 | CONCERN — the one lossy upgrade path was silent: a kit marketplace the user repointed at their own fork is restored with no signal, and `--dry-run` did not preview it | FIXED — the merger reports each entry it reclaims, naming the old and new value, and `upgrade.sh --dry-run` now runs the settings merge in preview mode so the report appears before anything is written |
+| V-16 | trivial — the settings merger's `--help` still described `union_dict + user-wins` | FIXED |
+| O-19 | worth-considering — `tests/test_upgrade_docs.py` spawned three identical upgrades | FIXED — module-scoped fixture; 1.93s to 0.57s |
+| O-20 | trivial — the upgrading TL;DR said marketplaces are preserved, unqualified | FIXED — "the marketplaces you added", with the exception named and linked |
+| O-21 | trivial — the policy/doc sync test skipped a policy key absent from the table instead of failing | FIXED — an undocumented key with a conflict winner now fails |
+| O-22 | flag-don't-fix — 18 no-argument `run_install()` calls are roughly 25-35s of a 52s suite | DECLINED for this release, recorded as follow-up. Pre-existing, orthogonal to every defect here, and the safe fix is per-module fixtures verified read-only one module at a time, which is its own change. `test_install_docs` and `test_upgrade_docs` were done that way; the rest remain |
+| O-23 | trivial — `scripts/_kit_docs.sh` vs `_kit_backup.sh` split | KEPT — both cohesive, sourced by the same two callers, 111 lines total. Revisit if a third file arrives carrying the same `REPO_DIR`/`CLAUDE_HOME`/`log()` preamble contract |
 
 ### Iter-3 PR-B findings and disposition (the Berry fork)
 

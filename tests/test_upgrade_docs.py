@@ -7,6 +7,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+import pytest
+
 REPO = Path(__file__).resolve().parents[1]
 UPGRADE_SH = REPO / "scripts" / "upgrade.sh"
 
@@ -49,7 +51,24 @@ def _run_upgrade(home: Path) -> subprocess.CompletedProcess:
     )
 
 
-def test_upgrade_installs_docs_the_release_adds():
+@pytest.fixture(scope="module")
+def upgraded():
+    """One upgrade for the whole module.
+
+    All three tests here set up the same previous-release install, run the same
+    `upgrade.sh --apply`, and only read from the result. Repeating that spawn
+    three times is work the first call already did; nothing below mutates the
+    tree, so one run serves all three.
+    """
+    with tempfile.TemporaryDirectory() as td:
+        home = Path(td)
+        _existing_install(home)
+        res = _run_upgrade(home)
+        assert res.returncode == 0, res.stderr
+        yield home
+
+
+def test_upgrade_installs_docs_the_release_adds(upgraded):
     """CLAUDE.md points at `~/.claude/docs/*`; an upgrade must put them there.
 
     `copy_docs` lived only in install.sh, so an upgrade refreshed CLAUDE.md and
@@ -57,44 +76,31 @@ def test_upgrade_installs_docs_the_release_adds():
     CLAUDE.md referencing `verification-standards.md` four times and no such
     file on disk — and kept the previous release's copy of every other doc.
     """
-    with tempfile.TemporaryDirectory() as td:
-        home = Path(td)
-        _existing_install(home)
-        res = _run_upgrade(home)
-        assert res.returncode == 0, res.stderr
-
-        dst = home / ".claude" / "docs"
-        for name in _top_level_docs():
+    home = upgraded
+    dst = home / ".claude" / "docs"
+    for name in _top_level_docs():
             assert (dst / name).exists(), f"{name} missing from ~/.claude/docs after upgrade"
 
-        shipped = {p.name for p in (REPO / "docs" / "tools").glob("*.md")}
-        installed = {p.name for p in (dst / "tools").glob("*.md")}
-        assert shipped == installed, f"tools docs differ: missing {shipped - installed}"
+    shipped = {p.name for p in (REPO / "docs" / "tools").glob("*.md")}
+    installed = {p.name for p in (dst / "tools").glob("*.md")}
+    assert shipped == installed, f"tools docs differ: missing {shipped - installed}"
 
 
-def test_upgrade_refreshes_a_doc_whose_content_changed():
+def test_upgrade_refreshes_a_doc_whose_content_changed(upgraded):
     """A doc that already exists must be updated, not left at the old text."""
-    with tempfile.TemporaryDirectory() as td:
-        home = Path(td)
-        _existing_install(home)
-        assert _run_upgrade(home).returncode == 0
-
-        for rel in ("prereqs.md", "tools/berry.md"):
+    home = upgraded
+    for rel in ("prereqs.md", "tools/berry.md"):
             got = (home / ".claude" / "docs" / rel).read_text()
             assert "OLD CONTENT" not in got, f"{rel} was not refreshed by the upgrade"
             assert got == (REPO / "docs" / rel).read_text(), f"{rel} does not match the kit"
 
 
-def test_every_doc_claude_md_points_at_is_installed_by_upgrade():
+def test_every_doc_claude_md_points_at_is_installed_by_upgrade(upgraded):
     """No dangling pointer on an upgraded machine."""
-    with tempfile.TemporaryDirectory() as td:
-        home = Path(td)
-        _existing_install(home)
-        assert _run_upgrade(home).returncode == 0
-
-        claude_md = (home / ".claude" / "CLAUDE.md").read_text()
-        dst = home / ".claude" / "docs"
-        named = set(re.findall(r"~/\.claude/docs/([\w./-]+\.md)", claude_md))
-        assert named, "CLAUDE.md names no docs; this test would assert nothing"
-        missing = sorted(n for n in named if not (dst / n).exists())
-        assert not missing, f"CLAUDE.md points at docs the upgrade did not install: {missing}"
+    home = upgraded
+    claude_md = (home / ".claude" / "CLAUDE.md").read_text()
+    dst = home / ".claude" / "docs"
+    named = set(re.findall(r"~/\.claude/docs/([\w./-]+\.md)", claude_md))
+    assert named, "CLAUDE.md names no docs; this test would assert nothing"
+    missing = sorted(n for n in named if not (dst / n).exists())
+    assert not missing, f"CLAUDE.md points at docs the upgrade did not install: {missing}"
