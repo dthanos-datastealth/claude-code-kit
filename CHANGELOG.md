@@ -102,7 +102,7 @@ contract changes; untagged for CLAUDE.md/docs edits.
   marks a section removable.
 
 ### Changed
-- **`claude/CLAUDE.md` cut from 503 lines to 338.** The per-plugin catalogue
+- **`claude/CLAUDE.md` cut from 503 lines to 341.** The per-plugin catalogue
   was 290 lines restating what the 24 `docs/tools/*.md` depth references
   already cover, so it is now a table that says when to reach for each tool and
   points at them. The Spec-Kit playbook moved into `docs/tools/spec-kit.md`
