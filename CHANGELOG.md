@@ -34,6 +34,15 @@ contract changes; untagged for CLAUDE.md/docs edits.
 - **An absolute `command` in a plugin's `.mcp.json` is now a lint failure.**
   Unportable across platforms even when it names no user, which is how a
   plugin pinning a Homebrew path shipped and could not start on Linux.
+- **CI had been failing on every run since 7 August, on both branches.** Two
+  shellcheck findings — an optional-argument function called bare (SC2119) and
+  a `cat file | tr` (SC2002) — failed the runner's apt-installed shellcheck
+  while a newer local build no longer emitted either. `shellcheck` passed on
+  the developer's machine and failed on the only machine whose verdict counts,
+  so a month of lints and tests gated nothing on merge. Both are fixed at the
+  source, and CI now installs a pinned shellcheck instead of whatever apt
+  currently ships, so a local run is authoritative and this skew cannot return
+  unnoticed.
 - **Fresh installs could not register any marketplace.** Deriving the list from
   `extraKnownMarketplaces` emitted a `https://…/repo.git` URL while the setting
   declares a `github` source, and Claude Code refuses an add whose source kind
