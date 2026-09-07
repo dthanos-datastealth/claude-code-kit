@@ -105,3 +105,27 @@ def test_readme_test_count_matches_the_suite():
     assert stated == {actual}, (
         f"README says {sorted(stated)} pytest cases; the suite collects {actual}"
     )
+
+
+def test_scratch_dir_is_per_session_not_shared():
+    """Two pytest sessions in one checkout must not delete each other's HOMEs.
+
+    The scratch root is shared, and session teardown removes a directory. When
+    that directory was the shared root, the first session to finish wiped the
+    tree the second was still installing into. Reproduced: a full run with short
+    sessions finishing underneath it reported six failures across four modules,
+    none of them real. Each session now owns a subdirectory and removes only
+    that.
+    """
+    from pathlib import Path
+
+    from tests.helpers import SESSION_TMP, TMP_ROOT
+
+    assert SESSION_TMP != TMP_ROOT, "session scratch dir must not be the shared root"
+    assert TMP_ROOT in SESSION_TMP.parents, "session dir should live under the shared root"
+
+    conftest = (Path(__file__).resolve().parent / "conftest.py").read_text()
+    assert "rmtree(SESSION_TMP" in conftest, "teardown must remove the session dir"
+    assert "rmtree(TMP_ROOT" not in conftest, (
+        "teardown must never rmtree the shared root — that is the bug this guards"
+    )

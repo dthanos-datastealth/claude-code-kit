@@ -34,6 +34,15 @@ contract changes; untagged for CLAUDE.md/docs edits.
 - **An absolute `command` in a plugin's `.mcp.json` is now a lint failure.**
   Unportable across platforms even when it names no user, which is how a
   plugin pinning a Homebrew path shipped and could not start on Linux.
+- **Two concurrent runs of the test suite deleted each other's fixtures.**
+  Every isolated HOME was created under one shared `tests/.tmp`, and session
+  teardown removed that whole directory, so the first session to finish wiped
+  the tree a second was still installing into. Reproduced: a full run with short
+  sessions finishing underneath it reported six failures across four modules,
+  none of them real. This is not hypothetical — it happens whenever a review
+  agent runs the suite while a developer does, in the same checkout, and it was
+  observed doing exactly that. Each session now owns a subdirectory and removes
+  only its own. The same reproduction is clean afterwards.
 - **CI had been failing on every run since 7 August, on both branches.** Two
   shellcheck findings — an optional-argument function called bare (SC2119) and
   a `cat file | tr` (SC2002) — failed the runner's apt-installed shellcheck

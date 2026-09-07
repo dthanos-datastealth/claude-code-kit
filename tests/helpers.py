@@ -12,6 +12,15 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 INSTALL_SH = REPO / "install.sh"
 
+# Scratch space for isolated HOMEs, per pytest session rather than shared.
+# A shared directory plus a session-end rmtree means two concurrent runs of this
+# suite delete each other's working directories mid-test: the first to finish
+# wipes the tree the second is still installing into, and the second reports
+# several unrelated-looking failures. That happens for real whenever a review
+# agent runs the suite while a developer does, in the same checkout.
+TMP_ROOT = REPO / "tests" / ".tmp"
+SESSION_TMP = TMP_ROOT / f"session-{os.getpid()}"
+
 
 @dataclass
 class RunResult:
@@ -62,9 +71,8 @@ def run_install(
     Returns: RunResult with returncode, captured streams, paths, and the
     log of how the fake `claude` CLI was invoked.
     """
-    tmp = REPO / "tests" / ".tmp"
-    tmp.mkdir(exist_ok=True)
-    work = Path(tempfile.mkdtemp(prefix="cck-", dir=tmp))
+    SESSION_TMP.mkdir(parents=True, exist_ok=True)
+    work = Path(tempfile.mkdtemp(prefix="cck-", dir=SESSION_TMP))
     home = work / "home"
     home.mkdir()
     (home / ".claude").mkdir()
