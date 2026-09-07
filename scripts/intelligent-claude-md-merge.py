@@ -187,6 +187,40 @@ def merge(live_text: str, prev_text: str, new_text: str, manifest: dict,
         prev_body = prev_by_heading.get(h, {}).get("body", "")
         new_body = new_by_heading.get(h, {}).get("body", "")
         handled_new.add(h)
+
+        # Removal: the kit used to ship this section and no longer does.
+        # Dropping it is the whole point — leaving it behind means the user
+        # keeps the replaced guidance alongside whatever replaced it. Detect
+        # by heading presence, not by empty body, so a heading with no body
+        # is not mistaken for a deletion.
+        if h not in new_by_heading:
+            if h not in prev_by_heading:
+                # The kit never shipped this heading; it only matches an owned
+                # prefix rule (e.g. a user's own "### Berry extras"). Not ours
+                # to delete.
+                out.append(section)
+                continue
+            if live_body == prev_body:
+                continue  # unmodified by the user — remove it
+            # The user customized a section the kit dropped. Never discard
+            # their edits silently; route it through the conflict path.
+            if not interactive:
+                conflicts.append(h)
+                out.append(section)
+                continue
+            choice = prompt_conflict(h, live_body, prev_body, "",
+                                     conflict_dir or Path("."))
+            if choice == "take_new":
+                continue  # accept the removal
+            if choice == "keep_live":
+                out.append(section)
+                continue
+            if choice == "wrote_conflict":
+                conflicts.append(h)
+                out.append(section)
+                continue
+            aborts.append(h)
+            return "", conflicts, aborts
         decision = decide(live_body, prev_body, new_body)
         if decision == "take_new":
             new_section = new_by_heading.get(h, section)

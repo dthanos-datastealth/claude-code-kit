@@ -1,6 +1,7 @@
 {
   "format_version": 1,
   "description": "Declares which CLAUDE.md sections this kit owns. Sections NOT listed here are treated as user-owned and preserved verbatim during upgrade. Used by scripts/intelligent-claude-md-merge.py to scope heading-based section merging.",
+  "retired_sections_note": "Entries whose heading no longer appears in claude/CLAUDE.md are TOMBSTONES and must not be pruned. The merger removes a section from a user's file only when the manifest marks it kit-owned; delete the entry and the stale section becomes user-owned and survives every future upgrade. The per-plugin '###' subsections were collapsed into the table under '## Installed Plugins' and are retained here for exactly that reason.",
   "owned_sections": [
     {"heading": "## Core Principles",                "depth": 2, "match": "exact"},
     {"heading": "## MANDATORY Code Search Order",    "depth": 2, "match": "prefix"},

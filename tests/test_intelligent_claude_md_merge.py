@@ -208,3 +208,73 @@ def test_dry_run_does_not_write(tmp_path):
     r = _run(kit, user, prev=prev, mode="dry-run")
     assert r.returncode == 0
     assert user.read_text() == original, "dry-run modified the file"
+
+
+# ---------- Kit-owned section REMOVAL ----------
+#
+# When the kit drops a section it used to own (e.g. the per-plugin `###`
+# subsections collapsed into one table), the merger must remove it from the
+# user's file. Leaving it behind produces the worst outcome: the new guidance
+# AND the stale guidance it replaced, side by side and contradictory.
+#
+# The manifest keeps listing removed headings deliberately — the entry is what
+# marks the section kit-owned, and therefore removable. Drop the entry and the
+# section becomes user-owned and is preserved forever.
+
+_REMOVE_PREV = """\
+# Global Claude Code Configuration
+
+## Installed Plugins & When to Use Them
+Preamble, old.
+
+### Playwright
+Old Playwright guidance.
+
+### Berry (Evidence Verification)
+Berry rules.
+"""
+
+_REMOVE_NEW = """\
+# Global Claude Code Configuration
+
+## Installed Plugins & When to Use Them
+Preamble, new, with a table.
+
+### Berry (Evidence Verification)
+Berry rules.
+"""
+
+
+def test_removed_kit_section_is_deleted_when_user_did_not_modify_it(tmp_path):
+    """Kit drops `### Playwright`; user never touched it → it must disappear."""
+    kit, user, prev = tmp_path / "kit.md", tmp_path / "user.md", tmp_path / "prev.md"
+    _write(kit, _REMOVE_NEW)
+    _write(prev, _REMOVE_PREV)
+    _write(user, _REMOVE_PREV)  # live == kit_prev: a clean, unmodified upgrade
+
+    res = _run(kit, user, prev=prev)
+    assert res.returncode == 0, res.stderr
+    merged = user.read_text()
+
+    assert "### Playwright" not in merged, (
+        "kit-owned section removed from the template survived the upgrade:\n" + merged
+    )
+    assert "Old Playwright guidance." not in merged
+    # The surviving sections are untouched.
+    assert "### Berry (Evidence Verification)" in merged
+    assert "Preamble, new, with a table." in merged
+
+
+def test_removed_kit_section_that_user_modified_is_not_silently_deleted(tmp_path):
+    """User customized a section the kit later dropped → never silently discard it."""
+    kit, user, prev = tmp_path / "kit.md", tmp_path / "user.md", tmp_path / "prev.md"
+    conflict_dir = tmp_path / "conflicts"
+    _write(kit, _REMOVE_NEW)
+    _write(prev, _REMOVE_PREV)
+    _write(user, _REMOVE_PREV.replace("Old Playwright guidance.",
+                                      "MY OWN Playwright notes."))
+
+    res = _run(kit, user, prev=prev, conflict_dir=conflict_dir)
+    assert res.returncode != 0 or "MY OWN Playwright notes." in user.read_text(), (
+        "user's own edits to a kit-dropped section were discarded without a conflict"
+    )
