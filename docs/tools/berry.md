@@ -38,9 +38,24 @@ shipped as flat `skills/<name>.md` files, and Claude Code discovers plugin
 skills only at `skills/<name>/SKILL.md`. Nothing errored — they were simply
 absent. If a Berry skill does not appear, check that layout first.
 
-MCP tools: `start_run`, `load_run`, `add_span`, `add_file_span`, `list_spans`,
-`get_span`, `search_spans`, `distill_span`, `audit_trace_budget`,
-`detect_hallucination`, `get_deliverable`.
+**MCP tools, 28 of them.** Spans and runs: `start_run`, `load_run`,
+`add_span`, `add_file_span`, `extract_span`, `list_spans`, `get_span`,
+`search_spans`, `distill_span`, `mark_span`, `query_evidence`,
+`get_evidence_pack`, `get_deliverable`, `export_run_ledger`. Verification:
+`audit_trace_budget`, `detect_hallucination`, and their server-resolved
+`audit_trace_budget_run` / `detect_hallucination_run` variants, which read the
+run's own ledger instead of taking spans inline — prefer those when a run is
+open. Claim graph: `create_claim`, `get_claim`, `list_claims`, `mark_claim`,
+`link_claim_evidence`, `list_claim_evidence`, `audit_claims`. Attempts:
+`record_attempt`, `list_attempts`, `list_audits`.
+
+Two signatures changed with the v2 sync and the old calls fail validation
+rather than misbehaving quietly, which is the good outcome. `start_run` now
+requires `problem_statement` and `deliverable` and returns the sids it assigned
+to each. `audit_trace_budget` takes `steps` directly; there is no `trace`
+wrapper. A run is now a SQLite ledger at `~/.berry/runs/<id>/run.sqlite` with
+tables for spans, claims, evidence links, audits and attempts, so state
+survives the session rather than living in memory.
 
 **When you'd disable it:**
 - Read-only exploration sessions where you are not writing code or claiming
