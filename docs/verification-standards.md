@@ -1,10 +1,10 @@
 # Verification standards — what counts as evidence
 
 `claude/CLAUDE.md` states three verification rules as one line each. This
-document is why they exist and what they forbid in practice. Each one was
-written after a specific failure where a green result hid a real defect, and
-the incidents are kept here because the rule is much easier to rationalise away
-without them.
+document is what each one forbids in practice, and the failure mode it exists to
+catch. The mechanism is included deliberately: each rule is easy to rationalise
+away in the moment, and much harder once you can see why the check you were
+about to substitute is structurally incapable of catching the defect.
 
 The common shape of all three: **a check that cannot observe the failure it is
 supposed to catch will report success.** That is worse than no check, because it
@@ -32,10 +32,11 @@ If the harness cannot drive the real widget, that is a **blocker**. Escalate;
 do not substitute. A test that passes because the real action never happened is
 vacuous, not green.
 
-**Why this rule exists.** A synthetic check reported `file protected: true`
-while a total raw-PII leak went to a live LLM. The check was asserting on an
-object the test itself had constructed, so it could not observe the real upload
-path at all. It passed for exactly as long as the leak did.
+**The failure mode.** A synthetic check asserts on an object the test itself
+constructed, so it never observes the real path at all. It reports success for
+exactly as long as the real path is broken, and it reports success on the first
+run, before the feature works — which is the tell. If a check would pass against
+an unimplemented feature, it is measuring the harness, not the product.
 
 ---
 
@@ -54,16 +55,16 @@ evidence about what a render shows, and none may be cited as confirmation.
 Never write "confirmed", "verified" or "N files clean" on the strength of a
 script. **If a render has not been viewed, say so plainly.**
 
-**Why this rule exists.** A re-OCR check reported "0 of 9 secrets readable" and a
-fix was declared verified on it. Viewing the page showed a bcrypt tail's glyph
-tops protruding above a paint rectangle that sat slightly too low.
+**The failure mode, and why it generalises.** A needle-based check searches for
+a known value and reports whether it found it. It therefore cannot see a
+**partially** rendered value: covered at the head and exposed at the tail, the
+value matches no needle and the check reports clean. Partial is the failure that
+matters, and it is the one such a check is structurally blind to.
 
-The mechanism matters, because it generalises: the check searched for each
-secret's *head*. A value covered at the head and exposed at the tail matches no
-needle, so a needle-based check cannot see a **partially** covered value — which
-is precisely the failure that matters. On the same page an ink-area statistic
-read +0.7%, while the render showed three page-wide bars and one token painted
-five times over.
+Aggregate statistics fail differently and just as badly. A coverage or ink-area
+percentage moving by a plausible amount is consistent with the correct result
+and with several wrong ones — too much paint, paint in the wrong place, the same
+region painted repeatedly. A number cannot distinguish them. Looking can.
 
 ---
 
@@ -73,10 +74,10 @@ Graded at the same severity as redundant code. Redundancy is not only duplicated
 *code*, it is duplicated *work*: code that re-executes something an earlier step
 already did.
 
-The canonical miss this prevents: a "preview" action that re-calls the backend
-or LLM classifier the "scan" already called, because the scan discarded its
-results instead of caching them. Pure latency tax — and a correctness risk too
-whenever the call is non-deterministic.
+The shape to look for: a later step in a flow recomputes what an earlier step
+already produced, because the earlier step discarded its result instead of
+caching it. Pure latency tax — and a correctness risk too whenever the call is
+non-deterministic, since the two runs can disagree.
 
 **Procedure. Its output must appear in the report.**
 
@@ -107,5 +108,6 @@ An O report lacking the per-call-site cache/flow trace is **itself a finding**.
 **Pair the tools.** When the diff touches any expensive operation or hot path,
 run the `optibot` perf-review skill *in addition to* `code-simplifier` for the O
 role. `code-simplifier` targets clarity; `optibot` targets speed and cost. A
-clarity-only review demonstrably misses redundant-work patterns — it once passed
-a preview that re-ran the classifier on every click.
+clarity-only review misses redundant-work patterns structurally: re-running an
+expensive call is not a clarity defect, so a reviewer looking for clarity has no
+reason to flag it. The code reads perfectly well and does the work twice.

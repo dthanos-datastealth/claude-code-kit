@@ -134,11 +134,9 @@ contract changes; untagged for CLAUDE.md/docs edits.
 - **The three V+O verification standards are documented, not just asserted.**
   New `docs/verification-standards.md` carries the synthetic-proxy prohibition,
   the rule that a script can never confirm a visual result, and the O agent's
-  redundant-WORK hunt, each with the incident that produced it — a synthetic
-  "file protected: true" that hid a total raw-PII leak, a re-OCR pass that
-  reported "0 of 9 secrets readable" over a render whose glyph tops were
-  plainly visible, and a preview that re-ran the classifier on every click.
-  `CLAUDE.md` states each as one line and points here.
+  redundant-WORK hunt, each with the failure mode it exists to catch: a check
+  that cannot observe the defect it is meant to catch reports success and ends
+  the investigation. `CLAUDE.md` states each as one line and points here.
 
 ### Added
 - **Prerelease channel.** Changes land on the `prerelease` branch first; the

@@ -77,10 +77,11 @@ The kit's `superpowers:requesting-code-review` skill, `feature-dev:code-reviewer
 - **A script can never confirm a visual result.** Any image, rasterised page or painted canvas must be viewed at legible resolution, every page, whole page. Re-OCR, pixel statistics and "0 leaked" counts choose what to look at; they are never confirmation. If a render has not been viewed, say so.
 - **The O agent hunts redundant WORK, not just redundant code** — enumerate every expensive operation in the diff, trace each flow end to end, and state per call site whether it is cached+reused or recomputed. A report without that trace is itself a finding. Pair `optibot` with `code-simplifier` whenever a hot path is touched.
 
-Each of these three exists because a green check hid a real defect. The
-incidents, the exact forbidden patterns and the O agent's finding taxonomy are
-in `~/.claude/docs/verification-standards.md` — read it before arguing that one
-of them does not apply.
+All three guard the same failure: a check that cannot observe the defect it is
+meant to catch reports success, and ends the investigation. The exact forbidden
+patterns, the failure mode behind each rule and the O agent's finding taxonomy
+are in `~/.claude/docs/verification-standards.md` — read it before arguing that
+one of them does not apply.
 
 ---
 

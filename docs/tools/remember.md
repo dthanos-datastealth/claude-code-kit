@@ -20,7 +20,7 @@ from the transcript.
 
 **Why it's in this kit:**
 The kit's memory system (under
-`~/.claude/projects/-Users-dthanos-repos/memory/`) is built for
+`~/.claude/projects/<encoded-project-path>/memory/`) is built for
 durable, cross-project knowledge — user preferences, recurring
 feedback, project goals, hard rules. It is intentionally not the
 right place for transient, in-progress task state, which would

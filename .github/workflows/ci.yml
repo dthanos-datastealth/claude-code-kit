@@ -42,8 +42,8 @@ jobs:
         run: |
           shellcheck install.sh uninstall.sh scripts/*.sh
 
-      - name: Run scrubbing lint on claude/CLAUDE.md
-        run: python3 scripts/lint-scrubbing.py claude/CLAUDE.md
+      - name: Run scrubbing lint on every tracked file
+        run: python3 scripts/lint-scrubbing.py
 
       - name: Run tools-docs schema lint
         run: python3 scripts/lint-tools-docs.py docs/tools/*.md
