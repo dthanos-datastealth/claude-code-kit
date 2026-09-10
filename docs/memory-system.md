@@ -16,8 +16,8 @@ matters.
 
 ## 1. What the auto-memory hook does
 
-The hook is declared in `claude/CLAUDE.md` under the "Memory System"
-section and installed into `~/.claude/CLAUDE.md` by `install.sh`. At
+The hook is declared in `claude/rules/60-kit-workflow.md` under the
+"Memory System" section and installed into `~/.claude/rules/` by `install.sh`. At
 session start it locates the per-project memory directory, reads the
 `MEMORY.md` index, and makes the index entries available as context for
 the conversation. As the session proceeds, the hook prompts Claude to

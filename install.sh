@@ -73,7 +73,19 @@ backup_existing() {
     fi
 }
 
+# The kit's instructions go to ONE place, never both. On a CLI that supports
+# ~/.claude/rules they ship as rule files and CLAUDE.md is left alone, because
+# it belongs to the user. Below the floor the directory is ignored, so the
+# CLAUDE.md template is the only thing that reaches Claude at all.
 copy_templates() {
+    if kit_rules_supported; then
+        log "Instructions: shipping rule files; leaving ${CLAUDE_HOME}/CLAUDE.md to you"
+        mkdir -p "${CLAUDE_HOME}"
+        kit_migrate_claude_md
+        return 0
+    fi
+    warn "claude < ${KIT_RULES_MIN_VERSION}: ~/.claude/rules is not supported here,"
+    warn "  so the kit installs its CLAUDE.md template instead."
     log "Copying templates into ${CLAUDE_HOME}/..."
     mkdir -p "${CLAUDE_HOME}"
     cp "${REPO_DIR}/claude/CLAUDE.md" "${CLAUDE_HOME}/CLAUDE.md"

@@ -21,7 +21,7 @@ Phases:
 7. Summary — decisions and next steps captured for handoff.
 
 **Why it's in this kit:**
-The kit's `CLAUDE.md` mandates that any time the user says "add", "build",
+The kit's rules in `~/.claude/rules/` mandates that any time the user says "add", "build",
 "create", "implement", or "new feature", Claude must route through this
 workflow. The Phase-3 clarifying-questions gate is the differentiator —
 ordinary brainstorming skills will happily start designing on incomplete

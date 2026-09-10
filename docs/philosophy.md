@@ -339,8 +339,7 @@ mechanical sub-rules exist for the same reason:
   Optimization Protocol with dual-graph + LSP redundancy check),
   hard rules, worked examples. Shipped to `~/.claude/docs/` via
   `install.sh`.
-- `claude/rules/30-kit-quality-loop.md` ships a MANDATORY section (between the Quality
-  Loop and Installed Plugins) summarising the protocols above so
+- `claude/rules/40-kit-tracker.md` ships the tracker protocols summarising the protocols above so
   every session reads them before the plugin tour.
 - `docs/workflow.md` folds tracker dispatch into Step 2 (Plan → open
   rows) and Step 6 (Verify → agents claim, update, file findings).

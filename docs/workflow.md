@@ -1,7 +1,7 @@
 # Workflow
 
 This is the 10-step development loop the kit enforces for any non-trivial
-task. The loop is the same one declared in `claude/rules/30-kit-quality-loop.md` under
+task. The loop is the same one declared in `claude/rules/60-kit-workflow.md` under
 "Workflow Order" — this document is the long-form version with the
 per-step rationale, the skip conditions, the common pitfalls, and the exact
 slash command to run.

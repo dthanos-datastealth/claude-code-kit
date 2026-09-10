@@ -32,9 +32,13 @@ kit_write_version_marker() {
     local rollback_target="${1:-}"
     local ts sha_md sha_settings sha_manifest channel commit
     ts="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-    sha_md="$(shasum -a 256 "${CLAUDE_HOME}/CLAUDE.md" 2>/dev/null | awk '{print $1}')"
-    sha_settings="$(shasum -a 256 "${CLAUDE_HOME}/settings.json" 2>/dev/null | awk '{print $1}')"
-    sha_manifest="$(shasum -a 256 "${REPO_DIR}/claude/CLAUDE.md.manifest.json" 2>/dev/null | awk '{print $1}')"
+    # `|| true` because of `set -o pipefail`: on the rules path there is no
+    # ~/.claude/CLAUDE.md at all, shasum exits non-zero, and the whole pipeline
+    # would take the installer down with it. A missing file means an empty sha,
+    # which is what the marker should record.
+    sha_md="$(shasum -a 256 "${CLAUDE_HOME}/CLAUDE.md" 2>/dev/null | awk '{print $1}' || true)"
+    sha_settings="$(shasum -a 256 "${CLAUDE_HOME}/settings.json" 2>/dev/null | awk '{print $1}' || true)"
+    sha_manifest="$(shasum -a 256 "${REPO_DIR}/claude/CLAUDE.md.manifest.json" 2>/dev/null | awk '{print $1}' || true)"
     # Which channel this install came from, so `:status` can answer it without
     # the reader inspecting the checkout. Tolerates a non-git checkout (tarball)
     # the same way the shasum calls above tolerate a missing file.

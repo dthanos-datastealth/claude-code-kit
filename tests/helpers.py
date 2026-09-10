@@ -41,6 +41,13 @@ class RunResult:
 _FAKE_CLAUDE_BODY = """\
 #!/usr/bin/env bash
 echo "$@" >> "${CCK_FAKE_CLAUDE_LOG}"
+# install.sh asks the CLI its version to decide whether ~/.claude/rules is
+# supported. Tests set CCK_FAKE_CLAUDE_VERSION to drive that branch; the
+# default is a version above the floor, which is the path most tests want.
+if [ "$1" = "--version" ]; then
+    echo "${CCK_FAKE_CLAUDE_VERSION:-2.1.251} (Claude Code)"
+    exit 0
+fi
 # Emulate `claude plugin list` returning empty initially
 if [ "$1" = "plugin" ] && [ "$2" = "list" ]; then
     echo "(no plugins installed)"
@@ -137,6 +144,7 @@ def run_install(
         "PATH": f"{fake_bin}:/usr/bin:/bin",
         "LANG": "C.UTF-8",
         "CCK_FAKE_CLAUDE_LOG": str(claude_log),
+        "CCK_FAKE_CLAUDE_VERSION": "2.1.251",
     }
     env.update(extra_env or {})
     proc = subprocess.run(

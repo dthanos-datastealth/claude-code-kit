@@ -15,7 +15,7 @@ The plugin owns no MCP servers — only skills + supporting scripts.
 **Why it's in this kit:**
 Without it, every adopter who runs `install.sh` on top of an existing
 `~/.claude/` loses their custom `enabledPlugins`,
-`extraKnownMarketplaces`, and your `CLAUDE.md`, which the kit no longer writes
+`extraKnownMarketplaces`, and their own `CLAUDE.md`
 (because the kit's original `merge-settings.py` REPLACED rather than
 UNIONed those keys). The upgrade tool fixes that destructively-merge
 gap and ships it as a first-class skill so adopters get a single
@@ -51,6 +51,5 @@ Adds 1 marketplace + 1 plugin to the kit's install count (6
 marketplaces / 22 plugins total). On-disk: `~/.claude/.kit-version`
 (~200 B), `~/.claude/.kit-cache/CLAUDE.md` (~20 KB snapshot of the
 kit's CLAUDE.md at last install — used by the legacy merge on a
-CLI below 2.0.64; unused on the rules path)
-upgrade), and append-only `~/.claude/.kit-version.history.jsonl`
+CLI below 2.0.64, unused on the rules path), and append-only `~/.claude/.kit-version.history.jsonl`
 (one line per install/upgrade/rollback event).

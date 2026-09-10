@@ -24,7 +24,7 @@ Tools exposed:
   `confidence` is medium or low and graph hints proved insufficient.
 
 **Why it's in this kit:**
-The kit's `CLAUDE.md` makes graph-first navigation mandatory. Grep matches
+The kit's rules in `~/.claude/rules/` makes graph-first navigation mandatory. Grep matches
 strings; the graph matches scope. A `graph_read("src/auth.ts::handleLogin")`
 call returns just that function's lines — not the file, not the imports, not
 unrelated symbols — which is orders of magnitude cheaper in context than the

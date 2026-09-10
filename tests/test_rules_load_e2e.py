@@ -10,6 +10,7 @@ silently passed.
 """
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import uuid
@@ -20,8 +21,21 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 
 
+@pytest.mark.skipif(
+    os.environ.get("CCK_E2E_RULES_LOAD") != "1",
+    reason="opt-in: writes a probe into the REAL ~/.claude/rules and spawns a "
+           "claude session. Set CCK_E2E_RULES_LOAD=1 to run it.",
+)
 @pytest.mark.skipif(shutil.which("claude") is None, reason="claude CLI not on PATH")
 def test_an_installed_rule_reaches_a_live_session():
+    """Opt-in because it cannot be HOME-isolated.
+
+    Claude Code reads rules from the invoking user's home directory, and the
+    CLI needs that user's credentials, so there is no isolated HOME in which
+    this can run. It therefore touches the developer's own configuration and
+    consumes a real session. It cleans up after itself, but a test that reaches
+    into your live setup should never fire because you ran the suite.
+    """
     rules = Path.home() / ".claude" / "rules"
     created_dir = not rules.exists()
     canary = f"KIT-RULES-{uuid.uuid4().hex[:12].upper()}"

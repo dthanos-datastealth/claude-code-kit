@@ -19,7 +19,7 @@ LSP operations available via the MCP interface:
   traversal that respects `import type`, re-exports, and barrel files.
 
 **Why it's in this kit:**
-The kit's `CLAUDE.md` enforces LSP-second ordering after the dual-graph MCP,
+The kit's rules in `~/.claude/rules/` enforces LSP-second ordering after the dual-graph MCP,
 and ahead of any grep. For TypeScript that ordering matters even more than
 for Go: a TS project typically has dozens of re-exports, barrel files,
 declaration merging, and path aliases that turn naive string search into a

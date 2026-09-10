@@ -36,30 +36,37 @@ flowchart LR
     mem[claude/memory/MEMORY.md<br/>auto-memory index]
     docs[docs/<br/>philosophy · workflow · verification-standards ·<br/>prereqs · corporate-tls · memory-system ·<br/>tracker-system · tools/ ×24]
     sc[scripts/<br/>merge-settings · intelligent-settings-merge · intelligent-claude-md-merge · upgrade ·<br/>lint-scrubbing · lint-tools-docs · lint-plugin-marketplaces · lint-mcp-hardcoded-paths · lint-plugin-skill-layout · lint-merge-policy ·<br/>diff-against-live · test-install-isolated · test-upgrade-isolated]
-    tests[tests/<br/>168 pytest cases ·<br/>isolated-HOME harness]
+    tests[tests/<br/>175 pytest cases ·<br/>isolated-HOME harness]
   end
 
   cmd -->|preflight| pre{All prereqs on PATH?}
-  pre -->|no| fail[exit 1 + remediation msg]
-  pre -->|yes| backup[Backup existing CLAUDE.md and settings.json to backups timestamp dir]
-  backup --> copy[Copy kit rules into .claude/rules/]
-  copy --> merge[Merge settings.json preserving user env block]
-  merge --> memi[Install MEMORY.md never overwrites]
+  pre -->|no| fail[Stop, and say which directory the tool is in]
+  pre -->|yes| backup[Back up whatever is about to be replaced]
+  backup --> gate{Claude Code 2.0.64 or newer?}
+  gate -->|yes| rules[Install rule files into .claude/rules/<br/>your CLAUDE.md is left alone]
+  gate -->|no| legacy[Install the CLAUDE.md template instead<br/>older versions ignore rules/]
+  rules --> docscopy[Copy reference docs into .claude/docs/]
+  legacy --> docscopy
+  docscopy --> merge[Merge settings.json, keeping your env block]
+  merge --> memi[Install MEMORY.md only if absent]
   memi --> mp[Register 6 marketplaces]
-  mp --> pl[Install 22 plugins via claude plugin install]
+  mp --> pl[Install 22 plugins]
   pl --> ready[Restart Claude Code]
 
-  tmpl -.copied to.-> claudeHome[(.claude/rules/)]
-  sets -.merged to.-> settingsHome[(.claude/settings.json)]
+  tmpl -.copied to.-> rulesHome[(.claude/rules/)]
+  docs -.copied to.-> docsHome[(.claude/docs/)]
+  sets -.merged into.-> settingsHome[(.claude/settings.json)]
   mem -.copied if absent.-> memHome[(.claude/memory/MEMORY.md)]
-  pl -.installed.-> pluginsHome[(.claude/plugins/ - 22 plugins)]
+  pl -.installed into.-> pluginsHome[(.claude/plugins/ - 22 plugins)]
 
   classDef store fill:#1f2937,stroke:#9ca3af,color:#f3f4f6
   classDef action fill:#0f766e,stroke:#5eead4,color:#f0fdfa
   classDef artifact fill:#374151,stroke:#9ca3af,color:#f3f4f6
-  class claudeHome,settingsHome,memHome,pluginsHome store
-  class cmd,backup,copy,merge,memi,mp,pl action
+  classDef gate fill:#7c2d12,stroke:#fed7aa,color:#fff7ed
+  class rulesHome,docsHome,settingsHome,memHome,pluginsHome store
+  class cmd,backup,rules,legacy,docscopy,merge,memi,mp,pl action
   class tmpl,sets,mem,docs,sc,tests artifact
+  class gate gate
 ```
 
 `install.sh` is the only entry point. It is idempotent (re-runnable),
@@ -137,7 +144,7 @@ Three load-bearing rules behind the diagram:
 See `docs/workflow.md` for the full 10-step procedure,
 `docs/verification-standards.md` for what the kit accepts as evidence,
 `docs/philosophy.md`
-for the reasoning, and `claude/CLAUDE.md` for the exact rules Claude reads
+for the reasoning, and `claude/rules/` for the exact rules Claude reads
 every session.
 
 ---
@@ -147,8 +154,8 @@ every session.
 The workflow diagram above shows *which steps run*. The quality loop
 diagram below shows the *unconditional discipline that wraps every
 substantive change*, regardless of which workflow framed it. The
-kit's `claude/CLAUDE.md` codifies this as a top-level MANDATORY
-section so every session reads it before the plugin tour.
+kit ships this as `claude/rules/30-kit-quality-loop.md`, so every session
+reads it.
 
 ```mermaid
 flowchart TD
@@ -235,7 +242,7 @@ local spec or the diff.
 
 | Layer | Contents |
 |---|---|
-| **Workflow** | `CLAUDE.md` (~210 lines) enforcing TDD-first, evidence-before-assertions, the MANDATORY code-search order (`graph_continue` → LSP → Read/Grep — bash grep/find/cat/sed/awk forbidden), Berry as a hard gate, and the optional spec-kit layer with a 9-step agent playbook. |
+| **Workflow** | Rule files in `~/.claude/rules/` enforcing TDD-first, evidence-before-assertions, the MANDATORY code-search order (`graph_continue` → LSP → Read/Grep — bash grep/find/cat/sed/awk forbidden), Berry as a hard gate, and the optional spec-kit layer with a 9-step agent playbook. |
 | **Plugins (22)** | 17 from `anthropics/claude-plugins-official`: superpowers, feature-dev, code-simplifier, context7, claude-md-management, frontend-design, explanatory-output-style, notion, gopls-lsp, typescript-lsp, **jdtls-lsp** (Java), playwright, chrome-devtools-mcp, microsoft-docs, huggingface-skills, security-guidance, remember. 1 from `Optimal-AI/optibot-skill`: optibot (performance review). 1 from `dthanos-datastealth/hallbayes`: berry (evidence verifier; this is a Claude-Code-packaged fork of upstream `leochlon/hallbayes`). 1 from `multica-ai/andrej-karpathy-skills`. 1 from `JuliusBrussee/caveman`: caveman (token-savings terse-output mode). 1 from `dthanos-datastealth/claude-code-kit` (self-published): claude-code-kit (the kit's own upgrade/rollback/status/fix-notion-mcp-port skills — see `docs/upgrading.md`). |
 | **Berry verifier** | Defaults to OpenRouter `openai/gpt-4o-mini` (configured via `~/.berry/config.json` + `~/.berry/mcp_env.json`); self-hosted `llama.cpp` remains supported as the offline alternative. |
 | **Memory system** | `MEMORY.md` index template at `~/.claude/memory/`, plus `docs/memory-system.md` explaining the 4 memory types (user, feedback, project, reference), the index format, and the 200-line cap. |
@@ -332,30 +339,27 @@ optional tools (LSP binaries, `ripgrep`, `jq`, `shellcheck`, `specify`).
 
 **Does, in order, idempotently:**
 
-1. Preflight-check required tools on `$PATH`. Exits with remediation if any
-   are missing — including, when the tool is on disk but off `PATH`, the
-   directory it was found in and the `export` line that fixes it.
-2. Back up existing `~/.claude/CLAUDE.md` and `~/.claude/settings.json` to
+1. Checks that the tools it needs are on your `$PATH`, and stops with a fix if
+   any are missing. If a tool is installed but not on `PATH`, it tells you
+   which directory it found it in and the `export` line that sorts it out.
+2. Backs up anything it is about to replace, into
    `~/.claude/backups/<ISO-timestamp>/`.
-3. Copy `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`.
-4. Merge `claude/settings.json` into `~/.claude/settings.json` via
-   `scripts/merge-settings.py` (which now delegates to
-   `scripts/intelligent-settings-merge.py` per `scripts/merge-policy.json`).
-   The merge is UNION-on-conflict with user-wins: `enabledPlugins`,
-   `extraKnownMarketplaces`, and `env` keep all user entries and add
-   missing kit entries on top; `effortLevel` is user-wins-if-set;
-   other top-level keys preserved untouched. See "Corporate TLS handling"
-   below for the kit default that ships today and why. (Earlier versions
-   of `install.sh` REPLACED these keys destructively; the current shim +
-   policy is upgrade-safe — see [`docs/upgrading.md`](docs/upgrading.md).)
-5. Install `claude/memory/MEMORY.md` at `~/.claude/memory/MEMORY.md` only
-   if you don't already have one. Never overwrites.
-6. Register the six plugin marketplaces (with one retry on network blip).
-7. Install all 22 plugins (with one retry per plugin on failure).
-8. Write `~/.claude/.kit-version` + snapshot `~/.claude/.kit-cache/CLAUDE.md`
-   for future 3-way upgrade merges; append an install event to
+3. Installs the kit's rule files into `~/.claude/rules/`. Your own
+   `~/.claude/CLAUDE.md` is left alone. On a Claude Code older than 2.0.64,
+   which ignores that directory, it installs `claude/CLAUDE.md` instead and
+   says so.
+4. Copies the reference docs into `~/.claude/docs/`.
+5. Merges `claude/settings.json` into your `~/.claude/settings.json`. Your
+   `env` block, your own plugins and your own marketplaces all survive; the
+   kit adds what is missing. The one exception is a marketplace the kit itself
+   ships, which it reclaims so a release channel can move. See
+   [`docs/upgrading.md`](docs/upgrading.md) for the full table.
+6. Installs `claude/memory/MEMORY.md` only if you do not already have one.
+7. Registers the six plugin marketplaces, retrying once on a network blip.
+8. Installs all 22 plugins, retrying once each.
+9. Writes `~/.claude/.kit-version` and appends an install event to
    `~/.claude/.kit-version.history.jsonl`.
-8. Print next steps.
+10. Prints next steps.
 
 **Does NOT:**
 
@@ -363,7 +367,9 @@ optional tools (LSP binaries, `ripgrep`, `jq`, `shellcheck`, `specify`).
   `typescript-language-server`, `jdtls`), MCP backend binaries, the
   `specify` CLI, or the Berry verifier backend.
 - Modify your shell rc files (`.zshrc`, `.bashrc`).
-- Write to any path outside `~/.claude/`.
+- Write your `~/.claude/CLAUDE.md`, on any Claude Code from 2.0.64 onward.
+- Write anywhere outside `~/.claude/`, apart from the npm cache it warms so
+  the npx-based MCP servers do not cold-start on your first session.
 
 ---
 
@@ -513,10 +519,12 @@ from this repo — you'll add a plugin, tweak a rule, etc. Run:
 ./scripts/diff-against-live.sh
 ```
 
-This compares `claude/CLAUDE.md` against `~/.claude/CLAUDE.md` (unified
-diff) and shows a structural delta on `settings.json` (added/removed
-plugins, added marketplaces, env-key changes). Exits 0 on no drift, 1 on
-any drift. Use it to decide what to PR back into the kit.
+It diffs the kit's rule files against the ones in `~/.claude/rules/`, skipping
+`00-user-overrides.md` because that one is yours and is meant to differ, then
+shows a structural delta on `settings.json`: plugins added or removed,
+marketplaces added, env keys changed. On a Claude Code below 2.0.64 it falls
+back to comparing `CLAUDE.md`. Exits 0 when nothing has drifted, 1 when
+something has. Use it to decide what is worth contributing back.
 
 ---
 
@@ -668,7 +676,7 @@ claude-code-kit/
 ├── install.sh                         Bootstrap entry point
 ├── uninstall.sh                       Restore from latest backup
 ├── pyproject.toml                     pytest config
-├── .github/workflows/ci.yml           shellcheck + lints + 168 pytest cases
+├── .github/workflows/ci.yml           shellcheck + lints + 175 pytest cases
 ├── claude/                            Files copied/merged into ~/.claude/
 │   ├── CLAUDE.md                      Scrubbed opinionated template (legacy merge path)
 │   ├── rules/                         Kit instructions, owned; copied to ~/.claude/rules/

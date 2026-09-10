@@ -21,7 +21,7 @@ you can script in `@playwright/test` you can drive interactively through
 the MCP.
 
 **Why it's in this kit:**
-The kit's `CLAUDE.md` makes UI verification mandatory whenever a change
+The kit's rules in `~/.claude/rules/` makes UI verification mandatory whenever a change
 touches a rendered frontend: golden-path plus at least one edge case, with
 visual inspection of the result. Without a browser MCP, that rule degrades
 into "claim it works because the tests pass." Playwright closes the gap —

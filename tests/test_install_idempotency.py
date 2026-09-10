@@ -23,7 +23,13 @@ def test_running_install_twice_is_safe():
     # are themselves idempotent in the real `claude` CLI)
     assert second_log_len >= first_log_len
 
-    # Second run should have created a SECOND backup of CLAUDE.md
-    # (because after first run, ~/.claude/CLAUDE.md exists)
-    backups = list((r.home / ".claude" / "backups").glob("*/CLAUDE.md"))
-    assert len(backups) >= 1
+    # A second run must leave the machine in the same state, not accumulate
+    # work. On the rules path the kit writes no CLAUDE.md, so there is nothing
+    # for the second run to back up — what matters is that the rule files are
+    # still correct and the user's override file was not touched.
+    rules = r.home / ".claude" / "rules"
+    assert (rules / "10-kit-core.md").read_text() == (
+        REPO / "claude" / "rules" / "10-kit-core.md").read_text(), \
+        "a second install left a kit rule file wrong"
+    assert (rules / "00-user-overrides.md").is_file(), \
+        "a second install removed the user's override file"

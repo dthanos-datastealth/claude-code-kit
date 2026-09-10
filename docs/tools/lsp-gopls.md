@@ -19,7 +19,7 @@ LSP operations the plugin exposes through the standard MCP LSP interface:
   graph in either direction.
 
 **Why it's in this kit:**
-The kit's `CLAUDE.md` enforces a strict ordering for code lookup: dual-graph
+The kit's rules in `~/.claude/rules/` enforces a strict ordering for code lookup: dual-graph
 MCP first, LSP second, built-in Grep third, bash grep/find never. LSP is the
 right tool when you need precision — `goToDefinition` understands package
 scope, import aliases, generics, and method receivers, all things a string

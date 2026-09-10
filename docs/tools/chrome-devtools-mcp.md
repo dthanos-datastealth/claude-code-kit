@@ -22,7 +22,7 @@ inspect in the DevTools UI you can pull through this MCP.
 **Why it's in this kit:**
 Playwright is the right tool for "walk the user flow and assert what
 rendered." Chrome DevTools MCP is the right tool for "explain why this page
-is slow." The kit installs both because the kit's `CLAUDE.md` makes
+is slow." The kit installs both because the kit's rules in `~/.claude/rules/` makes
 performance and accessibility regressions explicit verification gates for
 frontend work, and those gates need DevTools-grade signals: real Largest
 Contentful Paint timings, network waterfall analysis, accessibility-tree

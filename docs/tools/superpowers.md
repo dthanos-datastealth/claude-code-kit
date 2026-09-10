@@ -8,9 +8,9 @@ is a structured prompt template the model invokes via the `Skill` tool, gating
 itself before it touches code.
 
 **Why it's in this kit:**
-This kit's `CLAUDE.md` mandates that every non-trivial task pass through
+This kit's rules mandate that every non-trivial task pass through
 brainstorm → plan → TDD → verify. Superpowers is the concrete machinery that
-encodes those phases; without it, the workflow rules in `CLAUDE.md` have nothing
+encodes those phases; without it, the kit's workflow rules have nothing
 to enforce them. It is the spine that other plugins (Berry, feature-dev,
 dual-graph) plug into — they assume the brainstorm/plan/TDD/verify cadence
 exists. Skipping it produces the failure mode this kit was built to prevent:

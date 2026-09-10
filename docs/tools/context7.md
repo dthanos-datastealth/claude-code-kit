@@ -20,7 +20,7 @@ Typical flow: `resolve-library-id("next.js")` then
 App Router behavior rather than whatever the model remembers.
 
 **Why it's in this kit:**
-The kit's `CLAUDE.md` treats stale training data as a primary failure mode.
+The kit's rules in `~/.claude/rules/` treats stale training data as a primary failure mode.
 Libraries deprecate methods between minor versions, rename config keys, flip
 defaults, and ship breaking migrations on a quarterly cadence. Context7 is
 the hedge: it gives Claude a way to verify an API signature against the

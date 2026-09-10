@@ -11,7 +11,7 @@ to OpenRouter-hosted `openai/gpt-4o-mini`, with a self-hosted llama.cpp
 endpoint as an offline alternative.
 
 **Why it's in this kit:**
-The kit's `CLAUDE.md` rule is "evidence before assertions — verify before
+The kit's rules in `~/.claude/rules/` rule is "evidence before assertions — verify before
 claiming anything works." Berry is what turns that rule from a slogan into a
 machine-checkable gate. Every plan step, RCA conclusion, test-pass claim, and
 generated-artifact handoff routes through a Berry skill that requires spans

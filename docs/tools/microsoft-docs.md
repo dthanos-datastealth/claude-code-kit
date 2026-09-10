@@ -27,7 +27,7 @@ Microsoft-flavored skill.
 The Microsoft surface is unusually large and unusually prone to
 hallucinated API signatures: the `.NET` BCL alone is enormous, Azure SDK
 naming churns across SKUs and language bindings, and PowerShell modules
-get renamed between major versions. The kit's `CLAUDE.md` rule
+get renamed between major versions. The kit's rules in `~/.claude/rules/` rule
 "evidence before assertions" is hard to honor for Microsoft code without an
 authoritative lookup — `microsoft-docs` is that lookup. The
 `microsoft-code-reference` skill is explicit about catching hallucinated

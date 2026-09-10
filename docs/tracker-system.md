@@ -406,6 +406,6 @@ plan for "what we're going to do" and the tracker for "what we actually did
   the tracker discipline wraps around.
 - [`docs/philosophy.md`](philosophy.md) — the kit's stance on
   evidence-before-assertions.
-- The kit's `claude/CLAUDE.md` `## MANDATORY Quality Loop` section is the
+- The kit's `claude/rules/30-kit-quality-loop.md` is the
   agent-side reference for these protocols; this document is the
   human-readable expansion.

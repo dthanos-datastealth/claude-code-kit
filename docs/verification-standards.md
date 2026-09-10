@@ -1,6 +1,6 @@
 # Verification standards — what counts as evidence
 
-`claude/CLAUDE.md` states three verification rules as one line each. This
+`claude/rules/30-kit-quality-loop.md` states three verification rules as one line each. This
 document is what each one forbids in practice, and the failure mode it exists to
 catch. The mechanism is included deliberately: each rule is easy to rationalise
 away in the moment, and much harder once you can see why the check you were

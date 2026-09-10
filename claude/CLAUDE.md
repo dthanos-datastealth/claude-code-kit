@@ -197,7 +197,7 @@ lists the wrong-tool cases), or when you need the upstream source.
 `workflow.md` (the 10-step recipe), `verification-standards.md` (what counts as
 evidence), `prereqs.md` (per-OS install commands), `corporate-tls.md` and
 `memory-system.md`. If that directory is missing or thinner than the plugin
-list, re-run `install.sh` — `copy_docs` populates it.
+list, re-run `install.sh` — `kit_copy_docs` populates it.
 
 | Tool | Reach for it when |
 |---|---|

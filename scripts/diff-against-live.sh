@@ -6,16 +6,34 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CLAUDE_HOME="${HOME}/.claude"
 
-echo "=== CLAUDE.md diff ==="
-if [ -f "${CLAUDE_HOME}/CLAUDE.md" ]; then
+# The kit's instructions live in rules/ on any current Claude Code, and in
+# CLAUDE.md only on a CLI below 2.0.64. Comparing the file the kit no longer
+# writes reported drift on every correctly-installed machine, forever.
+echo "=== instruction files diff ==="
+claude_md_drift=0
+if [ -d "${CLAUDE_HOME}/rules" ]; then
+    for src in "${REPO_DIR}/claude/rules/"*.md; do
+        name="$(basename "${src}")"
+        # 00-user-overrides.md belongs to the user; it is meant to differ.
+        [ "${name}" = "00-user-overrides.md" ] && continue
+        live="${CLAUDE_HOME}/rules/${name}"
+        if [ ! -f "${live}" ]; then
+            echo "(missing from live: rules/${name})"
+            claude_md_drift=1
+        elif ! diff -u "${src}" "${live}"; then
+            claude_md_drift=1
+        fi
+    done
+    [ "${claude_md_drift}" -eq 0 ] && echo "(no drift in rules/)"
+elif [ -f "${CLAUDE_HOME}/CLAUDE.md" ]; then
+    echo "(no ~/.claude/rules; comparing the legacy CLAUDE.md)"
     if diff -u "${REPO_DIR}/claude/CLAUDE.md" "${CLAUDE_HOME}/CLAUDE.md"; then
         echo "(no diff)"
-        claude_md_drift=0
     else
         claude_md_drift=1
     fi
 else
-    echo "(live ~/.claude/CLAUDE.md does not exist)"
+    echo "(the kit does not appear to be installed)"
     claude_md_drift=1
 fi
 
