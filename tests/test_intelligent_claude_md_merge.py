@@ -465,3 +465,37 @@ def test_manifest_parent_fields_name_real_sections():
     assert not wrong, (
         "these entries name a parent section that is not in the template:\n  "
         + "\n  ".join(wrong))
+
+
+def test_headings_inside_fenced_code_blocks_are_not_sections():
+    """A `#` comment inside a fenced block is code, not a heading.
+
+    The parser split on any line starting with `#`, so a Python comment inside a
+    ```python fence became a section of its own. It was never manifest-owned, so
+    it was preserved verbatim in place and the output looked correct — the bug
+    only surfaced when something tried to REMOVE sections around it, and the
+    fenced content was left behind as orphaned prose with its fence gone.
+    """
+    merger = _load_merger()
+    text = (
+        "# Title\n\nintro\n\n"
+        "## Real Section\n\n"
+        "```python\n"
+        "# CORRECT - this is a code comment, not a heading\n"
+        "spans = [{'sid': 'S0'}]\n"
+        "## also not a heading\n"
+        "```\n\n"
+        "body after the fence\n\n"
+        "## Another Real Section\n\nmore\n"
+    )
+    headings = [s["heading_line"] for s in merger.parse_sections(text) if s["heading_line"]]
+    assert headings == ["# Title", "## Real Section", "## Another Real Section"], headings
+
+
+def test_parsing_a_fenced_document_round_trips():
+    """Whatever the parser does, serialising it back must reproduce the input."""
+    merger = _load_merger()
+    text = (
+        "# Title\n\n## S\n\n```sh\n# a comment\necho hi\n```\n\ntail\n"
+    )
+    assert merger.serialize_sections(merger.parse_sections(text)) == text

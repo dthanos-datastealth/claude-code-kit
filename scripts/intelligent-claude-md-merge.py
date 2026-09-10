@@ -51,8 +51,21 @@ def parse_sections(text: str) -> list[dict]:
     lines = text.split("\n")
     sections: list[dict] = []
     current: dict | None = None
+    fence: str | None = None      # the ``` or ~~~ run that opened the block
     for line in lines:
-        m = re.match(r"^(#{1,6})\s+(.*)$", line)
+        # A `#` inside a fenced block is code, not a heading. Claude Code's own
+        # import parser skips fences for the same reason. Without this, a Python
+        # comment in an example became a section: harmless while sections were
+        # only ever preserved in place, and visibly wrong the moment anything
+        # removed the sections around it.
+        stripped = line.lstrip()
+        if fence is None:
+            if stripped.startswith("```") or stripped.startswith("~~~"):
+                fence = stripped[:3]
+        elif stripped.startswith(fence):
+            fence = None
+
+        m = None if fence is not None else re.match(r"^(#{1,6})\s+(.*)$", line)
         if m:
             # New heading
             if current is not None:
