@@ -6,9 +6,11 @@ Code agentic development engineering environment on a clean macOS or Linux machi
 The kit ships three things together so a new machine reaches a working,
 high-discipline setup with a single command:
 
-1. **A scrubbed global `CLAUDE.md`** that encodes the workflow philosophy
-   (TDD-first, evidence-before-assertions, mandatory code-search order, Berry
-   verification as a hard gate, spec-driven development as an optional layer).
+1. **A set of owned rule files** in `~/.claude/rules/`, which Claude Code loads
+   every session. They encode the workflow philosophy: TDD-first,
+   evidence-before-assertions, a mandatory code-search order, Berry
+   verification as a hard gate, spec-driven development as an optional layer.
+   Your own `CLAUDE.md` stays yours; the kit does not write it.
 2. **A merged `settings.json`** that enables 22 curated plugins from 6
    marketplaces and sets `effortLevel: xhigh` — without overwriting your
    existing `env` block.
@@ -282,10 +284,12 @@ The upgrade tool:
 - Preserves user-added plugins, marketplaces, and env vars (UNION
   merge, user-wins-on-conflict, per
   [`scripts/merge-policy.json`](scripts/merge-policy.json))
-- Does heading-based 3-way merge on `CLAUDE.md` (per
-  [`claude/CLAUDE.md.manifest.json`](claude/CLAUDE.md.manifest.json));
-  user-added sections outside the manifest are preserved verbatim
-- Surfaces conflicts and asks per-section (no auto-resolution)
+- Replaces the kit's own files in `~/.claude/rules/` wholesale, and never
+  touches `~/.claude/rules/00-user-overrides.md` after seeding it once
+- Moves the kit's sections out of an existing `CLAUDE.md` on the first upgrade,
+  leaving your own sections in place
+- Falls back to the old heading-based `CLAUDE.md` merge below Claude Code
+  2.0.64, where `~/.claude/rules/` is ignored
 - Writes timestamped backups before any change; rollback via
   `/claude-code-kit:rollback` or restore manually from
   `~/.claude/backups/`

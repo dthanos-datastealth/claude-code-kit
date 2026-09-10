@@ -47,7 +47,7 @@ the marketplace registrations — the marketplace *names* never change, and a
 second `marketplace add` under an existing name replaces it.
 
 `scripts/upgrade.sh` deliberately does **not** register marketplaces or install
-plugins (it merges settings and CLAUDE.md), so switching branch and re-running
+plugins (it merges settings and installs rules), so switching branch and re-running
 it does not move you between channels. Do both halves:
 
 ```sh
@@ -247,7 +247,9 @@ rest.
 - `claude/CLAUDE.md.manifest.json` — list of kit-owned section headings
 - `scripts/merge-policy.json` — per-key settings.json merge policy
 - `scripts/intelligent-settings-merge.py` — settings.json merger
-- `scripts/intelligent-claude-md-merge.py` — CLAUDE.md merger
+- `scripts/intelligent-claude-md-merge.py` — legacy CLAUDE.md merger (pre-2.0.64 fallback)
+- `scripts/migrate-claude-md-to-rules.py` — one-shot move of kit sections into rules/
+- `scripts/_kit_rules.sh` — installs `claude/rules/` into `~/.claude/rules/`
 - `scripts/upgrade.sh` — orchestrator
 - `plugins/claude-code-kit/skills/{upgrade,rollback,status}/SKILL.md` — slash
   command skills

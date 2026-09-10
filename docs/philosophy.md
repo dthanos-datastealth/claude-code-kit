@@ -174,7 +174,7 @@ sessions from collapsing under their own context weight.
 
 **How the kit enforces it:**
 
-- `claude/CLAUDE.md` declares the search order mandatory.
+- `claude/rules/20-kit-code-search.md` declares the search order mandatory.
 - The Go and TypeScript LSPs ([`docs/tools/lsp-gopls.md`](tools/lsp-gopls.md),
   [`docs/tools/lsp-typescript.md`](tools/lsp-typescript.md)) are
   pre-configured so that structured queries are available without per-project
@@ -238,7 +238,7 @@ failure wastes time and erodes trust. Stop, surface, ask.
 - The Berry plugin and its workflow skills ([`docs/tools/berry.md`](tools/berry.md))
   are mandatory triggers for plan execution, RCA, test verification, and
   artifact generation.
-- The `claude/CLAUDE.md` hard rules section makes the three-strike rule
+- The hard-rules section of `claude/rules/50-kit-plugins.md` makes the three-strike rule
   explicit, with API-format gotchas documented (the silent
   `{"<id>": "<text>"}` vs. correct `{"sid": "<id>", "text": "<text>"}` trap).
 
@@ -339,7 +339,7 @@ mechanical sub-rules exist for the same reason:
   Optimization Protocol with dual-graph + LSP redundancy check),
   hard rules, worked examples. Shipped to `~/.claude/docs/` via
   `install.sh`.
-- `claude/CLAUDE.md` ships a MANDATORY section (between the Quality
+- `claude/rules/30-kit-quality-loop.md` ships a MANDATORY section (between the Quality
   Loop and Installed Plugins) summarising the protocols above so
   every session reads them before the plugin tour.
 - `docs/workflow.md` folds tracker dispatch into Step 2 (Plan → open
