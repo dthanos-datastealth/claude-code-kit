@@ -21,8 +21,8 @@ bash scripts/upgrade.sh --apply   # commit
 ```
 
 The upgrade tool preserves your custom plugins, the marketplaces you added, env
-vars, and any CLAUDE.md section the kit doesn't own (per the manifest
-in `claude/CLAUDE.md.manifest.json`). The one exception is a marketplace the
+vars, and your `CLAUDE.md`, which the kit no longer writes at all — its
+instructions live in `~/.claude/rules/` instead. The one exception is a marketplace the
 kit itself ships that you repointed at your own fork: that declaration is
 restored, because it carries the release channel. See
 [Merge semantics](#merge-semantics).
@@ -106,21 +106,15 @@ cannot silently leave stable users pointed at the prerelease channel.
 
 ### When the upgrade stops instead of proceeding
 
-`scripts/upgrade.sh` runs the CLAUDE.md merge non-interactively. If you edited a
-section the kit owns and the kit also changed it, that is a conflict, and with
-no terminal to prompt on the merge exits non-zero and the upgrade aborts with
-your file untouched. Nothing is written and nothing is lost.
+On a CLI older than 2.0.64 the kit falls back to merging `CLAUDE.md`, and that
+merge runs non-interactively. If you edited a section the kit owns and the kit
+also changed it, that is a conflict; with no terminal to prompt on, the merge
+exits non-zero and the upgrade aborts with your file untouched. Nothing is
+written and nothing is lost.
 
-This surface grew deliberately. The kit now declares every section it ships,
-including the subsections of the mandatory protocols, because a section it did
-not declare was silently kept at your old version — which is how a release's new
-rules reached nobody who upgraded. The cost is that an edit inside one of those
-subsections now blocks the upgrade rather than being quietly preserved.
-
-To get past it, either run the merge where it can prompt you
-(`python3 scripts/intelligent-claude-md-merge.py claude/CLAUDE.md ~/.claude/CLAUDE.md --prev <cached>`),
-or move your own material into a section of your own — any heading the kit has
-never shipped is yours and is preserved verbatim, forever.
+On a current CLI this cannot happen. The kit does not write `CLAUDE.md`, so
+there is nothing to conflict with. Put your changes in
+`~/.claude/rules/00-user-overrides.md` and they survive every upgrade.
 
 ## Merge semantics
 
@@ -152,42 +146,45 @@ The kit ships `effortLevel: xhigh`. The persisted key accepts `low`, `medium`,
 and an invalid value here is dropped with a validation error when the key is
 delivered through managed settings.
 
-### `CLAUDE.md` (per `claude/CLAUDE.md.manifest.json`)
+### `CLAUDE.md` and `~/.claude/rules/`
 
-The manifest declares every heading the kit owns, at any depth — `##`, `###`
-and `####` alike. Depth matters: a `###` entry does not cover a `####` beneath
-it, so each nested heading needs its own entry. A heading the manifest does not
-list is yours: preserved verbatim, forever, and never replaced by a kit version.
-
-Heading-based 3-way merge per section:
-
-| live == kit_previous | live == kit_new | kit_previous == kit_new | Action |
-|---|---|---|---|
-| YES | * | * | Take `kit_new` (clean upgrade) |
-| NO | YES | * | No-op |
-| NO | NO | YES | Keep `live` (user modified; kit didn't) |
-| NO | NO | NO | **CONFLICT** — surface to user |
-
-Sections NOT in the manifest (e.g., your custom `### Sourcegraph`
-block) are preserved verbatim.
-
-### Conflict UX
-
-If a 3-way conflict surfaces during `:upgrade`, you'll be prompted
-per-section:
+The kit no longer writes your `CLAUDE.md`. Its instructions ship as files under
+`~/.claude/rules/`, which Claude Code discovers and loads every session:
 
 ```
-CONFLICT: section "## MANDATORY Code Search Order"
-  Choose: [k] take kit_new  [y] keep yours  [m] write conflict file + skip  [a] abort
+~/.claude/rules/
+├── 00-user-overrides.md      yours; seeded once, never overwritten
+├── 10-kit-core.md
+├── 20-kit-code-search.md
+├── 30-kit-quality-loop.md
+├── 40-kit-tracker.md
+├── 50-kit-plugins.md
+└── 60-kit-workflow.md
 ```
 
-- `[k]` accepts the kit's new version (your customization lost; backup
-  available for rollback)
-- `[y]` keeps your version (kit changes for that section not applied)
-- `[m]` writes a side-by-side `.conflict.md` file to
-  `~/.claude/.kit-conflicts/` for manual reconcile; upgrade refuses to
-  re-run until you delete the conflict file
-- `[a]` aborts the whole upgrade (no backup created, no changes written)
+Files there are discovered, not merged, so an upgrade is a copy. A kit rule file
+you edit locally is replaced on the next upgrade, which is what it means for the
+kit to own it. `00-user-overrides.md` is the exception: the kit writes it once,
+when it is absent, and never again.
+
+**Overrides are stated, not layered.** Load order cannot carry precedence here.
+The memory docs are explicit that files are "concatenated into context rather
+than overriding each other", and that when two rules contradict, Claude "may
+pick one arbitrarily". So every kit rule file ends by naming
+`00-user-overrides.md` as the file that wins. Put your changes there rather than
+editing a kit file, and they survive every upgrade.
+
+**Migration happens once.** The first upgrade on a CLI that supports rules moves
+the kit's sections out of your `CLAUDE.md`, leaves your own sections exactly
+where they were, and stamps a comment at the top saying where the kit's content
+went. Preview it with `scripts/upgrade.sh --dry-run`, which lists every section
+it would move and writes nothing.
+
+**Version floor.** `~/.claude/rules/` arrived in Claude Code 2.0.64, December
+2025. On an older CLI the directory is ignored, so the upgrade detects the
+version, says so, and falls back to the previous merge behaviour rather than
+installing rules that would never load.
+
 
 ## Rollback
 
@@ -231,13 +228,19 @@ python3 scripts/intelligent-settings-merge.py \
     --policy scripts/merge-policy.json
 ```
 
-### "An upgrade ago, I edited the Quality Loop section and now I get conflicts every upgrade"
-Either: (a) take the kit's new version once via `[k]` and let your
-edit go; (b) keep your version via `[y]` every upgrade and accept
-that the kit's improvements to that section won't reach you; (c)
-move your custom content into a NEW section with a heading not in
-the manifest (e.g., `## My Custom Quality Loop Notes`) — that
-section is preserved verbatim across upgrades and never conflicts.
+### "I edited a kit section and my edits keep getting clobbered"
+
+Stop editing kit files. Put the change in
+`~/.claude/rules/00-user-overrides.md`, which the kit seeds once and never
+writes again. Every kit rule file ends by saying that file wins, so an
+instruction there beats the kit's without you having to defend an edit against
+each upgrade.
+
+If you edited kit sections before migrating, those edits are still in your
+`CLAUDE.md`. Migration left them there rather than discarding them, but the
+kit's fresh copy of the same rule now lives in `rules/` — so both load and they
+may disagree. Move what you want to keep into the override file and delete the
+rest.
 
 ## Files this guide references
 

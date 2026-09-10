@@ -7,6 +7,13 @@ contract changes; untagged for CLAUDE.md/docs edits.
 ## [Unreleased]
 
 ### Fixed
+- **The CLAUDE.md parser treated `#` comments inside fenced code blocks as
+  headings.** A Python comment in an example became a section of its own. That
+  was invisible while sections were only ever preserved in place; the moment
+  anything removed sections around it, the fenced content spilled out as
+  orphaned prose with its fence gone. Found by running the new migration against
+  a real file, which left 19 lines of debris.
+
 - **Plugin skills that never loaded.** All four of the kit plugin's skills were
   flat `skills/<name>.md` files. Claude Code discovers plugin skills only at
   `skills/<name>/SKILL.md`, so none of them had ever loaded on any install, and
@@ -125,6 +132,23 @@ contract changes; untagged for CLAUDE.md/docs edits.
   process and each run symlinks to it.
 
 ### Changed
+- **The kit stops merging prose into your CLAUDE.md.** Its instructions now ship
+  as owned files under `~/.claude/rules/`, which Claude Code discovers and loads
+  every session rather than merging. Upgrade is a copy. The manifest, the
+  tombstones, the depth matching, the conflict path and the abort all go with
+  it — as does the failure they produced, where a heading the manifest forgot
+  left a machine on the previous release's rules with nothing reported. Five
+  defects in the last release traced to that design.
+
+  `~/.claude/rules/00-user-overrides.md` is yours: seeded once, never written
+  again. Every kit rule ends by naming it as the file that wins, because load
+  order cannot carry precedence — the docs say files are concatenated rather
+  than overriding, and that contradictions resolve arbitrarily.
+
+  The first upgrade moves the kit's sections out of your CLAUDE.md and leaves
+  your own where they are. Below Claude Code 2.0.64, where `~/.claude/rules/` is
+  ignored, the upgrade says so and falls back to the old merge.
+
 - **`claude/CLAUDE.md` cut from 503 lines to 341.** The per-plugin catalogue
   was 290 lines restating what the 24 `docs/tools/*.md` depth references
   already cover, so it is now a table that says when to reach for each tool and

@@ -29,25 +29,25 @@ flowchart LR
   subgraph repo["claude-code-kit (this repo)"]
     direction TB
     cmd[install.sh]
-    tmpl[claude/CLAUDE.md<br/>scrubbed template]
+    tmpl[claude/rules/<br/>owned instruction files]
     sets[claude/settings.json<br/>22 plugins · 6 marketplaces<br/>effortLevel: xhigh]
     mem[claude/memory/MEMORY.md<br/>auto-memory index]
     docs[docs/<br/>philosophy · workflow · verification-standards ·<br/>prereqs · corporate-tls · memory-system ·<br/>tracker-system · tools/ ×24]
     sc[scripts/<br/>merge-settings · intelligent-settings-merge · intelligent-claude-md-merge · upgrade ·<br/>lint-scrubbing · lint-tools-docs · lint-plugin-marketplaces · lint-mcp-hardcoded-paths · lint-plugin-skill-layout · lint-merge-policy ·<br/>diff-against-live · test-install-isolated · test-upgrade-isolated]
-    tests[tests/<br/>143 pytest cases ·<br/>isolated-HOME harness]
+    tests[tests/<br/>168 pytest cases ·<br/>isolated-HOME harness]
   end
 
   cmd -->|preflight| pre{All prereqs on PATH?}
   pre -->|no| fail[exit 1 + remediation msg]
   pre -->|yes| backup[Backup existing CLAUDE.md and settings.json to backups timestamp dir]
-  backup --> copy[Copy CLAUDE.md template]
+  backup --> copy[Copy kit rules into .claude/rules/]
   copy --> merge[Merge settings.json preserving user env block]
   merge --> memi[Install MEMORY.md never overwrites]
   memi --> mp[Register 6 marketplaces]
   mp --> pl[Install 22 plugins via claude plugin install]
   pl --> ready[Restart Claude Code]
 
-  tmpl -.copied to.-> claudeHome[(.claude/CLAUDE.md)]
+  tmpl -.copied to.-> claudeHome[(.claude/rules/)]
   sets -.merged to.-> settingsHome[(.claude/settings.json)]
   mem -.copied if absent.-> memHome[(.claude/memory/MEMORY.md)]
   pl -.installed.-> pluginsHome[(.claude/plugins/ - 22 plugins)]
@@ -664,9 +664,10 @@ claude-code-kit/
 ├── install.sh                         Bootstrap entry point
 ├── uninstall.sh                       Restore from latest backup
 ├── pyproject.toml                     pytest config
-├── .github/workflows/ci.yml           shellcheck + lints + 143 pytest cases
+├── .github/workflows/ci.yml           shellcheck + lints + 168 pytest cases
 ├── claude/                            Files copied/merged into ~/.claude/
-│   ├── CLAUDE.md                      Scrubbed opinionated template
+│   ├── CLAUDE.md                      Scrubbed opinionated template (legacy merge path)
+│   ├── rules/                         Kit instructions, owned; copied to ~/.claude/rules/
 │   ├── settings.json                  22 plugins, 6 marketplaces, effortLevel: xhigh
 │   └── memory/MEMORY.md               Empty index with type sections
 ├── docs/
