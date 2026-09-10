@@ -7,6 +7,170 @@ contract changes; untagged for CLAUDE.md/docs edits.
 ## [Unreleased]
 
 ### Fixed
+
+A clean-machine install and end-to-end test pass produced 30 findings,
+recorded with their evidence in `INSTALL-FINDINGS.md`. `install.sh` itself
+ran clean; almost everything below is in what surrounds it. Three causes
+account for most of them: the rules migration updated the installer but not
+the harness, the backups or the uninstaller; several checks could not fail
+when the thing they checked was broken; and prerequisites were declared
+without being enforced, or documented with commands that do not work.
+
+- **The isolation harness had not run its leak check since the rules
+  migration.** `test-install-isolated.sh` asserted `CLAUDE.md` existed in the
+  isolated HOME, and `install.sh` deliberately stopped writing it at Claude
+  Code 2.0.64 — so the harness failed on every run against any current CLI,
+  at an assertion four steps before the leak check that is the entire reason
+  it exists. Nothing was proving the kit stayed out of your real `~/.claude/`,
+  and nothing said so. The artifact assertions now live in
+  `scripts/verify-install.py`, which branches on the CLI version, reports
+  every missing artifact rather than the first, and is covered by
+  `tests/test_verify_install.py`. An `EXIT` trap cleans up the tempdir on
+  failure too; each failed run had been abandoning about 961 MB.
+
+- **The kit's own instructions had no revert path.** Backups held
+  `CLAUDE.md` and `settings.json` only, and the kit's instructions moved to
+  `~/.claude/rules/` — which every install and upgrade replaces wholesale.
+  A release shipping a bad rule could not be rolled back, even though
+  `docs/upgrading.md` offers rollback as the remedy for exactly that.
+  `kit_backup_files` now captures `rules/`, including `00-user-overrides.md`
+  and anything else you wrote there, and both `--rollback` and `uninstall.sh`
+  restore it.
+
+- **`uninstall.sh` left the kit's settings behind on the machines most
+  likely to run it.** On a clean machine `install.sh` creates no backup —
+  there is nothing pre-existing to copy — so uninstall had nothing to
+  restore and left all 22 plugins, 6 marketplaces, `effortLevel` and the
+  kit's `env` block in place permanently, while `docs/upgrading.md` called
+  it "the nuclear option ... use to leave the kit completely". It now
+  subtracts the kit's own keys, and only where the value still matches what
+  the kit ships: a plugin you disabled or an `effortLevel` you changed stays.
+
+- **`upgrade.sh --status` reported drift it never computed.** The script's
+  own header and `skills/status/SKILL.md` both promised a SHA comparison
+  against `.kit-version`. There wasn't one, so a hand-edited `settings.json`
+  reported a clean install. It now prints `match` or `DRIFTED` per file.
+
+- **`--dry-run` showed nothing to review.** The README calls it "preview the
+  diff" and the upgrade skill builds a four-way confirmation prompt on top of
+  it, but the output was four status lines. It now prints the structural
+  settings delta.
+
+- **`diff-settings.py` reported the kit's own env keys as user additions**
+  (`env_keys_only_in_live` never subtracted the kit's), so `UV_NATIVE_TLS`
+  appeared on every stock install, and env differences were excluded from the
+  exit code despite the README promising "exits 0 when nothing has drifted".
+
+- **Both `claude mcp add` invocations the kit ships registered
+  per-project.** Without `--scope user` the server lands under the current
+  directory's entry in `~/.claude.json` and exists nowhere else. For the
+  dual-graph MCP that means `graph_continue` silently missing in every real
+  project, so the mandatory search order's first leg no-ops and the kit falls
+  back to the grep its own rules forbid. For `fix-notion-mcp-port.sh` it
+  means the pinned OAuth port applies in one directory. Both fixed, both
+  documents corrected, and a test now fails on any documented `mcp add`
+  without the flag.
+
+- **Node was a hard runtime dependency that nothing declared or checked.**
+  `caveman` registers a `UserPromptSubmit` hook that runs `node`, and
+  playwright, chrome-devtools and context7 launch via `npx` — so a machine
+  without Node installed cleanly and then printed
+  `/bin/sh: node: command not found` on **every prompt** with three MCP
+  servers dead. Preflight now requires `node` and `npx`, and both appear in
+  the prereq list.
+
+- **Preflight checked that `python3` existed, not that it was new enough.**
+  `pyproject.toml` requires 3.11+; the macOS system interpreter is 3.9 and
+  passed. The consequence showed up elsewhere and much later, as
+  `security-guidance` dropping its cross-file reviewer with "the hook is
+  running on 3.9". Preflight now enforces the floor and names the fix.
+
+- **`brew install python@3.12` does not put `python3` on your PATH**, which
+  is what made the above so easy to hit. The formula is keg-only for the
+  unversioned names — Homebrew's own output says so — so `docs/prereqs.md`
+  §4's verification (`python3 --version`, expect 3.11+) failed on a
+  correctly followed install. The `export` line is now part of the recipe.
+
+- **`npm install -g typescript` now installs a TypeScript that the LSP
+  cannot use.** 7.x is the native port and ships no `tsserver.js`, so
+  `typescript-language-server` dies at startup — while `tsc --version`, the
+  documented check, prints a version happily. The install is pinned to
+  `typescript@5` and the check is now `ls "$(npm root -g)/typescript/lib/tsserver.js"`.
+
+- **`jdtls --help` cannot detect the failure it was documented to detect.**
+  It exits 0 and prints usage on a machine with no JVM at all, because
+  `jdtls` is a Python launcher. Homebrew's `openjdk` is also keg-only, so
+  `brew install jdtls` leaves `java` resolving to the macOS stub. Both fixed:
+  the PATH line is in the recipe and verification is `java -version`, which
+  actually fails. (`jdtls --version` is not a substitute either — it starts
+  the language server and blocks.)
+
+- **The Berry gate as documented verified nothing.** `audit_trace_budget`
+  defaults to `context_mode: "cited"`, and the example in
+  `50-kit-plugins.md` had no `cites` — so the verifier was never called and
+  the result came back `flagged`, indistinguishable from failed evidence and
+  counting toward the three-strike rule. The examples now cite their spans.
+  The surrounding explanation was also stale: there is no `observed_bits`
+  field in Berry 2.1, and the wrong span shape reports `no_spans` rather than
+  zero bits. `50-kit-plugins.md`, `claude/CLAUDE.md`, `docs/philosophy.md`
+  §5, `docs/workflow.md` and `docs/tools/berry.md` now describe the real
+  status taxonomy — `passed`, `not_entailed`, `contradicted`,
+  `empty_context`, `no_spans` — and note that the last two mean the gate did
+  not run and should not consume a strike.
+
+- **`/berry:berry-configure` does not write the model pin the kit calls
+  mandatory.** Its OpenAI-compatible branch writes the key and base URL
+  only, so following the supported flow against OpenRouter leaves the
+  verifier resolving to an arbitrary model that probably lacks logprobs.
+  Documented in `docs/tools/berry.md` and the README's setup table.
+
+- **Rule 40 mandated tools the kit never enabled.** The Pre-Dispatch
+  Protocol runs on `TaskCreate`/`TaskUpdate`/`TaskList`/`TaskGet`, which are
+  opt-in from Claude Code 2.1.233 on current model families. `install.sh`
+  now ships `CLAUDE_CODE_ENABLE_TODO_TOOLS=1`, and both the rule and
+  `docs/tracker-system.md` say what to do in the session before it takes
+  effect.
+
+- **Rule 20 named tools the harness can withdraw.** Under `auto` permission
+  mode `Grep` and `Glob` do not exist, and that mode's own guidance is the
+  inverse of the rule's step 4. The rule now names capabilities, degrades
+  explicitly when structured search tools are absent, and keeps
+  `graph_continue`-first as the non-negotiable part. It also no longer
+  treats `confidence: high` as a hard stop when every recommended file is a
+  test — a graph that has indexed tests but not implementation answers
+  confidently with the wrong files and a zero supplementary budget.
+
+- **`UV_NATIVE_TLS` is deprecated by uv** and was the kit's only env
+  default and its entire corporate-TLS story. `UV_SYSTEM_CERTS` now ships
+  alongside it, with the old name kept for older `uv`.
+
+- **`install.sh` now records a runtime PATH in `settings.json`.** MCP
+  servers and plugin hooks inherit Claude Code's process environment, not
+  your shell profile, so a prerequisite could be installed, exported and
+  verified by hand and still be invisible to them — and restarting `claude`
+  inside an existing terminal does not help, because that shell predates the
+  edit. The PATH is composed from the directories preflight resolved plus the
+  one the install ran under, so it is a superset of a PATH already known to
+  work, and your own value is never overwritten. `docs/prereqs.md` gains the
+  consolidated PATH block, the shell-profile table, and the
+  `ps -o lstart` / `stat` diagnostic for spotting a stale shell.
+
+- **`merge-policy.json` gained `permissions` and `statusLine` entries**, per
+  its own rule that the kit does not introduce a top-level key without
+  listing it first.
+
+- **spec-kit's documented skill count was wrong in two places** (nine in
+  `prereqs.md`, ten in `spec-kit.md`; the pinned 0.8.16 installs 14), the
+  version string in the verification example did not match the pinned
+  version, and `--force` was undocumented despite `--here` prompting in any
+  non-empty directory.
+
+- **`docs/verification-standards.md` gained a fourth section** walking
+  through the four checks above that could not fail — the kit's own tooling
+  is the clearest worked example of the pattern the document exists to warn
+  about.
+
+### Previously fixed
 - **The CLAUDE.md parser treated `#` comments inside fenced code blocks as
   headings.** A Python comment in an example became a section of its own. That
   was invisible while sections were only ever preserved in place; the moment

@@ -46,6 +46,9 @@ KIT_SETTINGS="${REPO_DIR}/claude/settings.json"
 # Rule-file install (kit_copy_rules), shared with install.sh.
 # shellcheck source=scripts/_kit_rules.sh
 . "${REPO_DIR}/scripts/_kit_rules.sh"
+# Runtime env (kit_compute_path, kit_write_runtime_env), shared with install.sh.
+# shellcheck source=scripts/_kit_env.sh
+. "${REPO_DIR}/scripts/_kit_env.sh"
 
 MODE="apply"
 ROLLBACK_TARGET=""
@@ -85,6 +88,41 @@ if [ "${MODE}" = "status" ]; then
     else
         log "No kit version marker — fresh install or pre-upgrade-tool era."
     fi
+    # Drift: does what is on disk still match what we recorded at install
+    # time? Both the header of this script and skills/status/SKILL.md have
+    # always promised this, and it was never computed — so `--status` on a
+    # hand-edited settings.json reported a clean install.
+    if [ -f "${VERSION_FILE}" ]; then
+        log "Drift against recorded SHAs:"
+        python3 - "${VERSION_FILE}" "${CLAUDE_HOME}" <<'PY'
+import hashlib
+import json
+import pathlib
+import sys
+
+marker = json.loads(pathlib.Path(sys.argv[1]).read_text())
+home = pathlib.Path(sys.argv[2])
+
+for name, field in (("settings.json", "settings_sha256"),
+                    ("CLAUDE.md", "claude_md_sha256")):
+    recorded = marker.get(field) or ""
+    path = home / name
+    if not recorded and not path.is_file():
+        # Above the version floor the kit does not write CLAUDE.md, so an
+        # empty recorded SHA and an absent file agree with each other.
+        continue
+    if not path.is_file():
+        print(f"    {name}: recorded at install, now MISSING")
+        continue
+    actual = hashlib.sha256(path.read_bytes()).hexdigest()
+    if not recorded:
+        print(f"    {name}: present, no SHA recorded at install")
+    elif actual == recorded:
+        print(f"    {name}: match")
+    else:
+        print(f"    {name}: DRIFTED (edited since install)")
+PY
+    fi
     log "Unresolved conflicts:"
     if [ -d "${CONFLICT_DIR}" ] && [ -n "$(ls -A "${CONFLICT_DIR}" 2>/dev/null || true)" ]; then
         ls "${CONFLICT_DIR}"
@@ -113,6 +151,13 @@ if [ "${MODE}" = "rollback" ]; then
             log "  restored: ${f}"
         fi
     done
+    # The instruction layer. Without this a rollback reverts settings and
+    # leaves the rule files from the release you are rolling back from.
+    if [ -d "${bk}/rules" ]; then
+        mkdir -p "${CLAUDE_HOME}/rules"
+        cp "${bk}/rules/"*.md "${CLAUDE_HOME}/rules/" 2>/dev/null || true
+        log "  restored: rules/ ($(find "${bk}/rules" -name '*.md' | wc -l | tr -d ' ') file(s))"
+    fi
     # Update .kit-version to reflect restored state (SHAs of the restored files,
     # not the SHAs of the kit's current CLAUDE.md/settings.json template). Lets
     # `:status` correctly report no drift after rollback.
@@ -200,6 +245,14 @@ fi
 
 # settings.json merge
 log "settings.json merge..."
+# A dry-run whose whole output is "nothing was written" asks the reader to
+# approve a change they cannot see — and skills/upgrade/SKILL.md builds a
+# four-way confirmation prompt on top of it. Show the structural delta.
+if [ "${MODE}" = "dry-run" ] && [ -f "${CLAUDE_HOME}/settings.json" ]; then
+    log "  proposed settings.json delta:"
+    python3 "${REPO_DIR}/scripts/diff-settings.py" \
+        "${KIT_SETTINGS}" "${CLAUDE_HOME}/settings.json" | sed 's/^/    /' || true
+fi
 # Run in both modes: dry-run writes nothing but reports what the kit would
 # reclaim, which is the one path where an upgrade replaces a value the user set.
 if [ "${MODE}" = "apply" ]; then
@@ -217,8 +270,13 @@ fi
 if [ "${MODE}" = "apply" ]; then
     kit_copy_docs
     kit_copy_rules
+    # An existing install predates the runtime-env keys, and its PATH is
+    # exactly as stale as the shell that first ran install.sh. Fill anything
+    # the user has not set; their own values are left alone.
+    kit_write_runtime_env
 else
     log "(dry-run: would refresh ${CLAUDE_HOME}/docs/ and ${CLAUDE_HOME}/rules/)"
+    log "(dry-run: would fill any unset runtime env keys — PATH, CLAUDE_CODE_ENABLE_TODO_TOOLS)"
 fi
 
 # Update kit cache + version marker

@@ -7,6 +7,8 @@ The quality loop above does not run on agent memory or chat scrollback. It runs 
 1. **Claude Code `Task` tool** — `TaskCreate` / `TaskUpdate` / `TaskList` / `TaskGet` for live, machine-readable task state every agent reads and writes.
 2. **`docs/TRACKER.md`** (per project) — the durable Markdown record of what happened, what's in flight, what's open, what V/O produced. Single source of truth for any human or future agent reviewing the project.
 
+> **The `Task` tools are opt-in on current Claude Code releases and model families**, and are enabled by `CLAUDE_CODE_ENABLE_TODO_TOOLS=1`. (Which versions and models default them off has moved between releases — check the tools reference for your CLI rather than trusting a version number written here.) `install.sh` writes that into your `settings.json` `env` block, and it takes effect on the **next** session — so immediately after installing, this protocol is not yet runnable. If `TaskCreate` is unavailable, say so once and run the protocol on `docs/TRACKER.md` alone; the tracker is the durable half and carries the state either way.
+
 Full reference doc: `~/.claude/docs/tracker-system.md` (installed by `install.sh`). What follows is the agent-side rule set Claude reads every session.
 
 ### Phase Start Protocol (coordinator)

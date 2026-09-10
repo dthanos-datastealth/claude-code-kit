@@ -81,12 +81,82 @@ def write_fake_claude(bin_dir: Path, log: Path) -> Path:
     return fake
 
 
+def _exec_install(
+    home: Path, fake_bin: Path, claude_log: Path,
+    extra_env: dict[str, str] | None = None,
+) -> RunResult:
+    """Run install.sh against a prepared HOME. The child-process contract.
+
+    Both run_install and reinstall_over_existing go through here so the
+    environment the installer sees is defined once — the two had drifted into
+    duplicate copies of the same env dict.
+    """
+    env = {
+        "HOME": str(home),
+        "PATH": f"{fake_bin}:/usr/bin:/bin",
+        "LANG": "C.UTF-8",
+        "CCK_FAKE_CLAUDE_LOG": str(claude_log),
+        "CCK_FAKE_CLAUDE_VERSION": "2.1.251",
+    }
+    env.update(extra_env or {})
+    proc = subprocess.run(
+        ["bash", str(INSTALL_SH)], env=env, text=True, capture_output=True,
+    )
+    return RunResult(
+        returncode=proc.returncode,
+        stdout=proc.stdout,
+        stderr=proc.stderr,
+        home=home,
+        fake_bin=fake_bin,
+        claude_log=claude_log,
+    )
+
+
+def reinstall_over_existing(
+    *, extra_rule: tuple[str, str] | None = None
+) -> RunResult:
+    """Install once, optionally add a user rule file, then install again.
+
+    The upgrade-shaped case. A first install into an empty HOME has nothing to
+    back up, so anything asserting on backup contents needs a HOME that is
+    already populated. Returns the result of the SECOND run.
+    """
+    first = run_install()
+    if extra_rule is not None:
+        name, body = extra_rule
+        rules = first.home / ".claude" / "rules"
+        rules.mkdir(parents=True, exist_ok=True)
+        (rules / name).write_text(body)
+    return _exec_install(first.home, first.fake_bin, first.claude_log)
+
+
+def _write_fake_python(path: Path, version: str) -> None:
+    """A python3 that reports `version` and fails a version-floor probe.
+
+    Preflight asks two things of python3: that it exists, and that
+    `python3 -c '<version check>'` exits 0. This stub answers `--version`
+    truthfully and exits 1 for any `-c`, which is the failing side of the
+    floor. It cannot run the merge step, so only preflight tests use it.
+    """
+    major, minor = version.split(".")[:2]
+    path.write_text(
+        "#!/usr/bin/env bash\n"
+        f'if [ "$1" = "--version" ]; then echo "Python {version}"; exit 0; fi\n'
+        f'if [ "$1" = "-c" ]; then exit 1; fi\n'
+        f'echo "fake python {major}.{minor}"\n'
+        "exit 0\n"
+    )
+    path.chmod(0o755)
+
+
 def run_install(
     *,
     preexisting_claude_md: str | None = None,
     preexisting_settings: str | None = None,
     extra_path_tools: list[str] | None = None,
     omit_claude_cli: bool = False,
+    omit_tools: list[str] | None = None,
+    python3_version: str | None = None,
     seed_claude_in: str | None = None,
     extra_env: dict[str, str] | None = None,
 ) -> RunResult:
@@ -100,6 +170,14 @@ def run_install(
 
     `extra_env` merges into the child environment, for pointing the installer's
     search list at a controlled directory.
+
+    `omit_tools` drops names from the stub set, so a test can reproduce a
+    machine that is missing one prerequisite while the rest are present.
+
+    `python3_version` replaces the real python3 symlink with a stub reporting
+    that version, for exercising the version floor. The stub answers
+    `--version` and fails the `sys.version_info` probe, which is all preflight
+    asks of it — anything needing a working interpreter must not set this.
 
     Returns: RunResult with returncode, captured streams, paths, and the
     log of how the fake `claude` CLI was invoked.
@@ -122,8 +200,16 @@ def run_install(
     if not omit_claude_cli:
         write_fake_claude(fake_bin, claude_log)
 
-    # Always provide python3, git, gh, uv stubs that just succeed
-    for tool in ["git", "gh", "uv", "python3"] + (extra_path_tools or []):
+    # Always provide the prerequisites preflight requires, as stubs that
+    # succeed. node and npx are in the set because install.sh requires them:
+    # four enabled plugins shell out to one or the other at runtime.
+    skip = set(omit_tools or [])
+    for tool in ["git", "gh", "uv", "python3", "node", "npx"] + (extra_path_tools or []):
+        if tool in skip:
+            continue
+        if tool == "python3" and python3_version is not None:
+            _write_fake_python(fake_bin / "python3", python3_version)
+            continue
         # python3 must be REAL python so the merge step works; symlink it
         real = shutil.which(tool)
         if real:
@@ -139,25 +225,4 @@ def run_install(
         seeded_dir.mkdir(parents=True, exist_ok=True)
         write_fake_claude(seeded_dir, claude_log)
 
-    env = {
-        "HOME": str(home),
-        "PATH": f"{fake_bin}:/usr/bin:/bin",
-        "LANG": "C.UTF-8",
-        "CCK_FAKE_CLAUDE_LOG": str(claude_log),
-        "CCK_FAKE_CLAUDE_VERSION": "2.1.251",
-    }
-    env.update(extra_env or {})
-    proc = subprocess.run(
-        ["bash", str(INSTALL_SH)],
-        env=env,
-        text=True,
-        capture_output=True,
-    )
-    return RunResult(
-        returncode=proc.returncode,
-        stdout=proc.stdout,
-        stderr=proc.stderr,
-        home=home,
-        fake_bin=fake_bin,
-        claude_log=claude_log,
-    )
+    return _exec_install(home, fake_bin, claude_log, extra_env)

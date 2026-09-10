@@ -20,6 +20,9 @@ err()  { printf '\033[1;31m[cck]\033[0m %s\n' "$*" >&2; }
 # Rule-file install (kit_copy_rules), shared with upgrade.sh.
 # shellcheck source=scripts/_kit_rules.sh
 . "${REPO_DIR}/scripts/_kit_rules.sh"
+# Runtime env (kit_compute_path, kit_write_runtime_env), shared with upgrade.sh.
+# shellcheck source=scripts/_kit_env.sh
+. "${REPO_DIR}/scripts/_kit_env.sh"
 
 # Directories a prerequisite installer commonly writes to. `curl ... | sh`
 # installers export PATH for their own process only, so a tool installed in one
@@ -59,6 +62,28 @@ require() {
         else
             err "  Install it before re-running. See docs/prereqs.md."
         fi
+        exit 1
+    fi
+}
+
+# A prerequisite can be present and still be too old to use. `require` answers
+# "is it on PATH"; this answers "is it the version the kit needs", which is a
+# different question and the one that bit: the macOS system python3 is 3.9,
+# preflight passed, and the security-guidance plugin then silently dropped its
+# cross-file reviewer with "the hook is running on 3.9".
+require_python_version() {
+    local want_major="$1" want_minor="$2"
+    if ! python3 -c "import sys; sys.exit(0 if sys.version_info >= (${want_major}, ${want_minor}) else 1)" 2>/dev/null; then
+        local have
+        have="$(python3 --version 2>&1 || echo 'unknown')"
+        err "python3 is too old: found ${have}, need ${want_major}.${want_minor} or newer"
+        err "  The kit's lint scripts and test suite need ${want_major}.${want_minor}+, and"
+        err "  plugins that shell out to python3 inherit whichever one is first"
+        err "  on your PATH."
+        err "  macOS: brew install python@3.12, then put its libexec dir first —"
+        err "    export PATH=\"/opt/homebrew/opt/python@3.12/libexec/bin:\$PATH\""
+        err "    (the formula installs python3.12 but does NOT link 'python3')"
+        err "  See docs/prereqs.md section 4."
         exit 1
     fi
 }
@@ -222,11 +247,17 @@ for k, v in (d.get('enabledPlugins') or {}).items():
 
 preflight() {
     log "Preflight: checking required tools..."
-    require claude
-    require git
-    require gh
-    require python3
-    require uv
+    # Derived from KIT_RUNTIME_TOOLS in scripts/_kit_env.sh rather than
+    # repeated here. The two lists were identical and had to be edited
+    # together when node and npx were added, which is the argument for one of
+    # them. What preflight checks and what gets recorded in the runtime PATH
+    # are the same set by definition: a tool the kit needs at runtime is a
+    # tool the install must find.
+    local tool
+    for tool in "${KIT_RUNTIME_TOOLS[@]}"; do
+        require "${tool}"
+    done
+    require_python_version 3 11
     log "Preflight: OK"
 }
 
@@ -245,6 +276,7 @@ main() {
     kit_copy_docs
     kit_copy_rules
     merge_settings
+    kit_write_runtime_env
     install_memory_index
     register_marketplaces
     install_plugins

@@ -50,7 +50,7 @@ Claude Code supports a documented `--callback-port` flag at
 `fix-notion-mcp-port.sh` automates the re-registration:
 
 1. Removes the existing `notion` MCP server registration (if any)
-2. Re-adds it with `--transport http --callback-port <port>`
+2. Re-adds it with `--scope user --transport http --callback-port <port>`
 3. Prints the exact admin allow-list URL + admin workflow
 
 ## Picking a port
@@ -63,12 +63,39 @@ Order of precedence:
 For teams: pick one port and standardize. The admin only needs to
 allow-list one URL across the whole team.
 
-## Per-HOME implication
+## Scope, and why the script passes `--scope user`
 
-`claude mcp add` writes the config to the **per-HOME** `~/.claude.json`
-(scoped to the current project path). Each developer needs to run
-the script once per HOME. Same port across the team minimizes admin
-allow-list burden.
+`claude mcp add` writes to `~/.claude.json`, but **where** in that file
+depends on the scope flag, and the default is not what you want here.
+
+Without `--scope user` the entry goes under
+`projects["<current directory>"].mcpServers`, and Claude Code says so:
+
+```
+Added HTTP MCP server notion with URL: https://mcp.notion.com/mcp to local config
+File modified: ~/.claude.json [project: /Users/you/some-repo]
+```
+
+The pinned port then applies **only in the directory you ran the script
+from**. In every other project Notion goes back to picking a random
+callback port, the admin's allow-list entry does not match, and OAuth fails
+again — the exact problem this script exists to solve. There is no warning,
+and it works perfectly in the one directory you tested from, which is what
+makes it worth spelling out.
+
+`fix-notion-mcp-port.sh` passes `--scope user`, so the pin lands in the
+top-level `mcpServers` and applies everywhere. Confirm it landed there:
+
+```sh
+python3 -c "import json,pathlib; d=json.loads((pathlib.Path.home()/'.claude.json').read_text()); print(json.dumps(d.get('mcpServers',{}).get('notion'), indent=2))"
+```
+
+Expect a `notion` entry with `oauth.callbackPort` set to your port.
+
+**Still per-HOME.** Scope decides which part of a HOME's `~/.claude.json`
+is written; it does not span HOMEs. Each developer runs the script once,
+and teams should standardise on one port so the admin allow-lists a single
+URL.
 
 ## CAVEAT: Issue #55067 — re-auth may break the pin
 

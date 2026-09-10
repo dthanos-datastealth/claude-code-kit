@@ -199,6 +199,37 @@ Three layers of revert:
    backup AND removes all kit-installed docs + `.kit-version` +
    `.kit-cache` + `.kit-conflicts`. Use to leave the kit completely.
 
+### What a backup contains
+
+`~/.claude/backups/<ISO-timestamp>/` holds `settings.json`, `CLAUDE.md` if
+you have one, and **`rules/`**.
+
+`rules/` is in there because that is where the kit's instructions live now.
+Every install and upgrade replaces all six kit rule files wholesale, so a
+backup set without them could not undo a release that shipped a bad rule —
+which is precisely what layer 2 above is for. It also captures
+`00-user-overrides.md` and anything else you wrote there, which is the part
+you cannot recover from the repository.
+
+Both `--rollback` and `uninstall.sh` restore `rules/` from the backup when
+one is present.
+
+### Uninstalling on a machine that never had a backup
+
+Worth knowing because it is the common case, not an edge case: on a clean
+machine `install.sh` creates **no backup at all**, because backups only
+capture files that already existed and there were none.
+
+`uninstall.sh` handles that by subtracting the kit's own keys from
+`settings.json` instead of restoring over it — the plugins, marketplaces,
+`effortLevel` and `env` entries the kit shipped. It removes an entry only
+where the value still matches what the kit ships, so a plugin you have since
+disabled, or an `effortLevel` you changed, stays exactly as you left it.
+Everything else in the file is untouched.
+
+Plugins themselves remain installed on disk; remove them with
+`claude plugin uninstall <name>` if you want the cache gone too.
+
 ## Status + drift detection
 
 ```bash

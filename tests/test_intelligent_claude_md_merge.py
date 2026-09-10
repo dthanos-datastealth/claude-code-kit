@@ -2,6 +2,7 @@
 merge with 3-way conflict detection per the kit manifest."""
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -499,3 +500,44 @@ def test_parsing_a_fenced_document_round_trips():
         "# Title\n\n## S\n\n```sh\n# a comment\necho hi\n```\n\ntail\n"
     )
     assert merger.serialize_sections(merger.parse_sections(text)) == text
+
+
+def test_a_renamed_kit_heading_is_replaced_in_place(tmp_path):
+    """Renaming a kit-owned heading must not move the section.
+
+    The merger pairs template and user sections by exact heading text, so a
+    rename reads as "one section retired, one brand-new section added" — the
+    old text is dropped and the new text lands at the END of the user's file,
+    away from the sibling sections that give it context. A user who changed
+    nothing ends up with a scrambled document.
+
+    `renamed_from` in the manifest declares the identity so the section is
+    matched and rewritten where it already sits.
+    """
+    manifest = {
+        "format_version": 1,
+        "owned_sections": [
+            {"heading": "## Alpha", "depth": 2, "match": "exact"},
+            {"heading": "## Beta NEW", "depth": 2, "match": "exact",
+             "renamed_from": "## Beta OLD"},
+            {"heading": "## Gamma", "depth": 2, "match": "exact"},
+        ],
+    }
+    prev = "## Alpha\n\nfirst\n\n## Beta OLD\n\nmiddle\n\n## Gamma\n\nlast\n"
+    new = "## Alpha\n\nfirst\n\n## Beta NEW\n\nmiddle rewritten\n\n## Gamma\n\nlast\n"
+
+    kit_new = tmp_path / "new.md"
+    user = tmp_path / "user.md"
+    prev_f = tmp_path / "prev.md"
+    mf = tmp_path / "manifest.json"
+    kit_new.write_text(new)
+    user.write_text(prev)
+    prev_f.write_text(prev)
+    mf.write_text(json.dumps(manifest))
+
+    res = _run(kit_new, user, prev=prev_f, manifest=mf)
+    assert res.returncode == 0, res.stderr
+    assert user.read_text() == new, (
+        "a renamed section must be rewritten in place, not appended:\n"
+        f"{user.read_text()!r}"
+    )

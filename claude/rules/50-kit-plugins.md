@@ -58,19 +58,50 @@ Berry is an MCP-backed hallucination detection system installed via the `berry@b
 - **Test output is evidence.** Always capture real test runner output as a Berry span via `add_span`. Never claim tests pass without a span that cites the actual output.
 - **RCA root cause must be verified before implementing a fix.** No exceptions.
 
-#### `audit_trace_budget` API usage (CRITICAL — wrong format = always 0 bits)
+#### `audit_trace_budget` API usage (CRITICAL — a step without `cites` verifies nothing)
 
-The `spans` parameter must use `{"sid": "<id>", "text": "<content>"}` format. **Do NOT use `{"<id>": "<content>"}` — that silently produces 0 observed bits every time.**
+Two things have to be right, and getting either wrong produces a `flagged` result that looks exactly like a failed claim.
+
+**1. Every step must cite the spans that support it.** `context_mode` defaults to `"cited"`, which selects only the spans a step names in `cites`. A step with no `cites` gets an empty context, the verifier is never called, and the result comes back flagged.
+
+**2. Spans use `{"sid": ..., "text": ...}`.** The other shape is rejected outright rather than scored.
 
 ```python
-# CORRECT — Berry source uses getattr(s, "sid") and getattr(s, "text")
-spans=[{"sid": "S0", "text": "actual test output content here"}]
+# CORRECT — the step cites S0, so S0 is in scope when the claim is scored
+audit_trace_budget(
+    steps=[{"claim": "The suite reports 174 passed and 1 skipped.", "cites": ["S0"]}],
+    spans=[{"sid": "S0", "text": "<actual test runner output>"}],
+)
 
-# WRONG — sid and text attributes not found, P(YES|post) ≈ P(YES|prior) ≈ 0
-spans=[{"S0": "actual test output content here"}]
+# WRONG — no cites. status="empty_context", verifier_calls=0, flagged=true.
+# Nothing was verified, and the result is indistinguishable from a real failure.
+audit_trace_budget(
+    steps=[{"claim": "..."}],
+    spans=[{"sid": "S0", "text": "..."}],
+)
+
+# WRONG — span keyed by id. status="no_spans": "no spans were provided,
+# so the claim cannot be verified".
+spans=[{"S0": "<actual test runner output>"}]
 ```
 
-The `observed_bits` value is the KL divergence between P(YES | span in context) and P(YES | span redacted). If the verifier cannot read your span (wrong key names), both probabilities collapse to near-zero, so `observed_bits = 0` and the verification fails with "insufficient bits" regardless of how good your evidence actually is. When you see 0 or near-0 bits on a span you believe is genuine, check the key names first.
+Passing `context_mode="all"` is the alternative to `cites` when every span is relevant to every claim. Prefer `cites`: it is what makes a citation `[S0]` in your prose mean something checkable.
+
+#### Reading the result
+
+There is no `observed_bits` field. Each step returns a `status` and, where the verifier ran, posterior YES bounds against a `target` (default `0.95`):
+
+| `status` | Meaning | What to do |
+|---|---|---|
+| `passed` | Posterior clears the target | Proceed; cite the span |
+| `not_entailed` | Verifier ran; evidence does not reach the target | Strengthen the span, or narrow the claim to what the span actually shows |
+| `contradicted` | Verifier ran; evidence points the other way | The claim is wrong. Do not reword it |
+| `empty_context` | No span was in scope — **missing `cites`** | Fix the call, not the claim |
+| `no_spans` | Span shape rejected | Fix the call, not the claim |
+
+`empty_context` and `no_spans` mean the gate did not run. Treat them as build errors, not as evidence about your claim.
+
+A claim that asserts more than its span shows will legitimately sit just under target — "the claude-code-kit suite reports 174 passed" scores lower than "the suite reports 174 passed" when the span is bare pytest output that never names the project. That is the gate working. Narrow the claim.
 
 #### Verifier backend
 
@@ -81,6 +112,12 @@ OpenRouter-hosted `openai/gpt-4o-mini` via Berry's OpenAI-compatible client.
 logprobs Berry requires. A `flagged` result carrying an `error` key is a broken
 verifier, not a failed claim — check `error` first. The model-choice rationale
 and the logprobs eligibility table live in `~/.claude/docs/tools/berry.md`.
+
+**The plugin's own `/berry:berry-configure` does not write this pin.** Its
+OpenAI-compatible branch writes `OPENAI_API_KEY` and `OPENAI_BASE_URL` only, so
+following it against OpenRouter leaves the verifier unpinned. Add
+`BERRY_VERIFIER_BACKEND` and `BERRY_VERIFIER_MODEL` to `mcp_env.json` yourself
+afterwards.
 
 Two files configure this, and they hold different things.
 `~/.berry/mcp_env.json` is **load-bearing**: the MCP launcher reads these env

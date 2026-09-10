@@ -269,3 +269,39 @@ def test_a_real_loss_says_so_and_says_what_to_do(temp_settings):
     assert "REPLACED YOUR" in out, out
     assert "MYFORK/hallbayes" in out, "say what was replaced"
     assert "different name" in out, "say what to do about it"
+
+
+def test_a_users_permissions_block_survives_the_merge(tmp_path):
+    """merge-policy.json lists `permissions` as preserve_user, and the kit
+    reads that key (rule 20's behaviour depends on which tools a permission
+    mode exposes) while never writing it. Only the schema lint covered the
+    policy entry; nothing asserted the behaviour it declares."""
+    import json
+    import subprocess
+
+    from tests.helpers import REPO
+
+    kit = REPO / "claude" / "settings.json"
+    policy = REPO / "scripts" / "merge-policy.json"
+    merger = REPO / "scripts" / "intelligent-settings-merge.py"
+
+    mine = {
+        "permissions": {"defaultMode": "acceptEdits", "allow": ["Bash(git *)"]},
+        "statusLine": {"type": "command", "command": "bash /my/line.sh"},
+    }
+    live = tmp_path / "settings.json"
+    live.write_text(json.dumps(mine))
+
+    proc = subprocess.run(
+        ["python3", str(merger), str(kit), str(live), "--policy", str(policy)],
+        text=True, capture_output=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+
+    after = json.loads(live.read_text())
+    assert after["permissions"] == mine["permissions"], (
+        "the user's permission mode and allow-list must survive an upgrade"
+    )
+    assert after["statusLine"] == mine["statusLine"]
+    # And the merge still did its job.
+    assert after["enabledPlugins"], "kit plugins should have been merged in"

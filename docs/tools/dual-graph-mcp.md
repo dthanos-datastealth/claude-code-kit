@@ -74,8 +74,13 @@ kit's intended workflow broken.
   platform, a one-time feedback prompt, anonymous crash reports, and a launcher
   that checks for updates on every run and applies them without asking, from
   its own distribution channel. `graperoot --no-telemetry` and
-  `graperoot --no-auto-update` are the documented opt-outs; confirm they exist
-  in `graperoot --help` on the version you installed. Your code is not
+  `graperoot --no-auto-update` are the documented opt-outs — but they belong
+  to upstream's shell installer. The PyPI package this kit recommends
+  installs six executables (`context-packer`, `dg-graph`, `dgc-claude`,
+  `graph-builder`, `mcp-graph-server`, `mcp-graph-server-stdio`) and **no
+  `graperoot` command**, so on that path there is nothing to pass them to.
+  Do not assume the PyPI install is quiet because the flags exist somewhere.
+  Your code is not
   uploaded; the process is not offline either.
 - Dependencies: a working Python runtime. The engine ships as compiled
   per-interpreter wheels, so check `pip download --only-binary=:all: graperoot`

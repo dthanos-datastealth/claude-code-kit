@@ -105,7 +105,9 @@ Install via the kit's `install.sh`, which registers the marketplace and runs
 - Configuration: `~/.berry/config.json` selects the backend; `~/.berry/mcp_env.json`
   carries the env vars (`OPENAI_API_KEY`, `OPENAI_BASE_URL`,
   `BERRY_VERIFIER_MODEL`) into the MCP process. Run
-  `/berry:berry-configure` after install to set or rotate the key.
+  `/berry:berry-configure` after install to set or rotate the key —
+  then add the model pin by hand, because that command does not write it
+  (see below).
 
 If the verifier endpoint is down, every Berry skill fails fast — that is by
 design. The kit prefers a hard failure to a silently-skipped audit.
@@ -146,11 +148,34 @@ against the raw `/models/<id>/endpoints` response rather than a summary.
 model by taking the first entry from `GET /v1/models`. Against OpenRouter that
 is an arbitrary model, most likely without logprobs.
 
+**`/berry:berry-configure` does not write the pin.** Its OpenAI-compatible
+branch — the one you take for OpenRouter — writes `OPENAI_API_KEY` and
+`OPENAI_BASE_URL` only. Following it end to end therefore leaves the verifier
+unpinned, which is the state the paragraph above warns about. After running
+it, add both remaining keys to `~/.berry/mcp_env.json` yourself:
+
+```jsonc
+{
+  "OPENAI_API_KEY": "<your-openrouter-key>",
+  "OPENAI_BASE_URL": "https://openrouter.ai/api/v1",
+  "BERRY_VERIFIER_BACKEND": "openai",
+  "BERRY_VERIFIER_MODEL": "openai/gpt-4o-mini"
+}
+```
+
 **Read `error` before you trust `flagged`.** When the verifier call fails,
 Berry returns `{"flagged": true, "under_budget": true, "error": "...",
 "details": []}`. It fails closed, which is right, but `flagged: true` reads
 exactly like a genuine claim failure. A flagged result carrying an `error` key
 is a broken verifier, not evidence against your claim.
+
+**`flagged` also does not always mean the claim failed.** Check `status`
+first. `empty_context` (the step named no `cites`) and `no_spans` (the span
+was mis-shaped) both mean the verifier was never called at all — they are
+call bugs, not verdicts, and they should not count toward the three-strike
+rule. Only `not_entailed` and `contradicted` say anything about your
+evidence. There is no `observed_bits` field in this version; scoring is
+reported as posterior YES bounds against a `target`.
 
 To settle a model choice empirically, build a golden set of about twenty
 claim-and-span pairs — ten you know are supported, ten you know are not — run

@@ -10,6 +10,7 @@ This is the unconditional discipline that runs around **every substantive change
 - Implement the minimum that makes the test pass (GREEN). Do not add unrequested features.
 - REFACTOR only with the test green. If you can't keep it green during refactor, stop and split the refactor into smaller steps.
 - **Lifecycle tests, not just function-centric ones.** For anything stateful (sessions, caches, queues, write paths), assert on the full create → use → close → reopen → cleanup cycle. Function-only tests miss the failures that matter.
+- **Capture RED and GREEN as Berry spans, not just the final run.** "The test failed first, for the right reason" is a claim like any other, and it is the one that distinguishes TDD from a retrofit — a test written after the code almost always passes on its first run. Take the failing output as one span and the passing output as another, cite both, and the audit can check that the same test moved from failing to passing. A single end-of-work GREEN span cannot show that, and it is exactly what a retrofit produces.
 - Skill: `superpowers:test-driven-development`.
 
 ### Berry verification (load-bearing — fails the build if skipped)
@@ -22,7 +23,7 @@ This is the unconditional discipline that runs around **every substantive change
 
 After any code commit, doc change, or config change that affects behavior, run the two-agent **Verification + Optimization** loop against that same revision before declaring the change complete:
 
-- **V — Verification agent.** Dispatched to verify the change against **authoritative external sources** (upstream READMEs, official docs, the kit's own spec/plan, vendor API references). Its job is to catch correctness drift between the change and reality. Output: `[OK]` / `[CONCERN]` / `[BLOCKER]` per check, with citations.
+- **V — Verification agent.** Dispatched to verify the change against **authoritative external sources** (upstream READMEs, official docs, the kit's own spec/plan, vendor API references). Its job is to catch correctness drift between the change and reality. Output: `[OK]` / `[CONCERN]` / `[BLOCKER]` per check, with citations. **Test coverage is part of V's remit, not a separate concern** — Steps E and F of the Verification Agent Protocol in `40-kit-tracker.md` require mapping every changed behaviour to a test and confirming each one passes non-vacuously. A change whose tests would pass against the unfixed code is a `[SHALLOW TEST]` finding, and a behaviour with no test at all is `[TEST MISSING]`.
 - **O — Optimization agent.** Dispatched in parallel to find simplification / clarity / consistency wins on the same revision. Output: `[trivial]` / `[worth-considering]` / `[worth-fixing]` per finding.
 - Verdicts of either agent block "done" — if V flags a `[CONCERN]` or `[BLOCKER]`, fix it before moving on; if O flags `[worth-fixing]`, apply the fix in a follow-up commit before the next substantive change lands.
 - Run V and O **in parallel** (independent reviews of the same state). Use `subagent_type: general-purpose` for V (it needs WebFetch + Read), `subagent_type: code-simplifier:code-simplifier` for O.

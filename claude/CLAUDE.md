@@ -241,19 +241,29 @@ Berry is an MCP-backed hallucination detection system installed via the `berry@b
 - **Test output is evidence.** Always capture real test runner output as a Berry span via `add_span`. Never claim tests pass without a span that cites the actual output.
 - **RCA root cause must be verified before implementing a fix.** No exceptions.
 
-#### `audit_trace_budget` API usage (CRITICAL — wrong format = always 0 bits)
+#### `audit_trace_budget` API usage
 
-The `spans` parameter must use `{"sid": "<id>", "text": "<content>"}` format. **Do NOT use `{"<id>": "<content>"}` — that silently produces 0 observed bits every time.**
+**CRITICAL — a step without `cites` verifies nothing.** Two things have to be right, and getting either wrong produces a `flagged` result that looks exactly like a failed claim.
+
+**1. Every step must cite the spans that support it.** `context_mode` defaults to `"cited"`, which selects only the spans a step names in `cites`. A step with no `cites` gets an empty context, the verifier is never called, and the result comes back flagged.
+
+**2. Spans use `{"sid": ..., "text": ...}`.** The other shape is rejected rather than scored.
 
 ```python
-# CORRECT — Berry source uses getattr(s, "sid") and getattr(s, "text")
-spans=[{"sid": "S0", "text": "actual test output content here"}]
+# CORRECT — the step cites S0, so S0 is in scope when the claim is scored
+audit_trace_budget(
+    steps=[{"claim": "The suite reports 174 passed and 1 skipped.", "cites": ["S0"]}],
+    spans=[{"sid": "S0", "text": "<actual test runner output>"}],
+)
 
-# WRONG — sid and text attributes not found, P(YES|post) ≈ P(YES|prior) ≈ 0
-spans=[{"S0": "actual test output content here"}]
+# WRONG — no cites. status="empty_context", verifier_calls=0, flagged=true.
+audit_trace_budget(steps=[{"claim": "..."}], spans=[{"sid": "S0", "text": "..."}])
+
+# WRONG — span keyed by id. status="no_spans".
+spans=[{"S0": "<actual test runner output>"}]
 ```
 
-The `observed_bits` value is the KL divergence between P(YES | span in context) and P(YES | span redacted). If the verifier cannot read your span (wrong key names), both probabilities collapse to near-zero, so `observed_bits = 0` and the verification fails with "insufficient bits" regardless of how good your evidence actually is. When you see 0 or near-0 bits on a span you believe is genuine, check the key names first.
+There is no `observed_bits` field. Each step returns a `status` — `passed`, `not_entailed`, `contradicted`, `empty_context`, `no_spans` — and, where the verifier ran, posterior YES bounds against a `target` (default `0.95`). `empty_context` and `no_spans` mean the gate did not run: fix the call, not the claim.
 
 #### Verifier backend
 

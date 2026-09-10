@@ -13,16 +13,38 @@ own configuration documentation, prefer theirs for the parts that overlap.
 
 ## 0. What the kit ships by default (read this first)
 
-The kit's `claude/settings.json` env block sets a single TLS-related
-default: **`UV_NATIVE_TLS=1`**. This tells `uvx` (the Python tool runner
-that Berry's MCP server invokes) to use the OS native TLS stack — macOS
-Keychain on Darwin, `/etc/ssl/certs` on Linux — instead of its bundled
-rustls cert store. The bundled rustls store does **not** include corporate
-internal CAs, so any `uvx tool install` or `uvx run` that fetches over a
-TLS-intercepting proxy fails with `invalid peer certificate:
-UnknownIssuer`. Flipping to native TLS makes `uvx` trust whatever the OS
-trusts, which on a corporate-issued machine usually includes the
-intercepting CA.
+The kit's `claude/settings.json` env block ships two TLS-related defaults,
+which do the same job for different versions of `uv`:
+
+```jsonc
+{
+  "env": {
+    "UV_SYSTEM_CERTS": "1",   // current name
+    "UV_NATIVE_TLS": "1"      // deprecated alias, kept for older uv
+  }
+}
+```
+
+Both tell `uvx` (the Python tool runner that Berry's MCP server invokes) to
+use the OS native TLS stack — macOS Keychain on Darwin, `/etc/ssl/certs` on
+Linux — instead of its bundled rustls cert store. The bundled store does
+**not** include corporate internal CAs, so any `uvx tool install` or
+`uvx run` that fetches over a TLS-intercepting proxy fails with
+`invalid peer certificate: UnknownIssuer`. Trusting the OS store instead
+picks up the intercepting CA, which on a corporate-issued machine is
+normally installed there already.
+
+**Why both.** Current `uv` prints, on every invocation:
+
+```
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be
+removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+```
+
+`UV_SYSTEM_CERTS` is the name to rely on. `UV_NATIVE_TLS` is kept alongside
+it so that a machine on an older `uv` — which does not know the new name —
+keeps working. When your fleet is fully on a `uv` that understands
+`UV_SYSTEM_CERTS`, drop the old one and the warning goes with it.
 
 **What this fixes out of the box:** Berry's MCP server starting
 successfully behind Cloudflare, Zscaler, Netskope, Palo Alto, Cisco, and
@@ -31,19 +53,20 @@ beyond running `install.sh`.
 
 **What this does NOT fix:** `git`, `curl`, `npm`, `python`, and other
 language stacks that have their own trust-store policies. Those still
-need the env vars in section 3 below. `UV_NATIVE_TLS=1` is `uvx`-specific.
+need the env vars in section 3 below. These two variables are
+`uv`-specific.
 
 **When it is not enough:** If your OS trust store doesn't include the
 corporate CA (rare on managed Macs and managed Linux desktops, common on
-self-built developer Linux setups), `UV_NATIVE_TLS=1` won't help and you
+self-built developer Linux setups), neither variable helps and you
 need to add the corporate CA to the OS trust store directly (macOS:
 `sudo security add-trusted-cert ...`; Linux: copy to
 `/usr/local/share/ca-certificates/` then `update-ca-certificates`). Once
-the OS trusts it, `UV_NATIVE_TLS=1` picks it up automatically.
+the OS trusts it, `uv` picks it up automatically.
 
-**How the merge works if you've already set `UV_NATIVE_TLS` yourself:**
-The kit's `scripts/merge-settings.py` layers kit env defaults **under**
-your existing env. If you've set `UV_NATIVE_TLS=0` (or any other value)
+**How the merge works if you've already set either variable yourself:**
+The kit's settings merge layers kit env defaults **under**
+your existing env. If you've set `UV_SYSTEM_CERTS=0` (or any other value)
 in your existing `~/.claude/settings.json`, your value wins — the kit
 default only fills in keys you haven't set. This is intentional: the kit
 ships sensible defaults, you keep override authority.

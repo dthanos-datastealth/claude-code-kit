@@ -1,0 +1,12 @@
+# Env keys install.sh and upgrade.sh write into ~/.claude/settings.json AFTER
+# the settings merge, because their values are machine-specific and cannot be
+# shipped in claude/settings.json.
+#
+# Single source of truth. Read by:
+#   scripts/_kit_env.sh        — writes them (only where the user has not)
+#   scripts/diff-settings.py   — must not report them as user-added drift
+#   uninstall.sh               — must remove them when leaving the kit
+#
+# One key per line. Blank lines and #-comments ignored.
+PATH
+CLAUDE_CODE_ENABLE_TODO_TOOLS

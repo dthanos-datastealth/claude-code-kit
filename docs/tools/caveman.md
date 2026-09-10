@@ -60,6 +60,31 @@ curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.
 Run that *after* the kit's `install.sh` if you want those extras
 alongside the kit-managed plugin install.
 
+**Two operational notes, both learned the hard way.**
+
+The plugin registers a `UserPromptSubmit` hook that runs `node`. That means
+Node is not optional for anyone with caveman enabled: without it, **every
+prompt** in every session prints `/bin/sh: node: command not found`. Hooks
+inherit Claude Code's process environment rather than your shell profile, so
+"node is installed" is not sufficient — it has to be on the PATH the session
+was launched with. See [`docs/prereqs.md`](../prereqs.md) §5b.
+
+If you accept the plugin's offer to add its statusline badge, the command it
+writes into `settings.json` contains the plugin's **version directory**:
+
+```json
+"statusLine": {
+  "type": "command",
+  "command": "bash \"~/.claude/plugins/cache/caveman/caveman/<version>/src/hooks/caveman-statusline.sh\""
+}
+```
+
+Upgrading the plugin writes a new directory and the old path stops existing.
+A `statusLine` whose command fails simply renders nothing, so the badge
+disappears with no error. Re-run the setup after a caveman upgrade, or point
+the command at a small wrapper of your own that resolves the current
+version.
+
 **Cost / footprint:**
 - Disk: ~50 KB (single markdown skill file).
 - Memory / CPU: zero at rest. Skills are markdown files the agent

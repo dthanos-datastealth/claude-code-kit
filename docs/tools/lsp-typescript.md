@@ -49,14 +49,26 @@ Install via the kit's `install.sh`, which registers the marketplace and runs
 `claude plugin install typescript-lsp@anthropics/claude-plugins-official`.
 
 Prerequisite: install the language server and the TypeScript compiler
-globally:
+globally, **pinning TypeScript to the 5.x line**:
 
 ```sh
-npm install -g typescript-language-server typescript
+npm install -g typescript-language-server typescript@5
 ```
 
-and confirm with `which typescript-language-server`. The plugin will refuse
-to start cleanly if either binary is missing.
+The pin is not cosmetic. `typescript` now resolves to 7.x, the native port,
+which ships no `tsserver.js` — the file `typescript-language-server` loads
+at startup. On 7.x the server dies immediately with "Could not find a valid
+TypeScript installation", and every LSP call in a `.ts` file falls through.
+
+Confirm the file the server actually needs, rather than the compiler
+version:
+
+```sh
+ls "$(npm root -g)/typescript/lib/tsserver.js"
+```
+
+`tsc --version` is not a valid check here: it prints a version on 7.x while
+the language server is entirely non-functional.
 
 **Cost / footprint:**
 - Disk: roughly 50–100 MB for the two npm packages.

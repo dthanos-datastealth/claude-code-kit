@@ -33,6 +33,50 @@ def test_preflight_points_at_a_binary_that_is_on_disk_but_off_path():
     )
 
 
+def test_preflight_rejects_a_python3_below_the_floor():
+    """pyproject declares requires-python >= 3.11 and the lint scripts use
+    syntax that needs it, but preflight only ever checked that python3
+    exists. A machine with the macOS system 3.9 therefore installed cleanly
+    and degraded later and elsewhere: the security-guidance plugin dropped
+    its cross-file reviewer with 'the hook is running on 3.9'."""
+    r = run_install(python3_version="3.9.6")
+    assert r.returncode != 0
+    out = r.stderr + r.stdout
+    assert "python3" in out
+    assert "3.11" in out, "name the floor so the reader knows what to install"
+
+
+def test_preflight_accepts_a_python3_at_or_above_the_floor():
+    """Positive control for the check above: a preflight that rejected every
+    python3 must fail this.
+
+    The first version of this asserted
+    `"python3" not in stderr or "missing prerequisite" not in stderr`, which
+    could not fail — the rejection message reads "python3 is too old" and
+    never contains "missing prerequisite", so the second clause was always
+    true. A control that controls nothing is the failure mode this file's
+    own neighbours are about.
+    """
+    r = run_install()
+    assert r.returncode == 0, r.stderr
+    assert "too old" not in r.stderr, r.stderr
+
+
+def test_preflight_requires_node():
+    """caveman's UserPromptSubmit hook runs `node`, so a missing node means
+    an error on every single prompt. playwright, chrome-devtools and context7
+    need npx. None of the four were ever checked."""
+    r = run_install(omit_tools=["node"])
+    assert r.returncode != 0
+    assert "node" in (r.stderr + r.stdout)
+
+
+def test_preflight_requires_npx():
+    r = run_install(omit_tools=["npx"])
+    assert r.returncode != 0
+    assert "npx" in (r.stderr + r.stdout)
+
+
 def test_preflight_gives_no_hint_when_the_tool_is_genuinely_absent():
     """With nothing to find, the message must not invent a location."""
     r = run_install(

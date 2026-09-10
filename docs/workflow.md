@@ -95,11 +95,19 @@ not to exist when you go to execute them.
 - Treating an audit failure as an audit problem. The audit failed because
   the spans did not support the claims. Add stronger spans or weaken the
   claims; do not bypass the audit.
-- Mis-shaped span parameters. Berry's `audit_trace_budget` expects
-  `{"sid": "<id>", "text": "<content>"}`. The other shape
-  (`{"<id>": "<content>"}`) parses but silently produces zero observed
-  bits, which looks like an evidence problem but is actually a parameter
-  problem. Check the keys first when a strong span fails the audit.
+- **Steps without `cites`.** `audit_trace_budget` defaults to
+  `context_mode: "cited"`, so a step that does not name its spans is
+  scored against nothing: `status: empty_context`, zero verifier calls,
+  and a flagged result that reads like failed evidence. Every step needs
+  `cites: ["S0", ...]`.
+- Mis-shaped span parameters. Berry expects
+  `{"sid": "<id>", "text": "<content>"}`; the other shape
+  (`{"<id>": "<content>"}`) comes back as `status: no_spans`. Both of
+  these are parameter problems, not evidence problems — check the call
+  before you touch the claim.
+- Paraphrased spans. An excerpt with `...` in it leaves the verifier
+  unable to rule out what the ellipsis hides, and it will decline to
+  entail a claim it would otherwise pass. Paste literal output.
 
 **Tracker dispatch (Pre-Dispatch Protocol):** Once the plan passes
 Berry, open a `docs/TRACKER.md` row for the iteration and one row per
@@ -268,9 +276,11 @@ ship.
   it (and document why) or fix it.
 - Three-strike audit failures. If `audit_trace_budget` flags the same
   claim set three times, stop and surface the failure. Do not silently
-  loop. Either the evidence is genuinely insufficient (gather more) or
-  the verifier is mis-configured (check span keys first — see step 2's
-  span-shape note).
+  loop. Before counting a strike, check the `status`: `empty_context` and
+  `no_spans` mean the verifier never ran, so they are call bugs rather
+  than evidence failures and should not consume a strike. Only
+  `not_entailed` and `contradicted` are verdicts about your claim — see
+  step 2's pitfalls.
 - Linter not run. The kit's standard is: linter green before claiming
   any task complete. Go: `go vet` + `golangci-lint`. TypeScript:
   `eslint`. Other languages: whatever the project uses.

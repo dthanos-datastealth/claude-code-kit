@@ -1,5 +1,6 @@
 {
   "env": {
+    "UV_SYSTEM_CERTS": "1",
     "UV_NATIVE_TLS": "1"
   },
   "effortLevel": "xhigh",

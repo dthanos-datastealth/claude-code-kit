@@ -243,6 +243,7 @@
     },
     {
       "heading": "#### `audit_trace_budget` API usage",
+      "renamed_from": "#### `audit_trace_budget` API usage (CRITICAL — wrong format = always 0 bits)",
       "depth": 4,
       "match": "prefix",
       "parent": "## Installed Plugins"

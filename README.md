@@ -36,7 +36,7 @@ flowchart LR
     mem[claude/memory/MEMORY.md<br/>auto-memory index]
     docs[docs/<br/>philosophy · workflow · verification-standards ·<br/>prereqs · corporate-tls · memory-system ·<br/>tracker-system · tools/ ×24]
     sc[scripts/<br/>merge-settings · intelligent-settings-merge · intelligent-claude-md-merge · upgrade ·<br/>lint-scrubbing · lint-tools-docs · lint-plugin-marketplaces · lint-mcp-hardcoded-paths · lint-plugin-skill-layout · lint-merge-policy ·<br/>diff-against-live · test-install-isolated · test-upgrade-isolated]
-    tests[tests/<br/>175 pytest cases ·<br/>isolated-HOME harness]
+    tests[tests/<br/>217 pytest cases ·<br/>isolated-HOME harness]
   end
 
   cmd -->|preflight| pre{All prereqs on PATH?}
@@ -48,7 +48,8 @@ flowchart LR
   rules --> docscopy[Copy reference docs into .claude/docs/]
   legacy --> docscopy
   docscopy --> merge[Merge settings.json, keeping your env block]
-  merge --> memi[Install MEMORY.md only if absent]
+  merge --> renv[Record runtime env: PATH from the tools preflight resolved,<br/>plus CLAUDE_CODE_ENABLE_TODO_TOOLS - never overwriting yours]
+  renv --> memi[Install MEMORY.md only if absent]
   memi --> mp[Register 6 marketplaces]
   mp --> pl[Install 22 plugins]
   pl --> ready[Restart Claude Code]
@@ -64,7 +65,7 @@ flowchart LR
   classDef artifact fill:#374151,stroke:#9ca3af,color:#f3f4f6
   classDef gate fill:#7c2d12,stroke:#fed7aa,color:#fff7ed
   class rulesHome,docsHome,settingsHome,memHome,pluginsHome store
-  class cmd,backup,rules,legacy,docscopy,merge,memi,mp,pl action
+  class cmd,backup,rules,legacy,docscopy,merge,renv,memi,mp,pl action
   class tmpl,sets,mem,docs,sc,tests artifact
   class gate gate
 ```
@@ -326,8 +327,13 @@ installer, or start a new login shell; see
 | `claude` | Claude Code CLI |
 | `git` | Source control |
 | `gh` | GitHub auth (must be `gh auth login`-ed) |
-| `python3` ≥ 3.11 | Used by `merge-settings.py` and tests |
+| `python3` ≥ 3.11 | Used by `merge-settings.py`, the lint scripts and tests. On macOS the Homebrew formula does **not** link `python3` — see [`docs/prereqs.md`](docs/prereqs.md) §4 |
 | `uv` | Tool installer for `specify` (spec-kit) and Berry's MCP launcher |
+| `node` + `npx` | Four enabled plugins need them at runtime: caveman's per-prompt hook runs `node`, and playwright / chrome-devtools / context7 launch via `npx` |
+
+Preflight checks all seven, and checks the Python *version* rather than just
+its presence — a 3.9 interpreter used to pass here and then quietly disable
+the `security-guidance` plugin's cross-file reviewer several steps later.
 
 The installer **does not** install these for you — see
 [`docs/prereqs.md`](docs/prereqs.md) for install commands per OS plus
@@ -354,19 +360,27 @@ optional tools (LSP binaries, `ripgrep`, `jq`, `shellcheck`, `specify`).
    kit adds what is missing. The one exception is a marketplace the kit itself
    ships, which it reclaims so a release channel can move. See
    [`docs/upgrading.md`](docs/upgrading.md) for the full table.
-6. Installs `claude/memory/MEMORY.md` only if you do not already have one.
-7. Registers the six plugin marketplaces, retrying once on a network blip.
-8. Installs all 22 plugins, retrying once each.
-9. Writes `~/.claude/.kit-version` and appends an install event to
-   `~/.claude/.kit-version.history.jsonl`.
-10. Prints next steps.
+6. Records the runtime environment in `settings.json`'s `env` block: a `PATH`
+   composed from the directories preflight just resolved plus the one the
+   install ran under, and `CLAUDE_CODE_ENABLE_TODO_TOOLS=1`. Anything you
+   have already set is left alone. This is what makes plugin hooks and MCP
+   servers independent of which shell started Claude Code — they inherit its
+   process environment, never your profile.
+7. Installs `claude/memory/MEMORY.md` only if you do not already have one.
+8. Registers the six plugin marketplaces, retrying once on a network blip.
+9. Installs all 22 plugins, retrying once each.
+10. Writes `~/.claude/.kit-version` and appends an install event to
+    `~/.claude/.kit-version.history.jsonl`.
+11. Prints next steps.
 
 **Does NOT:**
 
-- Install `uv`, `gh`, `ripgrep`, `jq`, LSP server binaries (`gopls`,
+- Install `uv`, `gh`, `node`, `ripgrep`, `jq`, LSP server binaries (`gopls`,
   `typescript-language-server`, `jdtls`), MCP backend binaries, the
   `specify` CLI, or the Berry verifier backend.
-- Modify your shell rc files (`.zshrc`, `.bashrc`).
+- Modify your shell rc files (`.zshrc`, `.bashrc`). It records a PATH in
+  `settings.json` instead, which reaches Claude Code's own subprocesses
+  without touching your shell.
 - Write your `~/.claude/CLAUDE.md`, on any Claude Code from 2.0.64 onward.
 - Write anywhere outside `~/.claude/`, apart from the npm cache it warms so
   the npx-based MCP servers do not cold-start on your first session.
@@ -385,30 +399,34 @@ PyPI to satisfy Berry's dependencies, the corporate proxy presents
 its own cert, `uvx`'s bundled rustls trust store doesn't have the
 corporate CA, and the plugin shows up as `✘ failed` in `claude mcp list`.
 
-The kit handles this by shipping **one env default**:
+The kit handles this by shipping **two env defaults** that do the same job
+for different `uv` versions:
 
 ```jsonc
 // claude/settings.json
 {
   "env": {
-    "UV_NATIVE_TLS": "1"
+    "UV_SYSTEM_CERTS": "1",   // current name
+    "UV_NATIVE_TLS": "1"      // deprecated alias, kept for older uv
   }
 }
 ```
 
-`UV_NATIVE_TLS=1` tells `uvx` to use the operating system's native
-TLS stack instead of its bundled rustls certs. On macOS that's the
-Keychain; on Linux that's the system CA bundle (`/etc/ssl/certs/...`).
-**If your corporate cert is installed in the system trust store**
-(which is the standard way corporate IT distributes it), `uvx` will
-trust it through this env var alone — no per-machine path needed.
+Both tell `uvx` to use the operating system's native TLS stack instead of
+its bundled rustls certs. On macOS that's the Keychain; on Linux the system
+CA bundle (`/etc/ssl/certs/...`). **If your corporate cert is installed in
+the system trust store** — the standard way corporate IT distributes it —
+`uvx` will trust it through these alone, no per-machine path needed.
 
-**The merge is layered:** when `install.sh` runs, the kit's
-`UV_NATIVE_TLS=1` is added to your `~/.claude/settings.json` env
-block **only if you don't already have an entry for it**. Any env
-entry you already have always wins. You can disable the default
-explicitly by setting `UV_NATIVE_TLS` to a different value (e.g.
-`"0"`) in your own settings.json — the merge respects that.
+`uv` now warns that `UV_NATIVE_TLS` "is deprecated and will be removed in a
+future release. Use `UV_SYSTEM_CERTS` instead." The kit ships both so that
+machines on an older `uv`, which does not recognise the new name, keep
+working. Drop `UV_NATIVE_TLS` once your fleet is past that point.
+
+**The merge is layered:** when `install.sh` runs, these are added to your
+`~/.claude/settings.json` env block **only if you don't already have an
+entry for them**. Any env entry you already have always wins, so you can
+disable a default by setting it to `"0"` in your own settings.json.
 
 **If the system trust store isn't enough** (e.g. your corporate
 cert is only available as a file, not installed in Keychain), see
@@ -442,18 +460,20 @@ responsibility. See [`docs/philosophy.md`](docs/philosophy.md).
 
 | Step | Why | Command |
 |---|---|---|
-| **1. Restart Claude Code** | New plugins/skills register at session start | `Cmd-Q` then relaunch, or `/exit` then `claude` |
-| **2. Configure the Berry verifier backend** | Berry verification is a MANDATORY gate per CLAUDE.md; every Berry call fails closed without a reachable LLM backend | `/berry:berry-configure` — walks you through OpenRouter (default — `openai/gpt-4o-mini`) or a self-hosted llama.cpp endpoint |
-| **3. Install + register the dual-graph MCP** | CLAUDE.md's MANDATORY code-search order requires `graph_continue` as the FIRST call for every code lookup; without it the kit falls back to bash grep, which the kit's hard rules forbid | The reference implementation is `graperoot` on PyPI. [`docs/prereqs.md`](docs/prereqs.md) section 10 owns the install recipe, the tool contract any substitute must satisfy, and the supply-chain profile (proprietary, self-updating, telemetry on by default) to read first. |
-| **4a. Install the Go LSP binary (`gopls`)** | The kit's `gopls-lsp` plugin is an MCP wrapper; it does not auto-install the language server. Without `gopls` on `$PATH`, the Go LSP integration loads but every call falls through | `go install golang.org/x/tools/gopls@latest` (Go must be installed; see [`docs/prereqs.md`](docs/prereqs.md) section 7). Ensure `$(go env GOPATH)/bin` is on `$PATH`. |
-| **4b. Install the TypeScript LSP binaries** | Same reason as 4a — `typescript-lsp` is a plugin wrapper; the actual language server is a separate npm package | `npm install -g typescript typescript-language-server` (Node 18+; see [`docs/prereqs.md`](docs/prereqs.md) section 8). |
-| **4c. Install the Java LSP binary (`jdtls`) + JDK 21+** | Same reason as 4a — `jdtls-lsp` is a plugin wrapper; the underlying Eclipse JDT.LS server requires Java 21+ at runtime | macOS: `brew install jdtls` (Homebrew pulls a current JDK as a dependency; pin with `brew install openjdk@21 jdtls` only if you need that specific JDK on PATH). Linux: install OpenJDK 21+ via your package manager + download `jdtls` from the [official release page](https://download.eclipse.org/jdtls/snapshots/?d). See [`docs/prereqs.md`](docs/prereqs.md) section 9. |
+| **1. Restart Claude Code from a NEW terminal** | New plugins register at session start — but the terminal matters too. `claude` inherits the environment of the shell that launched it, and MCP servers and plugin hooks inherit *that*. Relaunching inside the shell you already had open keeps its old PATH | Close the terminal window, open a new one, run `claude`. Not just `/exit` then `claude` |
+| **2. Configure the Berry verifier backend** | Berry verification is a MANDATORY gate; every Berry call fails closed without a reachable LLM backend | `/berry:berry-configure` — walks you through OpenRouter (default — `openai/gpt-4o-mini`) or a self-hosted llama.cpp endpoint. **Then add `BERRY_VERIFIER_MODEL` yourself**: the command does not write the model pin, and an unpinned verifier on OpenRouter resolves to an arbitrary model that probably lacks logprobs. See [`docs/tools/berry.md`](docs/tools/berry.md) |
+| **3. Install + register the dual-graph MCP** | The MANDATORY code-search order requires `graph_continue` as the FIRST call for every code lookup; without it the first leg silently no-ops and the kit falls back to the grep its own rules forbid | The reference implementation is `graperoot` on PyPI. Register with **`claude mcp add --scope user`** — without that flag it registers per-project and exists only in the directory you ran it from. [`docs/prereqs.md`](docs/prereqs.md) section 10 owns the recipe, the tool contract any substitute must satisfy, and the supply-chain profile (proprietary, self-updating, telemetry on by default) to read first |
+| **4a. Install the Go LSP binary (`gopls`)** | The kit's `gopls-lsp` plugin is an MCP wrapper; it does not auto-install the language server. Without `gopls` on `$PATH`, the Go LSP integration loads but every call falls through | `go install golang.org/x/tools/gopls@latest` (Go must be installed; see [`docs/prereqs.md`](docs/prereqs.md) section 7). The binary lands in `~/go/bin`, which is not on `PATH` by default — add it |
+| **4b. Install the TypeScript LSP binaries** | Same reason as 4a — `typescript-lsp` is a plugin wrapper; the actual language server is a separate npm package | `npm install -g typescript-language-server typescript@5`. **Pin the 5.x line.** TypeScript 7 is the native port and ships no `tsserver.js`, so the language server cannot start against it — while `tsc --version` still prints happily. See [`docs/prereqs.md`](docs/prereqs.md) section 8 |
+| **4c. Install the Java LSP binary (`jdtls`) + JDK 21+** | Same reason as 4a — `jdtls-lsp` is a plugin wrapper; the underlying Eclipse JDT.LS server requires Java 21+ at runtime | macOS: `brew install openjdk jdtls`, then `export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"` — Homebrew's openjdk is **keg-only**, so without that line `java` still resolves to the macOS stub and reports "Unable to locate a Java Runtime". Linux: OpenJDK 21+ via your package manager plus `jdtls` from the [official release page](https://download.eclipse.org/jdtls/snapshots/?d). See [`docs/prereqs.md`](docs/prereqs.md) section 9 |
+| **5. Authenticate the OAuth MCP servers** | `notion` and `huggingface-skills` are HTTP MCP servers that need an interactive OAuth grant. Until then both show `! Needs authentication` and their tools are unavailable | Run `/mcp` in a Claude Code session and complete the flow for each. Enterprise Notion workspaces with member-install allow-listing also need [`/claude-code-kit:fix-notion-mcp-port`](docs/notion-mcp-pinning.md) first |
+| **5b. (Optional) Context7 API key** | `context7` works anonymously but is rate-limited; the plugin reads `CONTEXT7_API_KEY` if present | Add `CONTEXT7_API_KEY` to the `env` block of `~/.claude/settings.json` |
 
 ### Per project, when starting work on a new repo
 
 | Step | Why | Command |
 |---|---|---|
-| **6. Initialize spec-kit for the project** | Required when adopting the spec-driven flow for a project; installs `/speckit-*` skills + `.specify/` scaffold into the project | `cd <your-project>` then `specify init --here --integration claude`, then restart Claude Code in that directory |
+| **6. Initialize spec-kit for the project** | Required when adopting the spec-driven flow for a project; installs `/speckit-*` skills + `.specify/` scaffold into the project | `cd <your-project>` then `specify init --here --integration claude`, then restart Claude Code in that directory. Add `--force` to skip the confirmation prompt, which fires in any non-empty directory |
 
 ### Per session (caveman is the only opt-in here)
 
@@ -467,18 +487,33 @@ mode flags (`lite`, `full`, `ultra`, `wenyan`).
 
 ### Verifying everything is wired up
 
-After steps 1–4, run:
+After steps 1–5, run:
 
 ```bash
-claude plugin list                              # should show 22 plugins enabled (incl. caveman@caveman, claude-code-kit@claude-code-kit)
-which gopls typescript-language-server jdtls    # all three resolve
-jdtls --help                                    # JVM mismatch surfaces here if any
+claude plugin list                            # 22 plugins enabled
+claude mcp list                               # every server ✓ Connected or ! Needs authentication
+
+which gopls typescript-language-server jdtls  # all three resolve (gopls needs ~/go/bin on PATH)
+java -version                                 # a real version, not "Unable to locate a Java Runtime"
+ls "$(npm root -g)/typescript/lib/tsserver.js"  # must exist — tsc --version does NOT prove this
+node --version && npx --version               # caveman's hook and three MCP servers need these
 ```
 
-Then in a fresh Claude Code session, invoke `/berry:berry-configure`
-and confirm it reports the backend as reachable. If any of the above
-fails, see [`docs/prereqs.md`](docs/prereqs.md) for the
-section-by-section install commands.
+Each of those checks the thing that actually breaks. Two that look
+equivalent but are not: `tsc --version` succeeds on TypeScript 7 where the
+LSP is completely dead, and `jdtls --help` exits 0 with no JVM installed at
+all — neither can fail in the way that matters, so neither is listed.
+
+Then in a fresh Claude Code session, invoke `/berry:berry-configure` and
+confirm it reports the backend as reachable. If any of the above fails, see
+[`docs/prereqs.md`](docs/prereqs.md) for the section-by-section install
+commands.
+
+**If `claude mcp list` and your session disagree**, believe neither on its
+own. `claude mcp list` spawns a fresh process and reports the server's real
+health; your running session caches a failed connection for about 15
+minutes and will keep refusing the tools regardless. After fixing a PATH or
+a registration, start a new session.
 
 ### If npx-based MCPs show ✘ failed on first launch, restart once
 
@@ -522,9 +557,20 @@ from this repo — you'll add a plugin, tweak a rule, etc. Run:
 It diffs the kit's rule files against the ones in `~/.claude/rules/`, skipping
 `00-user-overrides.md` because that one is yours and is meant to differ, then
 shows a structural delta on `settings.json`: plugins added or removed,
-marketplaces added, env keys changed. On a Claude Code below 2.0.64 it falls
-back to comparing `CLAUDE.md`. Exits 0 when nothing has drifted, 1 when
-something has. Use it to decide what is worth contributing back.
+marketplaces added, and env keys that are yours rather than the kit's. On a
+Claude Code below 2.0.64 it falls back to comparing `CLAUDE.md`. Exits 0 when
+nothing has drifted, 1 when something has — env differences included. Use it
+to decide what is worth contributing back.
+
+For "has anything been edited since I installed", use the other one:
+
+```bash
+bash scripts/upgrade.sh --status
+```
+
+That compares the SHAs recorded at install time against what is on disk and
+prints `match` or `DRIFTED` per file, alongside the installed version,
+channel, commit, unresolved conflicts and available backups.
 
 ---
 
@@ -560,9 +606,14 @@ runs in `.github/workflows/ci.yml` — by design).
 
 1. Captures `mtime` of your real `~/.claude/CLAUDE.md` and `~/.claude/settings.json`.
 2. Creates `$(mktemp -d -t cck-test-XXXXXX)` and runs `HOME="$TEST_HOME" ./install.sh`.
-3. Asserts every expected artifact landed in the isolated HOME
-   (`CLAUDE.md`, `settings.json`, `memory/MEMORY.md`, `docs/tools/`,
-   the expected plugin count, and the expected per-tool docs count).
+3. Asserts every expected artifact landed in the isolated HOME, via
+   `scripts/verify-install.py`: `settings.json`, `memory/MEMORY.md`,
+   `docs/tools/`, a non-empty plugin set, and — depending on the CLI
+   version — either the six kit rule files plus a seeded
+   `00-user-overrides.md`, or the `CLAUDE.md` template below the 2.0.64
+   floor. It reports *every* missing artifact rather than stopping at the
+   first, and it does not require `CLAUDE.md` above the floor, because the
+   kit deliberately stopped writing it there.
    Also runs `lint-mcp-hardcoded-paths.py` against the populated
    plugin cache — fails the test if any installed plugin's `.mcp.json`
    contains an owner-specific absolute path (`/Users/<x>`, `/home/<x>`,
@@ -572,8 +623,18 @@ runs in `.github/workflows/ci.yml` — by design).
    sibling dot-file) mtimes and exits non-zero if any of the three
    changed. If a future kit change accidentally writes outside the
    isolated HOME, this catches it.
-5. Prints a summary and tells you how to poke around the tempdir (or
-   cleans it up if you passed `--clean`).
+5. Prints a summary and tells you how to poke around the tempdir. An
+   `EXIT` trap removes it on success with `--clean`, and keeps it with the
+   path printed on failure, so a failed run leaves you something to
+   inspect rather than silently abandoning ~1 GB.
+
+The artifact assertions live in a Python script rather than inline in the
+harness for a reason worth knowing: as a shell loop over filenames they
+could not be tested, and they went stale. The loop still required
+`CLAUDE.md` long after the kit stopped writing it, so the harness failed on
+every run against a current CLI — and failed at step 3, which meant the
+leak check in step 4 never executed at all. `tests/test_verify_install.py`
+now covers the assertions directly.
 
 **What it can't isolate** (these are global by design and the kit doesn't
 clone them either): the `claude` CLI binary itself, LSP server binaries
@@ -676,7 +737,7 @@ claude-code-kit/
 ├── install.sh                         Bootstrap entry point
 ├── uninstall.sh                       Restore from latest backup
 ├── pyproject.toml                     pytest config
-├── .github/workflows/ci.yml           shellcheck + lints + 175 pytest cases
+├── .github/workflows/ci.yml           shellcheck + lints + 217 pytest cases
 ├── claude/                            Files copied/merged into ~/.claude/
 │   ├── CLAUDE.md                      Scrubbed opinionated template (legacy merge path)
 │   ├── rules/                         Kit instructions, owned; copied to ~/.claude/rules/

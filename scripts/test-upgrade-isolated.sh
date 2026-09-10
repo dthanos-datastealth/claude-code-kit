@@ -39,15 +39,49 @@ file_mtime() {
     stat -f '%m' "$f" 2>/dev/null || stat -c '%Y' "$f"
 }
 
+# ~/.claude.json holds the CLI's own session state — caches, counters, tips
+# history, pluginUsage — which a Claude Code session running right now
+# rewrites every few seconds. Its mtime therefore says nothing about whether
+# this test wrote to it, and keying on mtime fails the harness for anyone who
+# runs it from inside a live session, which is everyone. Digest the one key an
+# install or upgrade can actually write. Same reasoning, same helper, as
+# scripts/test-install-isolated.sh.
+dotjson_mcp_servers() {
+    python3 - "$1" <<'PY'
+import hashlib, json, sys
+try:
+    with open(sys.argv[1], encoding="utf-8") as fh:
+        d = json.load(fh)
+except (OSError, ValueError):
+    print("absent")
+    raise SystemExit(0)
+print(hashlib.sha256(
+    json.dumps(d.get("mcpServers", {}), sort_keys=True, separators=(",", ":")).encode()
+).hexdigest())
+PY
+}
+
 REAL_CLAUDE_MD_BEFORE=$(file_mtime "${REAL_CLAUDE_HOME}/CLAUDE.md")
 REAL_SETTINGS_BEFORE=$(file_mtime "${REAL_CLAUDE_HOME}/settings.json")
-REAL_CLAUDE_DOTJSON_BEFORE=$(file_mtime "${HOME}/.claude.json")
-log "Captured real-HOME mtimes (will verify UNCHANGED after the test):"
+REAL_CLAUDE_DOTJSON_BEFORE=$(dotjson_mcp_servers "${HOME}/.claude.json")
+log "Captured real-HOME state (will verify UNCHANGED after the test):"
 log "  ~/.claude/CLAUDE.md     : ${REAL_CLAUDE_MD_BEFORE}"
 log "  ~/.claude/settings.json : ${REAL_SETTINGS_BEFORE}"
-log "  ~/.claude.json          : ${REAL_CLAUDE_DOTJSON_BEFORE}"
+log "  ~/.claude.json          : mcpServers ${REAL_CLAUDE_DOTJSON_BEFORE:0:12}"
 
 TEST_HOME="$(mktemp -d -t cck-upgrade-test-XXXXXX)"
+# Clean up on every exit path, not just the happy one. Each abandoned
+# isolated HOME is roughly 1 GB.
+cleanup() {
+    local rc=$?
+    if [ "${rc}" -ne 0 ]; then
+        err "  Tempdir kept for diagnosis: ${TEST_HOME}"
+        err "  Remove it with: rm -rf ${TEST_HOME}"
+    elif [ "${CLEAN}" -eq 1 ]; then
+        rm -rf "${TEST_HOME}"
+    fi
+}
+trap cleanup EXIT
 log "Isolated HOME: ${TEST_HOME}"
 
 # Step 1 — fresh install into isolated HOME
@@ -133,7 +167,7 @@ ok "  CLAUDE.md: user-added section preserved"
 log "Step 6: leak check — real ~/.claude/ must be untouched..."
 REAL_CLAUDE_MD_AFTER=$(file_mtime "${REAL_CLAUDE_HOME}/CLAUDE.md")
 REAL_SETTINGS_AFTER=$(file_mtime "${REAL_CLAUDE_HOME}/settings.json")
-REAL_CLAUDE_DOTJSON_AFTER=$(file_mtime "${HOME}/.claude.json")
+REAL_CLAUDE_DOTJSON_AFTER=$(dotjson_mcp_servers "${HOME}/.claude.json")
 leaked=0
 if [ "${REAL_CLAUDE_MD_AFTER}" != "${REAL_CLAUDE_MD_BEFORE}" ]; then
     err "  LEAK: ~/.claude/CLAUDE.md mtime changed (${REAL_CLAUDE_MD_BEFORE} → ${REAL_CLAUDE_MD_AFTER})"
@@ -144,7 +178,8 @@ if [ "${REAL_SETTINGS_AFTER}" != "${REAL_SETTINGS_BEFORE}" ]; then
     leaked=1
 fi
 if [ "${REAL_CLAUDE_DOTJSON_AFTER}" != "${REAL_CLAUDE_DOTJSON_BEFORE}" ]; then
-    err "  LEAK: ~/.claude.json mtime changed"
+    err "  LEAK: ~/.claude.json mcpServers CHANGED"
+    err "        (${REAL_CLAUDE_DOTJSON_BEFORE} -> ${REAL_CLAUDE_DOTJSON_AFTER})"
     leaked=1
 fi
 if [ "${leaked}" -ne 0 ]; then exit 2; fi
@@ -153,9 +188,10 @@ ok "  no leak — real ~/.claude/ untouched"
 ok "ALL CHECKS PASSED"
 log "Isolated HOME: ${TEST_HOME}"
 
+# Removal on success is the EXIT trap's job, so failures are cleaned up the
+# same way rather than leaking the tempdir.
 if [ "${CLEAN}" -eq 1 ]; then
-    rm -rf "${TEST_HOME}"
-    log "Cleaned up tempdir."
+    log "Cleaning up tempdir on exit..."
 else
     log "(Pass --clean to auto-remove on success.)"
 fi

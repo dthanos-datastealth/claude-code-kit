@@ -20,6 +20,14 @@
     "effortLevel": {
       "strategy": "scalar_user_wins_if_set",
       "rationale": "If user has explicitly set effortLevel, preserve. If absent, take kit default."
+    },
+    "permissions": {
+      "strategy": "preserve_user",
+      "rationale": "The permission mode and allow/deny lists are the user's call, and Claude Code only honours some values from user settings anyway. The kit reads this key (rule 20 depends on which tools a mode exposes) but must never write it. Listed explicitly rather than left to the unlisted-key default so that the decision is recorded, per this file's own rule that the kit does not introduce a top-level key without adding it here first."
+    },
+    "statusLine": {
+      "strategy": "preserve_user",
+      "rationale": "A plugin-provided statusLine command embeds that plugin's version directory, so it breaks on plugin upgrade and is the user's to repair. The kit does not ship one and must not clobber one."
     }
   },
   "default_strategy_for_unlisted_keys": {

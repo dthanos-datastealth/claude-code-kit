@@ -5,9 +5,16 @@
 # Requires the caller to have defined CLAUDE_HOME + (for kit_write_version_marker)
 # REPO_DIR.
 
-# Create timestamped backup of CLAUDE.md + settings.json under
+# Create timestamped backup of CLAUDE.md, settings.json and rules/ under
 # ~/.claude/backups/<ISO-timestamp>/. Echoes the backup directory path on
-# success. No-op (echo nothing, return 0) if neither file exists.
+# success. No-op (echo nothing, return 0) if none of them exist.
+#
+# rules/ is in the set because that is where the kit's instructions live now.
+# kit_copy_rules replaces all six kit files wholesale on every upgrade, so a
+# backup without them cannot undo a release that ships a bad rule — and
+# docs/upgrading.md offers rollback as the remedy for exactly that. The
+# directory also holds 00-user-overrides.md and anything else the user wrote,
+# which is the part they cannot recover from the repository.
 kit_backup_files() {
     local ts bk_dir backed_up=0
     ts="$(date -u +'%Y-%m-%dT%H-%M-%SZ')"
@@ -19,6 +26,11 @@ kit_backup_files() {
             backed_up=1
         fi
     done
+    if [ -d "${CLAUDE_HOME}/rules" ] && [ -n "$(ls -A "${CLAUDE_HOME}/rules" 2>/dev/null)" ]; then
+        mkdir -p "${bk_dir}/rules"
+        cp "${CLAUDE_HOME}/rules/"*.md "${bk_dir}/rules/" 2>/dev/null || true
+        backed_up=1
+    fi
     if [ "${backed_up}" -eq 1 ]; then
         echo "${bk_dir}"
     fi

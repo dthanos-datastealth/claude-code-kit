@@ -112,6 +112,97 @@ def test_case_17_uninstall_after_rollback_works_cleanly(tmp_path):
     assert (home / ".claude" / "CLAUDE.md").read_text() == "# OLDER VERSION (from backup)\n"
 
 
+def test_rollback_restores_kit_rule_files(tmp_path):
+    """An upgrade replaces every kit rule file wholesale. If a release ships a
+    bad rule, rollback is the documented remedy — docs/upgrading.md calls it
+    one of "three layers of revert". For the instruction layer there were
+    zero, because backups only ever held CLAUDE.md and settings.json."""
+    home = tmp_path
+    cd = home / ".claude"
+    (cd / "rules").mkdir(parents=True)
+    (cd / "settings.json").write_text("{}\n")
+    (cd / ".kit-version").write_text('{"installed_at": "2026-05-29T00:00:00Z"}\n')
+    (cd / "rules" / "10-kit-core.md").write_text("# GOOD RULE\n")
+    (cd / "rules" / "00-user-overrides.md").write_text("# mine\n")
+
+    bk_id = "2026-05-28T12-00-00Z"
+    bk = cd / "backups" / bk_id
+    (bk / "rules").mkdir(parents=True)
+    (bk / "settings.json").write_text("{}\n")
+    (bk / "rules" / "10-kit-core.md").write_text("# GOOD RULE\n")
+    (bk / "rules" / "00-user-overrides.md").write_text("# mine\n")
+
+    # A bad upgrade lands.
+    (cd / "rules" / "10-kit-core.md").write_text("# BAD RULE\n")
+
+    r = _run([str(UPGRADE_SH), "--rollback", bk_id], home)
+    assert r.returncode == 0, f"rollback failed: {r.stderr}"
+    assert (cd / "rules" / "10-kit-core.md").read_text() == "# GOOD RULE\n"
+    assert (cd / "rules" / "00-user-overrides.md").read_text() == "# mine\n"
+
+
+def test_uninstall_without_a_backup_strips_the_kits_settings_keys(tmp_path):
+    """The common case, and the one that did not work: on a clean machine
+    install.sh backs nothing up, because kit_backup_files only copies files
+    that already exist. uninstall.sh then had nothing to restore and left
+    settings.json carrying all 22 plugins, 6 marketplaces, effortLevel and the
+    kit's env block — permanently. docs/upgrading.md calls uninstall the
+    "nuclear option ... use to leave the kit completely"."""
+    kit = json.loads((REPO / "claude" / "settings.json").read_text())
+    home = tmp_path
+    cd = home / ".claude"
+    cd.mkdir()
+    live = {
+        "env": dict(kit["env"]),
+        "enabledPlugins": dict(kit["enabledPlugins"]),
+        "extraKnownMarketplaces": dict(kit["extraKnownMarketplaces"]),
+        "effortLevel": kit["effortLevel"],
+        "theme": "dark",
+    }
+    live["enabledPlugins"]["my-own@somewhere"] = True
+    live["env"]["MY_OWN_VAR"] = "keep me"
+    (cd / "settings.json").write_text(json.dumps(live, indent=2))
+    (cd / ".kit-version").write_text('{"installed_at": "2026-05-29T00:00:00Z"}\n')
+
+    r = _run([str(UNINSTALL_SH)], home)
+    assert r.returncode == 0, f"uninstall failed: {r.stderr}"
+
+    after = json.loads((cd / "settings.json").read_text())
+    for plugin in kit["enabledPlugins"]:
+        assert plugin not in after.get("enabledPlugins", {}), f"{plugin} not removed"
+    for mp in kit["extraKnownMarketplaces"]:
+        assert mp not in after.get("extraKnownMarketplaces", {}), f"{mp} not removed"
+    assert "effortLevel" not in after
+    for key in kit["env"]:
+        assert key not in after.get("env", {}), f"kit env key {key} not removed"
+
+    # Anything that is not the kit's stays exactly as it was.
+    assert after["enabledPlugins"]["my-own@somewhere"] is True
+    assert after["env"]["MY_OWN_VAR"] == "keep me"
+    assert after["theme"] == "dark"
+
+
+def test_uninstall_leaves_a_user_modified_kit_key_alone(tmp_path):
+    """Remove only what still matches what the kit ships. A plugin entry the
+    user has flipped to false is a decision of theirs, not kit residue."""
+    kit = json.loads((REPO / "claude" / "settings.json").read_text())
+    victim = next(iter(kit["enabledPlugins"]))
+    home = tmp_path
+    cd = home / ".claude"
+    cd.mkdir()
+    (cd / "settings.json").write_text(json.dumps({
+        "enabledPlugins": {victim: False},
+        "effortLevel": "low",
+    }, indent=2))
+    (cd / ".kit-version").write_text('{"installed_at": "2026-05-29T00:00:00Z"}\n')
+
+    r = _run([str(UNINSTALL_SH)], home)
+    assert r.returncode == 0, r.stderr
+    after = json.loads((cd / "settings.json").read_text())
+    assert after["enabledPlugins"][victim] is False, "user's own value must survive"
+    assert after["effortLevel"] == "low", "an effortLevel the user changed is theirs"
+
+
 def test_status_with_no_install_marker(tmp_path):
     """--status against a clean HOME (no .kit-version) reports pre-tool state."""
     home = tmp_path

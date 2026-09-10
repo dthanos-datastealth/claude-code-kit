@@ -11,6 +11,10 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INSTALL_SH="${REPO_DIR}/install.sh"
+# kit_rules_supported: the harness must expect the same artifact install.sh
+# just wrote, and that depends on the CLI version.
+# shellcheck source=scripts/_kit_rules.sh
+. "${REPO_DIR}/scripts/_kit_rules.sh"
 REAL_CLAUDE_HOME="${HOME}/.claude"
 
 CLEAN=0
@@ -71,6 +75,19 @@ log "  ~/.claude/settings.json : ${REAL_SETTINGS_BEFORE}"
 log "  ~/.claude.json          : mcpServers ${REAL_CLAUDE_DOTJSON_BEFORE:0:12}"
 
 TEST_HOME=$(mktemp -d -t cck-test-XXXXXX)
+# Every early exit below used to abandon the isolated HOME — measured at
+# 961 MB, once per run, and the harness failed on every run. Keep it on
+# failure only when it is worth inspecting, and say where it is.
+cleanup() {
+    local rc=$?
+    if [ "${rc}" -ne 0 ]; then
+        err "  Tempdir kept for diagnosis: ${TEST_HOME}"
+        err "  Remove it with: rm -rf ${TEST_HOME}"
+    elif [ "${CLEAN}" -eq 1 ]; then
+        rm -rf "${TEST_HOME}"
+    fi
+}
+trap cleanup EXIT
 log "Isolated HOME: ${TEST_HOME}"
 log "Running install.sh in isolated HOME (real claude CLI, real plugin installs)..."
 
@@ -84,24 +101,24 @@ else
 fi
 
 log "Verifying isolated-HOME contents..."
-for f in CLAUDE.md settings.json memory/MEMORY.md; do
-    if [ -f "${TEST_HOME}/.claude/${f}" ]; then
-        ok "  ${f} installed"
-    else
-        err "  ${f} MISSING"
-        exit 1
-    fi
-done
-if [ -d "${TEST_HOME}/.claude/docs/tools" ]; then
-    ok "  docs/tools/ installed"
+# Which instruction artifact to expect depends on the CLI this install ran
+# against: rules/ from Claude Code 2.0.64 on, the CLAUDE.md template below it.
+# Asserting CLAUDE.md unconditionally is what made this harness fail on every
+# run against a current CLI — and fail here, before the leak check below.
+if kit_rules_supported; then
+    expect_flag="--expect-rules"
 else
-    err "  docs/tools/ MISSING"
+    expect_flag="--expect-claude-md"
+fi
+if python3 "${REPO_DIR}/scripts/verify-install.py" "${TEST_HOME}/.claude" "${expect_flag}"; then
+    ok "  every expected artifact present (${expect_flag#--expect-})"
+else
+    err "  isolated HOME is missing expected artifacts (see above)"
     exit 1
 fi
 
 plugin_count=$(python3 -c "import json; d=json.load(open('${TEST_HOME}/.claude/settings.json')); print(len(d.get('enabledPlugins', {})))")
 docs_count=$(find "${TEST_HOME}/.claude/docs/tools" -maxdepth 1 -type f -name '*.md' | wc -l | tr -d ' ')
-ok "  ${plugin_count} plugins enabled; ${docs_count} per-tool docs shipped"
 
 # Hardcoded-path lint: scan every installed plugin's .mcp.json for
 # owner-specific absolute paths. Catches the failure mode where a
@@ -164,10 +181,10 @@ ok "  Per-tool docs : ${docs_count}"
 ok "  Real HOME     : untouched"
 ok "==============================================="
 
+# Removal on success is the EXIT trap's job, so that a failure anywhere above
+# is cleaned up the same way rather than leaking the tempdir.
 if [ "${CLEAN}" -eq 1 ]; then
-    log "Cleaning up tempdir..."
-    rm -rf "${TEST_HOME}"
-    ok "  Removed ${TEST_HOME}"
+    log "Cleaning up tempdir on exit..."
 else
     log "Tempdir kept for inspection (re-run with --clean to auto-remove):"
     log "  ls -la ${TEST_HOME}/.claude/"

@@ -71,3 +71,42 @@ def test_uninstall_removes_the_kits_docs():
                    env={"HOME": str(r.home), "PATH": f"{r.fake_bin}:/usr/bin:/bin",
                         "LANG": "C.UTF-8"}, text=True, capture_output=True)
     assert not docs.exists(), "kit docs survived uninstall"
+
+
+def test_uninstall_restores_the_users_own_rule_files_from_backup(tmp_path):
+    """A backup carries rules/, so uninstall can put the user's own files
+    back rather than leaving whatever the last upgrade wrote.
+
+    The kit's six files are removed either way. What must survive is
+    00-user-overrides.md and anything else the user authored — the part they
+    cannot recover from the repository.
+    """
+    home = tmp_path
+    cd = home / ".claude"
+    (cd / "rules").mkdir(parents=True)
+    (cd / "settings.json").write_text("{}\n")
+    (cd / ".kit-version").write_text('{"installed_at": "2026-09-10T00:00:00Z"}\n')
+    # Live state: kit files present, and the user's override has been
+    # clobbered since the backup was taken.
+    (cd / "rules" / "10-kit-core.md").write_text("# kit\n")
+    (cd / "rules" / "00-user-overrides.md").write_text("# CLOBBERED\n")
+
+    bk = cd / "backups" / "2026-09-09T00-00-00Z"
+    (bk / "rules").mkdir(parents=True)
+    (bk / "settings.json").write_text("{}\n")
+    (bk / "rules" / "10-kit-core.md").write_text("# kit\n")
+    (bk / "rules" / "00-user-overrides.md").write_text("# MY RULES\n")
+    (bk / "rules" / "99-mine.md").write_text("# also mine\n")
+
+    r = subprocess.run(
+        ["bash", str(UNINSTALL)],
+        env={"HOME": str(home), "PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"},
+        text=True, capture_output=True,
+    )
+    assert r.returncode == 0, r.stderr
+
+    assert (cd / "rules" / "00-user-overrides.md").read_text() == "# MY RULES\n"
+    assert (cd / "rules" / "99-mine.md").read_text() == "# also mine\n"
+    assert not (cd / "rules" / "10-kit-core.md").exists(), (
+        "kit rule files must not survive an uninstall, restored or otherwise"
+    )

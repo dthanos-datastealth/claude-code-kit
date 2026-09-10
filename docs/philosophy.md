@@ -220,12 +220,20 @@ running it, verification would never run.
 
 - Every factual claim ends with a span citation (`[S0]`, `[S1]`, etc.).
 - Claims without spans are labelled as assumptions.
-- `audit_trace_budget` computes the KL divergence between
-  P(YES | span in context) and P(YES | span redacted) — the "observed bits"
-  the span contributes to the claim. Weak spans produce near-zero bits and
-  fail the audit. Strong spans produce many bits and pass.
+- Each step in an audit names the spans that support it, in `cites`. The
+  verifier reads the claim with those spans in context and scores how far
+  the evidence carries it, reporting posterior YES bounds against a
+  `target` (0.95 by default). Clearing the target is `passed`; falling
+  short is `not_entailed`; evidence pointing the other way is
+  `contradicted`.
 - Test output is captured as a span via `add_span` before any "tests pass"
   claim. The audit verifies the span actually contains the passing output.
+
+The two statuses worth recognising on sight are `empty_context` and
+`no_spans`, because neither is a verdict about your claim — they mean the
+verifier was never called. A step that forgets `cites` gets `empty_context`
+and comes back flagged, which reads exactly like failed evidence. Fix the
+call, not the wording.
 
 **Why three strikes:** Repeated audit failures on the same claim set indicate
 either a real lack of evidence (the agent should stop and gather more, with
@@ -244,13 +252,20 @@ failure wastes time and erodes trust. Stop, surface, ask.
 
 **Pitfalls:**
 
-- Wrong span key shape (`{"S0": "..."}`) silently produces zero observed
-  bits and looks like an evidence problem when it is actually a parameter
-  shape problem. The verifier cannot read your span, so neither probability
-  changes, so the divergence is zero, so the audit fails. Check the keys
-  first.
-- A passing audit with low total bits is a warning, not a victory. Gather
-  stronger spans before proceeding.
+- **A step with no `cites` verifies nothing.** The default `context_mode` is
+  `"cited"`, so a step that names no spans is scored against an empty
+  context: `status: empty_context`, zero verifier calls, and a flagged
+  result that is indistinguishable from failed evidence. This is the single
+  easiest way to run the gate and learn nothing from it.
+- Wrong span key shape (`{"S0": "..."}` instead of
+  `{"sid": "S0", "text": "..."}`) returns `status: no_spans`. Also a
+  parameter problem, not an evidence problem.
+- A claim that asserts more than its span shows will sit just under target
+  and flag. That is the gate working correctly — narrow the claim to what
+  the evidence supports rather than hunting for a bigger span.
+- Paraphrased or elided spans score worse than literal ones. An excerpt
+  with `...` in the middle leaves the verifier unable to rule out what the
+  ellipsis hides, and it will decline to entail. Paste the real text.
 - Disabling Berry "just for this one step" is the path back to speculative
   work. Disable it only for genuinely read-only sessions or throwaway
   sandbox scripts.

@@ -11,9 +11,10 @@
 #   2. CLAUDE_NOTION_PORT env var
 #   3. Default 51234
 #
-# Per-HOME: writes via `claude mcp add` which targets the current HOME's
-# ~/.claude.json. If the team uses multiple HOMEs, run once per HOME with
-# the SAME port so the admin only needs to allow-list one URL.
+# Scope: registers with `--scope user`, so the pin lands in the user section
+# of ~/.claude.json and applies in every project. Omitting the flag registers
+# per-project, which silently limits the fix to one directory. Per HOME: run
+# once per HOME, with the SAME port, so the admin allow-lists one URL.
 #
 # CAVEAT — GitHub Issue anthropics/claude-code#55067 (OPEN at time of
 # writing): re-authentication after token expiry may ignore the configured
@@ -42,11 +43,22 @@ if ! command -v claude >/dev/null 2>&1; then
     exit 2
 fi
 
-log "Removing existing 'notion' MCP server (if any)..."
-claude mcp remove notion 2>/dev/null || true
+# Clear EVERY scope before re-adding, not just the one being written.
+# Precedence is local > project > user, so a leftover local-scoped `notion`
+# outranks the user-scoped pin and wins silently — and a local entry is
+# exactly what earlier versions of this script left behind, because
+# `claude mcp add` defaults to local. `claude mcp remove` without --scope
+# removes from "whichever scope it exists in", which is one of them, so name
+# each explicitly.
+log "Removing existing 'notion' MCP server from every scope..."
+for scope in local project user; do
+    claude mcp remove --scope "${scope}" notion >/dev/null 2>&1 || true
+done
 
-log "Registering Notion MCP with --callback-port ${PORT}..."
-claude mcp add --transport http --callback-port "$PORT" notion "$NOTION_MCP_URL"
+# --scope user on the add, because the default is local: without it the pin
+# would apply only in the directory this script happened to run from.
+log "Registering Notion MCP at user scope with --callback-port ${PORT}..."
+claude mcp add --scope user --transport http --callback-port "$PORT" notion "$NOTION_MCP_URL"
 
 cat <<EOF
 

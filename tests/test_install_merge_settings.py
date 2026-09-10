@@ -1,5 +1,5 @@
 import json
-from tests.helpers import run_install
+from tests.helpers import REPO, run_install
 
 
 def test_settings_merge_preserves_user_env_entries():
@@ -64,11 +64,21 @@ def test_settings_merge_sets_effort_level():
 
 
 def test_settings_merge_creates_when_no_preexisting():
-    """Fresh install (no prior user settings.json): env should be the kit's
-    default env block (currently just UV_NATIVE_TLS=1), not empty."""
+    """Fresh install (no prior user settings.json): env carries the kit's
+    template defaults, not an empty block.
+
+    Asserts containment rather than equality. install.sh also records
+    machine-specific runtime keys after the merge — PATH and
+    CLAUDE_CODE_ENABLE_TODO_TOOLS, see scripts/_kit_env.sh — and an equality
+    assertion here would fail every time that set changes while telling you
+    nothing about the merge, which is what this test is for. The runtime keys
+    have their own coverage in tests/test_install_env_path.py.
+    """
+    kit = json.loads((REPO / "claude" / "settings.json").read_text())
     r = run_install()
     dst = r.home / ".claude" / "settings.json"
     assert dst.exists()
     merged = json.loads(dst.read_text())
     assert "enabledPlugins" in merged
-    assert merged["env"] == {"UV_NATIVE_TLS": "1"}
+    for key, value in kit["env"].items():
+        assert merged["env"][key] == value, f"kit env default {key} lost in merge"

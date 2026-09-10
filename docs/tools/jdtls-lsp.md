@@ -28,7 +28,19 @@ pay that cost on, say, a pure Python or Go repo.
 Plugin: `jdtls-lsp@claude-plugins-official` (in `anthropics/claude-plugins-official`).
 Upstream Java language server: <https://github.com/eclipse-jdtls/eclipse.jdt.ls>.
 Requires JDK 21 or newer to be on `$PATH`, and the `jdtls` launcher
-script also on `$PATH`. macOS install: `brew install openjdk@21 jdtls`.
+script also on `$PATH`. macOS install:
+
+```sh
+brew install openjdk jdtls
+export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
+```
+
+The `export` is required: Homebrew's `openjdk` is keg-only, so a successful
+install still leaves `java` resolving to the macOS stub, which reports
+"Unable to locate a Java Runtime". Verify with `java -version`, not with
+`jdtls --help` — `jdtls` is a Python launcher whose `--help` never starts a
+JVM and exits 0 on a machine with no Java at all.
+
 Linux install: distribution package or download the official tarball
 from the JDT.LS releases page and add the launcher script to `$PATH`.
 

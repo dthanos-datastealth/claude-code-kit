@@ -3,15 +3,88 @@
 > Per-project tracker per `~/.claude/docs/tracker-system.md`. Single source of
 > truth for in-flight work, V/O findings, and iteration state.
 
-## Last Updated: 2026-09-07 Iter-3 — IN PROGRESS
+## Last Updated: 2026-09-10 Iter-4 — IN PROGRESS
+
+A clean-machine install and full end-to-end test pass of `prerelease` @
+`4d08e48` (macOS 26.6.2 arm64, Claude Code 2.1.267) produced **30 findings**,
+recorded in `INSTALL-FINDINGS.md` at the repo root with the evidence for each.
+`install.sh` itself ran clean — 6/6 marketplaces, 22/22 plugins, no retries —
+and the suite was 174 passed / 1 skipped with all five lints green. The
+defects are in what surrounds the installer.
 
 | Aspect | State |
 |---|---|
-| Active phase | Iter-3 PR-A: deployment-report defects + prerelease channel |
-| Plan | Kept outside this repo (rev 8; Berry run 8f9226272b97fcdf, spans S0–S10, 0 flagged) — see note below |
+| Active phase | Iter-4: fix all 30 install findings |
+| Plan | `~/.claude/plans/nested-marinating-stardust.md` (approved) |
+| Plan Berry gate | run `e479d16648ca4486` first pass 3/7 flagged; second pass **0 flagged, 4/4 passed, 8 verifier calls**, `openai/gpt-4o-mini` |
 | Dev branch | `prerelease` |
-| Quality Loop State | dev done (117/117 GREEN, all lints clean, isolated install PASSES end to end); V+O pending on this revision |
+| Quality Loop State | Dev complete (all 6 phases); V and O both reported; blockers and worth-fixing items closed. Re-run of V+O waived by the user. |
+| Suite | 216 passed, 1 skipped (217 total; baseline was 174) |
+| Lints | 6 lint scripts + shellcheck, all exit 0 |
+| End to end | `test-install-isolated.sh` PASSES including its leak check; `test-upgrade-isolated.sh` PASSES |
+| Berry gates | plan `e479d16648ca4486`; completion `1b9ccf17b77d0b26` (5/5); e2e `b57a2318a05e9217` (7/7) |
 | Open conflicts | none |
+
+### Iter-4 Quality Loop State
+
+| Stage | Status | Findings | Notes |
+|---|---|---|---|
+| Dev | Complete | — | 31 findings fixed across 6 phases |
+| Verification | Reported `VERIFICATION: FAIL`, findings closed | 2 BLOCKER, 3 SHALLOW TEST, 4 TEST MISSING, 6 CONCERN | All blockers and shallow tests fixed; see below |
+| Optimization | Reported `OPTIMIZATION: CHANGES-RECOMMENDED`, worth-fixing closed | 3 worth-fixing, 14 worth-considering, 11 trivial | 3 worth-fixing + 3 worth-considering applied |
+| Berry | 3 gates, 0 flagged after evidence correction | — | Flagged 4 claims across the session before passing |
+
+### Iter-4 V/O findings and disposition
+
+| ID | Agent | Severity | Finding | Status |
+|---|---|---|---|---|
+| V-1 | V | BLOCKER | `kit_compute_path` PREPENDED resolved dirs; `git` at `/usr/bin` hoisted `/usr/bin` above `python@3.12/libexec/bin`, so the persisted PATH resolved `python3` to 3.9 — reintroducing #1/#13 permanently | CLOSED — appends now, `/usr/bin:/bin` floor added, pure shell (the old version died on an impoverished PATH because it forked `dirname`). `tests/test_kit_compute_path.py`, 6 cases |
+| V-2 | V | BLOCKER | `claude mcp remove --scope user` stopped removing a pre-existing **local**-scoped `notion`, which outranks user scope and silently shadows the pin | CLOSED — every scope cleared before the add; test asserts all three |
+| V-3 | V | SHALLOW TEST | `test_preflight_accepts_a_python3_at_or_above_the_floor` could not fail (disjunction always true) | CLOSED — asserts `returncode == 0` and absence of "too old" |
+| V-4 | V | SHALLOW TEST | Two `test_install_env_path` cases measured the harness, not the code | CLOSED — properties moved to unit tests against controlled PATHs |
+| V-5 | V | TEST MISSING | No coverage of multi-directory PATH composition — the configuration that produced V-1 | CLOSED |
+| V-6 | V | TEST MISSING | dry-run delta, uninstall rules-restore, `permissions`/`statusLine` preservation | CLOSED — 5 new cases |
+| V-7 | V | CONCERN | "keg-only" is the wrong mechanism for `python@3.12` (`keg_only: false`; only unversioned names diverted) | CLOSED — wording corrected |
+| V-8 | V | CONCERN | Version claim `2.1.233` for the Task-tool opt-in not supported by current docs | CLOSED — version number removed, reader pointed at their own tools reference |
+| V-9 | V | CONCERN | TRACKER stale | CLOSED — this section |
+| V-10 | V | CONCERN | Kit pins `typescript@5`; upstream now pins `@6`, which also ships `tsserver.js` | OPEN — `@5` is the conservative pin and is verified working here; revisit |
+| O-1 | O | worth-fixing | Prereq list duplicated between `install.sh` and `KIT_RUNTIME_TOOLS` | CLOSED — preflight derives from the array |
+| O-2 | O | worth-fixing | Runtime env key list in four places | CLOSED — `scripts/kit-runtime-env-keys.txt` is the single source; consistency test added |
+| O-3 | O | worth-fixing | `reinstall_over_existing` duplicated `run_install`'s child-process contract | CLOSED — `_exec_install` extracted |
+| O-4 | O | worth-fixing | `test_install_env_path` ran six installs (41s) for one install's worth of assertions | CLOSED — module fixture, ~13s |
+| O-5 | O | worth-considering | uninstall restored six kit rule files then deleted them three lines later | CLOSED — restore moved after deletion, copies only surviving files |
+| O-6 | O | worth-considering | `test_fix_notion_port` assertion loosened until the *add* line satisfied it | CLOSED |
+| O-7 | O | worth-considering | Two interpreter starts in `kit_compute_path` | CLOSED as a side effect of V-1 — now pure shell |
+| O-8 | O | various | Remaining worth-considering / trivial items: shared `kit_restore_rules`, settings.json read twice per run, harness recomputes counts, duplicated incident narratives in comments, `verify-install.py` hardcoded rule prefixes, unreachable `npx` guard | OPEN — recorded, not blocking |
+
+### Iter-4 origin
+
+Three root causes account for most of the 30:
+
+1. **The rules migration was left half-done.** `install.sh` stopped writing
+   `CLAUDE.md` and began writing `~/.claude/rules/`, but the isolation
+   harness, `kit_backup_files` and `uninstall.sh` were never updated. The
+   harness now fails on every run — and fails *before* its leak check, which
+   is the only thing it exists to prove. The kit's own instructions have no
+   revert path at all.
+2. **Checks that cannot observe what they claim to check.** `--status`
+   reports drift it never computes. The README's `jdtls --help` check exits 0
+   on a machine with no JVM. `tsc --version` passes while the TypeScript LSP
+   is dead. This is precisely the failure mode
+   `docs/verification-standards.md` was written against, committed four times
+   in the kit's own tooling.
+3. **Prerequisites declared but not enforced, or documented wrongly.** Node
+   is a hard runtime dependency of four enabled plugins and appears in no
+   prereq list and no preflight check; `brew install python@3.12` and
+   `npm install -g typescript` both produce installs that fail their own
+   documented verification.
+
+The Berry gate on the plan is worth recording as a worked example. The first
+pass flagged 3 of 7 claims. The claims were right; the *spans* were the
+problem — two carried `...` elisions the verifier could not rule a version
+check out of, and one span mixed the TypeScript 7 defect with its
+`typescript@5` fix. Replacing paraphrase with literal source and splitting the
+compound claim moved all four to `passed`. Rewording would not have.
 
 ### Iter-3 note: the plan is deliberately not committed here
 

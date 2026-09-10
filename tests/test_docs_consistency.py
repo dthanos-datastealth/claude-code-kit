@@ -279,3 +279,138 @@ def test_upgrading_doc_matches_the_actual_merge_policy():
     assert not mismatches, (
         "docs/upgrading.md disagrees with scripts/merge-policy.json:\n  "
         + "\n  ".join(mismatches))
+
+
+# Every `claude mcp add` the kit shows a reader, or runs itself, must be
+# user-scoped. Without --scope user the registration lands under the CURRENT
+# PROJECT in ~/.claude.json, so the server exists in exactly one directory.
+# Two of two call sites shipped this way: the dual-graph recipe in prereqs.md
+# and fix-notion-mcp-port.sh. Both are silent failures — the server works
+# perfectly in the directory you tested from.
+MCP_ADD_LINE = re.compile(r"^.*\bclaude mcp add\b.*$", re.MULTILINE)
+
+FILES_WITH_MCP_ADD = (
+    "docs/prereqs.md",
+    "docs/notion-mcp-pinning.md",
+    "plugins/claude-code-kit/scripts/fix-notion-mcp-port.sh",
+    "README.md",
+)
+
+
+def test_every_documented_mcp_add_is_user_scoped():
+    offenders = []
+    for rel in FILES_WITH_MCP_ADD:
+        path = REPO / rel
+        if not path.is_file():
+            continue
+        text = path.read_text()
+        for m in MCP_ADD_LINE.finditer(text):
+            line_text = m.group(0)
+            # Lines that discuss the flag's absence rather than demonstrate a
+            # command are prose, not a recipe. They are identifiable by not
+            # being an indented/fenced command: a real invocation starts with
+            # the command or a shell continuation, not mid-sentence.
+            stripped = line_text.strip()
+            if not (stripped.startswith("claude mcp add")
+                    or stripped.startswith("HOME=")
+                    or stripped.startswith("$ claude mcp add")):
+                continue
+            if "--scope user" not in line_text:
+                ln = text[: m.start()].count("\n") + 1
+                offenders.append(f"{rel}:{ln}: {stripped[:100]!r}")
+    assert not offenders, (
+        "these `claude mcp add` invocations register per-project, so the "
+        "server will only exist in the directory it was run from:\n"
+        + "\n".join(offenders)
+    )
+
+
+def test_typescript_install_is_pinned_to_the_5_line():
+    """TypeScript 7 is the native port and ships no tsserver.js, so
+    `npm install -g typescript` leaves typescript-language-server unable to
+    start — while `tsc --version` still prints a version."""
+    offenders = []
+    for rel in ("docs/prereqs.md", "README.md", "docs/tools/lsp-typescript.md"):
+        text = (REPO / rel).read_text()
+        for m in re.finditer(r"^.*npm install -g[^\n]*typescript[^\n]*$", text,
+                             re.MULTILINE):
+            line = m.group(0)
+            if "typescript@" not in line:
+                ln = text[: m.start()].count("\n") + 1
+                offenders.append(f"{rel}:{ln}: {line.strip()[:100]!r}")
+    assert not offenders, (
+        "pin the typescript major version; the npm default is 7.x, which "
+        "has no tsserver.js:\n" + "\n".join(offenders)
+    )
+
+
+def test_no_doc_verifies_jdtls_with_a_check_that_cannot_fail():
+    """`jdtls --help` exits 0 on a machine with no JVM at all, and
+    `jdtls --version` starts the language server and blocks forever.
+    Neither can detect a broken Java setup; `java -version` can."""
+    offenders = []
+    for rel in ("docs/prereqs.md", "README.md", "docs/tools/jdtls-lsp.md"):
+        text = (REPO / rel).read_text()
+        for m in re.finditer(r"^\s*(?:\$ )?jdtls --(?:help|version)\b[^\n]*$",
+                             text, re.MULTILINE):
+            ln = text[: m.start()].count("\n") + 1
+            offenders.append(f"{rel}:{ln}: {m.group(0).strip()[:100]!r}")
+    assert not offenders, (
+        "these are presented as runnable verification but cannot fail when "
+        "Java is missing:\n" + "\n".join(offenders)
+    )
+
+
+def test_prereq_table_lists_node():
+    """Four enabled plugins need node/npx at runtime, and caveman's hook runs
+    on every prompt. Node was absent from the prereq list for several
+    releases while being a hard dependency."""
+    readme = (REPO / "README.md").read_text()
+    table_start = readme.index("## Prereqs")
+    table = readme[table_start:table_start + 3000]
+    assert "`node`" in table, "README's prereq table must list node"
+
+
+def test_runtime_env_keys_have_a_single_source():
+    """The keys install.sh writes after the merge are needed in three places:
+    the writer (_kit_env.sh), diff-settings.py (must not call them user
+    drift) and uninstall.sh (must remove them). They lived in all three
+    independently, so a fourth key would have been invisible to two of them.
+    """
+    keys_file = REPO / "scripts" / "kit-runtime-env-keys.txt"
+    assert keys_file.is_file(), "the shared list must exist"
+    keys = {
+        ln.strip() for ln in keys_file.read_text().splitlines()
+        if ln.strip() and not ln.lstrip().startswith("#")
+    }
+    assert keys, "the shared list must not be empty"
+
+    for rel in ("scripts/_kit_env.sh", "scripts/diff-settings.py", "uninstall.sh"):
+        text = (REPO / rel).read_text()
+        assert "kit-runtime-env-keys.txt" in text or "KIT_RUNTIME_ENV_KEYS_FILE" in text, (
+            f"{rel} must read the shared key list rather than repeating it"
+        )
+
+    # And the writer must know a value for every key in the list.
+    env_sh = (REPO / "scripts" / "_kit_env.sh").read_text()
+    for key in keys:
+        assert key in env_sh, f"{key} is listed but _kit_env.sh defines no value"
+
+
+def test_preflight_python_floor_matches_pyproject():
+    """install.sh hardcodes the floor it enforces; pyproject declares it.
+    Two sources for one number."""
+    pyproject = (REPO / "pyproject.toml").read_text()
+    m = re.search(r'requires-python\s*=\s*"[><=]*\s*(\d+)\.(\d+)"', pyproject)
+    assert m, "could not read requires-python from pyproject.toml"
+    declared = (m.group(1), m.group(2))
+
+    install = (REPO / "install.sh").read_text()
+    call = re.search(r"require_python_version\s+(\d+)\s+(\d+)", install)
+    assert call, "install.sh no longer calls require_python_version"
+    enforced = (call.group(1), call.group(2))
+
+    assert enforced == declared, (
+        f"install.sh enforces {'.'.join(enforced)} but pyproject declares "
+        f"{'.'.join(declared)}"
+    )

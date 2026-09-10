@@ -123,10 +123,31 @@ syntax used in the lint scripts.
 
 ```sh
 brew install python@3.12
+export PATH="/opt/homebrew/opt/python@3.12/libexec/bin:$PATH"
 ```
 
-Homebrew's `python@3.12` formula installs Python 3.12, which satisfies
-the `>= 3.11` constraint. `python@3.11` is also acceptable.
+**Both lines are required, and the second one is the one people miss.**
+Homebrew's `python@3.12` links `python3.12` into the prefix but diverts the
+*unversioned* names — `python3`, `pip3` and friends — into the formula's
+`libexec/bin`, which is not on your PATH. Homebrew says so in its own
+install output —
+
+> Unversioned and major-versioned symlinks `python`, `python3`,
+> `python-config`, `pip`, `pip3`, etc. … are installed into
+> `/opt/homebrew/opt/python@3.12/libexec/bin`
+
+— so without the `export`, `python3` still resolves to the macOS system
+interpreter, which is 3.9. Everything that shells out to `python3` then keeps
+using 3.9: the kit's merge step, its lint scripts, and the `security-guidance`
+plugin, which quietly drops its cross-file reviewer and tells you only that
+"the hook is running on 3.9".
+
+`brew install python3` is the alternative if you would rather have Homebrew
+link the unversioned name for you. `python@3.11` also satisfies the floor.
+
+Add the `export` to the shell profile your terminal actually reads — see
+[Getting the PATH to stick](#getting-the-path-to-stick) at the end of this
+document, which matters more here than it looks.
 
 **Linux (Debian/Ubuntu, 22.04+):**
 
@@ -148,7 +169,14 @@ Ubuntu 24.04+ ships 3.12 by default — the first `apt install` suffices.
 
 **Linux (Fedora/RHEL):** `sudo dnf install -y python3 python3-pip`
 
-**Verification:** `python3 --version` (expect 3.11+).
+**Verification:** `python3 --version` (expect 3.11+). Run it in a **new**
+terminal, not the one you just typed the `export` into — the point is to
+confirm the profile change took, and a shell that already has the variable
+set proves nothing about the next one.
+
+`install.sh` now enforces this floor rather than only checking that `python3`
+exists, so a 3.9 interpreter stops the install with the fix rather than
+surfacing three plugins later.
 
 ---
 
@@ -176,6 +204,37 @@ configurations); ensure that directory is on your `PATH`.
 
 **Verification:** `uv --version`. Use `uv self update` to pull the
 latest release if your install drifts.
+
+---
+
+## 5b. Node.js (`node` and `npx`)
+
+**Why this kit needs it:** four of the 22 enabled plugins run on Node at
+runtime, and one of them runs on *every prompt*:
+
+| Plugin | What needs Node |
+|---|---|
+| `caveman` | a `UserPromptSubmit` hook that runs `node <hook>.js` |
+| `playwright` | MCP server launched with `npx @playwright/mcp` |
+| `chrome-devtools-mcp` | MCP server launched with `npx chrome-devtools-mcp` |
+| `context7` | npm-cache pre-warm; the server itself is HTTP |
+
+Without Node the install still completes, and then every single prompt
+prints `/bin/sh: node: command not found` while three MCP servers sit in
+`✘ failed`. `install.sh` now checks for both `node` and `npx` in preflight so
+that shows up before the install rather than after it.
+
+**Version requirement:** any current LTS or later. Node 18+ also covers
+section 8's `typescript-language-server`.
+
+**macOS:** `brew install node`
+
+**Linux (Debian/Ubuntu):** `sudo apt install -y nodejs npm`, or
+[nvm](https://github.com/nvm-sh/nvm) for a recent release.
+
+**Linux (Fedora/RHEL):** `sudo dnf install -y nodejs npm`
+
+**Verification:** `node --version` and `npx --version`.
 
 ---
 
@@ -232,10 +291,14 @@ This requires `go` on the `PATH`. If Go itself is not installed:
   the latest from <https://go.dev/dl/> if the apt version is too old).
 - **Linux (Fedora/RHEL):** `sudo dnf install -y golang`
 
-Ensure `$(go env GOPATH)/bin` is on your `PATH` so the installed `gopls`
-binary is reachable.
+`go install` puts the binary in `$(go env GOPATH)/bin` — `~/go/bin` by
+default — which is not on `PATH` on a fresh machine. Add it:
 
-**Verification:** `gopls version` and `which gopls`. See
+```sh
+export PATH="$HOME/go/bin:$PATH"
+```
+
+**Verification:** `gopls version` and `which gopls`, in a new terminal. See
 [`docs/tools/lsp-gopls.md`](tools/lsp-gopls.md) for the rationale.
 
 ---
@@ -246,26 +309,41 @@ binary is reachable.
 and JavaScript. The LSP backs the same set of structured queries for
 `.ts`, `.tsx`, `.js`, `.jsx`, `.mts`, and `.mjs` files.
 
-**Version requirement:** Current stable releases of both
-`typescript-language-server` and `typescript`. The npm distribution
-defaults are fine.
+**Version requirement:** `typescript-language-server` current, and
+**`typescript` pinned to the 5.x line**. Do not take the npm default.
 
-**Install (all platforms with Node.js installed):**
+**Install (all platforms, Node from section 5b):**
 
 ```sh
-npm install -g typescript-language-server typescript
+npm install -g typescript-language-server typescript@5
 ```
 
-This requires `node` and `npm` on the `PATH`. If Node is not installed:
+**Why the pin.** `typescript` now resolves to 7.x, the native port, and 7.x
+does not ship `tsserver.js` — the file `typescript-language-server` loads.
+Install the default and the language server dies at startup with:
 
-- **macOS:** `brew install node`
-- **Linux (Debian/Ubuntu):** `sudo apt install -y nodejs npm` (or use
-  [nvm](https://github.com/nvm-sh/nvm) for a recent Node release).
-- **Linux (Fedora/RHEL):** `sudo dnf install -y nodejs npm`
+```
+Error performing documentSymbol: Request initialize failed with message:
+Could not find a valid TypeScript installation. Please ensure that the
+"typescript" dependency is installed in the workspace or that a valid
+tsserver.path is specified. Exiting.
+```
 
-**Verification:** `typescript-language-server --version` and
-`tsc --version`. See [`docs/tools/lsp-typescript.md`](tools/lsp-typescript.md)
-for the rationale.
+**Verification** — check for the file the server actually needs, not just
+that a compiler answers:
+
+```sh
+ls "$(npm root -g)/typescript/lib/tsserver.js"   # must exist
+typescript-language-server --version
+```
+
+`tsc --version` is *not* a sufficient check. It prints happily on 7.x, where
+the LSP is completely non-functional — a green check next to a dead
+integration, which is the failure mode
+[`docs/verification-standards.md`](verification-standards.md) is about.
+
+See [`docs/tools/lsp-typescript.md`](tools/lsp-typescript.md) for the
+rationale.
 
 ---
 
@@ -285,8 +363,21 @@ analyzed can be older.)
 **macOS:**
 
 ```sh
-brew install openjdk@21 jdtls
+brew install openjdk jdtls
+export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
 ```
+
+**The `export` is required.** Homebrew's `openjdk` is keg-only — it is not
+symlinked into `/opt/homebrew/bin`, so after a completely successful install
+`java` still resolves to the macOS stub, which reports:
+
+```
+The operation couldn't be completed. Unable to locate a Java Runtime.
+```
+
+`brew install jdtls` pulls a current JDK as a dependency, so you generally do
+not need to name a version; use `brew install openjdk@21 jdtls` only if you
+specifically want 21 on your PATH.
 
 **Linux (Debian/Ubuntu):** install OpenJDK 21 via your package
 manager, then download the JDT.LS tarball from the [official
@@ -296,9 +387,21 @@ add the launcher script to `$PATH`.
 **Verification:**
 
 ```sh
-java -version           # should print: openjdk version "21.x.x" or newer
-jdtls --help            # should print usage; no crash on JVM mismatch
+java -version        # must print a real version: openjdk 21 or newer
+which jdtls          # launcher on PATH
 ```
+
+`java -version` is the check that matters, and it is the one that actually
+fails when this is broken: with no JVM reachable it prints "Unable to locate
+a Java Runtime" instead of a version.
+
+Two commands **not** to use:
+
+- `jdtls --help` — `jdtls` is a Python launcher, so `--help` never starts a
+  JVM. It exits 0 and prints usage on a machine with no Java at all: a green
+  check next to a dead integration.
+- `jdtls --version` — this one starts the language server and blocks
+  forever. It is not a version probe.
 
 See [`docs/tools/jdtls-lsp.md`](tools/jdtls-lsp.md) for the plugin's
 behavior, cost/footprint, and when to disable it.
@@ -391,10 +494,18 @@ naming it rather than leaving it unnamed:
   carrying a machine id and platform, a one-time feedback prompt, and anonymous
   crash reports (error type, failing step, OS, Python and tool versions), with
   `graperoot --no-telemetry` to opt out.
-- Both opt-out flags are described by the current upstream README. They are
-  absent from the older launcher this kit was originally run against, so check
-  `graperoot --help` on the version you actually installed rather than assuming
-  the flag exists.
+- **Both opt-out flags belong to upstream's shell installer, not to the PyPI
+  package.** `uv tool install graperoot` installs six executables —
+  `context-packer`, `dg-graph`, `dgc-claude`, `graph-builder`,
+  `mcp-graph-server`, `mcp-graph-server-stdio` — and **no `graperoot`
+  command at all**, so on the path this document recommends there is nothing
+  to pass `--no-telemetry` to. If those opt-outs matter to you, that is an
+  argument for upstream's launcher, or for substituting a different server
+  against the contract above. Do not assume the PyPI install is quiet
+  because the flags are documented somewhere.
+
+Do not probe the server with `mcp-graph-server --help`: it does not handle
+`--help`, it starts the stdio server and blocks until you kill it.
 
 If that profile is not acceptable for your environment, implement or substitute
 any server satisfying the contract above — that is precisely why the contract,
@@ -413,8 +524,18 @@ rationale and the MCP tools the kit's `CLAUDE.md` rules reference.
 # never starts.
 GS="$(command -v mcp-graph-server)"
 test -n "$GS" || { echo "mcp-graph-server not on PATH — see the PATH callout below"; exit 1; }
-claude mcp add dual-graph "$GS" -- --stdio
+claude mcp add --scope user dual-graph "$GS" -- --stdio
 ```
+
+**`--scope user` is load-bearing.** Without it `claude mcp add` registers the
+server against the *current project* — you get
+`Added stdio MCP server ... to local config` and an entry under
+`projects["<cwd>"]` in `~/.claude.json`, not under the top-level
+`mcpServers`. The graph then exists only in the directory you happened to run
+the command from. Everywhere else `graph_continue` is simply absent, the
+first leg of the mandatory search order silently no-ops, and the kit falls
+back to the grep it tells you not to use. Nothing announces this, and
+`claude mcp list` run from that one directory reports it connected.
 
 If you installed via upstream's launcher instead, the binary lives in that
 private venv and is not on `PATH`; pass its absolute path
@@ -424,7 +545,7 @@ The kit has been run with two environment variables set on the registration,
 which scope the index to a directory tree:
 
 ```sh
-claude mcp add dual-graph "$GS" \
+claude mcp add --scope user dual-graph "$GS" \
   -e DG_DATA_DIR=/path/to/index -e DUAL_GRAPH_PROJECT_ROOT=/path/to/repos -- --stdio
 ```
 
@@ -438,22 +559,35 @@ The `--` separator is required so that `--stdio` is passed as an
 argument to the MCP binary rather than parsed by `claude mcp add`
 itself.
 
-**Per-HOME registration (read this before verifying):**
-`claude mcp add` writes to the per-`$HOME` `.claude.json` `mcpServers`
-section. If you use an isolated `$HOME` for testing (see the README
-§"Testing the kit in parallel" section), the registration must be
-repeated against that HOME: `HOME="$TEST_HOME" claude mcp add
-dual-graph /absolute/path -- --stdio`. The binary itself is reused
-across HOMEs — only the registration is per-HOME. Verifying with
-`claude mcp list` against the wrong HOME will succeed and mask the
-miss in the HOME that actually matters.
+**Registration is per-HOME as well as per-scope.** With `--scope user` the
+entry goes in the top-level `mcpServers` of that HOME's `~/.claude.json`, so
+it applies to every project — but only for that HOME. If you use an isolated
+`$HOME` for testing (see the README §"Testing the kit in parallel"), repeat
+the registration there: `HOME="$TEST_HOME" claude mcp add --scope user
+dual-graph /absolute/path -- --stdio`. The binary is shared across HOMEs;
+only the registration is not.
 
 **Verification:**
 
 ```sh
 claude mcp list | grep dual-graph
 # Expect: dual-graph: /absolute/path/to/mcp-graph-server --stdio - ✓ Connected
+
+# And confirm it really is user-scoped, not project-scoped:
+python3 -c "import json,pathlib; d=json.loads((pathlib.Path.home()/'.claude.json').read_text()); print('user scope:', list(d.get('mcpServers',{})))"
+# Expect dual-graph in that list.
 ```
+
+Two ways this check can lie to you, both worth knowing:
+
+- Run from the one directory where a project-scoped registration exists,
+  `claude mcp list` says `✓ Connected` while every other project has
+  nothing. The `python3` line above is the one that distinguishes them.
+- `claude mcp list` spawns a fresh process, so it reports the server's real
+  health — which can differ from *your current session*, where a connection
+  that failed earlier stays cached for about 15 minutes. After fixing a PATH
+  or a registration, start a new session rather than trusting either signal
+  alone.
 
 ---
 
@@ -538,16 +672,28 @@ This writes `.claude/skills/speckit-*/` and `.specify/` into the
 current directory. Restart Claude Code in that directory for the
 `/speckit-*` slash commands to register.
 
+`--here` prompts for confirmation in any non-empty directory, which every
+real project is. Add `--force` to skip the prompt when scripting it:
+
+```sh
+specify init --here --force --integration claude
+```
+
 **Verification:**
 
 ```sh
-specify --version       # should print: specify 0.8.15 (or your pinned version)
+specify --version                          # specify 0.8.16 (or your pinned version)
+ls .claude/skills/ | grep -c speckit       # 14 on 0.8.16
 ```
 
-After init, `ls .claude/skills/ | grep speckit` should list nine
-directories (`speckit-constitution`, `speckit-specify`, `speckit-clarify`,
-`speckit-plan`, `speckit-tasks`, `speckit-analyze`, `speckit-checklist`,
-`speckit-implement`, `speckit-taskstoissues`).
+The 14 are the nine core commands — `speckit-constitution`,
+`speckit-specify`, `speckit-clarify`, `speckit-plan`, `speckit-tasks`,
+`speckit-analyze`, `speckit-checklist`, `speckit-implement`,
+`speckit-taskstoissues` — plus five git helpers: `speckit-git-commit`,
+`speckit-git-feature`, `speckit-git-initialize`, `speckit-git-remote`,
+`speckit-git-validate`. Upstream adds and renames these between releases, so
+treat the count as a sanity check against your pinned version rather than a
+fixed contract.
 
 ---
 
@@ -631,9 +777,11 @@ confirm every line prints a version (or, for `gh`, auth status):
 
 ```sh
 claude --version && git --version && gh auth status && \
-python3 --version && uv --version && rg --version | head -1 && \
-jq --version && gopls version && \
-typescript-language-server --version && tsc --version && \
+python3 --version && uv --version && node --version && npx --version && \
+rg --version | head -1 && jq --version && gopls version && \
+java -version && \
+typescript-language-server --version && \
+ls "$(npm root -g)/typescript/lib/tsserver.js" && \
 shellcheck --version | head -2
 ```
 
@@ -641,6 +789,63 @@ Any failing line is a prerequisite to install before running `install.sh`.
 
 `install.sh` itself does not install prerequisites; it assumes they are
 present on the `PATH` it inherits.
+
+### Getting the PATH to stick
+
+Four of the installs above are keg-only, user-local, or otherwise not on
+`PATH` by default. Collected in one place, macOS with Homebrew:
+
+```sh
+eval "$(/opt/homebrew/bin/brew shellenv)"                      # gh, uv/uvx, node/npx
+export PATH="/opt/homebrew/opt/python@3.12/libexec/bin:$PATH"  # python3 >= 3.11  (§4)
+export PATH="$HOME/go/bin:$PATH"                               # gopls            (§7)
+export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"              # java, for jdtls  (§9)
+```
+
+**Put these in the profile your shell actually reads**, which is not always
+the one the tool's own installer suggests:
+
+| Your shell starts as | Reads |
+|---|---|
+| A login shell (`-zsh` — Terminal.app, iTerm2 by default) | `~/.zprofile`, then `~/.zshrc` |
+| An interactive non-login shell (many IDE terminals, `zsh` without `-l`) | `~/.zshrc` only |
+| Any zsh at all | `~/.zshenv` |
+
+`~/.zshenv` is the safe choice if you are unsure. Check with:
+
+```sh
+zsh -ic 'command -v node npx uvx python3 java gopls'
+```
+
+### Then start a new terminal, not just a new `claude`
+
+This is the step that costs people the most time, so it is worth being blunt
+about: **restarting `claude` inside an existing terminal does not pick up a
+profile change.** `claude` inherits the environment of the shell process that
+launched it, and that process was started before you edited anything. Claude
+Code's MCP servers and plugin hooks then inherit *its* environment in turn —
+they never read your profile themselves.
+
+The symptom is a set of failures that all look unrelated: `node: command not
+found` on every prompt, three MCP servers `✘ failed`, a plugin reporting the
+wrong Python. One cause.
+
+To tell whether this is what you are looking at, compare when your shell
+started against when you edited the profile:
+
+```sh
+ps -o pid=,lstart=,comm= -p "$PPID"    # when this shell started
+stat -f '%Sm %N' ~/.zshrc ~/.zprofile  # when the profile last changed
+```
+
+If the shell is older than the file, no restart of `claude` alone will ever
+help — close the terminal window and open a new one.
+
+`install.sh` also records the resolved PATH into `~/.claude/settings.json`'s
+`env` block, which is what makes hooks and MCP servers independent of all of
+this on subsequent sessions. That value is written from the directories
+preflight verified, so it is a superset of a PATH already known to work; your
+own `PATH` entry, if you have set one, is never overwritten.
 
 ### Installing prerequisites and running `install.sh` in separate shells
 

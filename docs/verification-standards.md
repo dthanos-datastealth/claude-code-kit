@@ -111,3 +111,39 @@ role. `code-simplifier` targets clarity; `optibot` targets speed and cost. A
 clarity-only review misses redundant-work patterns structurally: re-running an
 expensive call is not a clarity defect, so a reviewer looking for clarity has no
 reason to flag it. The code reads perfectly well and does the work twice.
+
+---
+
+## 4. A worked example: how this kit broke its own rules
+
+Rules 1 and 2 are easier to accept in the abstract than to apply. So here are
+four cases from this kit's own tooling, all found in a single clean-machine
+install, all the same shape: **a check whose passing condition does not depend
+on the thing it is checking.**
+
+| Check | Passed when | Could it ever fail? |
+|---|---|---|
+| `jdtls --help` — "JVM mismatch surfaces here if any" | No JVM installed at all | No. `jdtls` is a Python launcher; `--help` never starts a JVM |
+| `tsc --version` for the TypeScript LSP | TypeScript 7 installed, LSP completely dead | No. `tsc` ships in 7.x; `tsserver.js`, which the LSP needs, does not |
+| `upgrade.sh --status` reporting drift | Always. The SHA comparison was never written | No. It printed the recorded SHA and never compared it |
+| `test-install-isolated.sh` leak check | Never reached — an earlier assertion required a `CLAUDE.md` the kit had stopped writing | No. It exited four steps before the check it exists to run |
+
+Two things are worth taking from this.
+
+**The failure is silent and it looks like success.** Each of these printed a
+clean result on a broken system, for months. Nobody ignored a warning; there
+was no warning to ignore. That is what makes this class worse than having no
+check at all — a missing check leaves you uncertain, and an unfalsifiable one
+leaves you confident and wrong.
+
+**The test is cheap: ask what would have to be true for this check to fail.**
+If you cannot describe a realistic broken state that turns the check red, the
+check is measuring something other than what you think. `java -version`
+passes that test — with no JVM it prints "Unable to locate a Java Runtime".
+`jdtls --help` does not.
+
+The fixes were correspondingly small — `java -version` instead of
+`jdtls --help`, `ls tsserver.js` instead of `tsc --version`, an actual
+`sha256` comparison, and a version-aware artifact assertion. Finding them
+was the hard part, and what found them was running the checks against a
+machine that was genuinely broken, rather than reading them.

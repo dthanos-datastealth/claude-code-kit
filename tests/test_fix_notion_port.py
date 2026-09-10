@@ -52,9 +52,13 @@ def _run(*, port_arg: str | None = None, env_port: str | None = None,
 def test_default_port_51234():
     proc, log = _run()
     assert proc.returncode == 0, f"script failed: {proc.stderr}"
-    # Must invoke `claude mcp add --transport http --callback-port 51234 notion ...`
-    assert "mcp add --transport http --callback-port 51234 notion https://mcp.notion.com/mcp" in log, \
-        f"expected mcp add with port 51234; log was:\n{log}"
+    # Assert the parts that carry meaning, not the flag order — pinning the
+    # whole string made adding --scope user look like a regression.
+    add = next((ln for ln in log.splitlines() if ln.startswith("mcp add")), None)
+    assert add is not None, f"expected an mcp add; log was:\n{log}"
+    for fragment in ("--transport http", "--callback-port 51234", "notion",
+                     "https://mcp.notion.com/mcp"):
+        assert fragment in add, f"{fragment!r} missing from: {add}"
     # Must print the admin allow-list URL with the right port
     assert "http://localhost:51234/callback" in proc.stdout
     # Must mention Issue #55067 caveat
@@ -100,11 +104,57 @@ def test_aborts_when_claude_cli_missing():
     assert "claude cli" in proc.stderr.lower() or "claude" in proc.stderr.lower()
 
 
+def test_registers_at_user_scope():
+    """Without --scope user, `claude mcp add` writes to the CURRENT PROJECT's
+    section of ~/.claude.json, not the user's. Observed:
+
+        Added HTTP MCP server notion ... to local config
+        File modified: ~/.claude.json [project: /Users/bob/claude-code-kit]
+
+    The pinned port then applies only in the directory the script was run
+    from. Everywhere else Notion goes back to a random callback port, which
+    is the exact failure this script exists to fix — and the user gets no
+    signal, because it works in the directory they tested from.
+    """
+    proc, log = _run()
+    assert proc.returncode == 0
+    assert "--scope user" in log, (
+        f"registration must be user-scoped, not project-scoped; log was:\n{log}"
+    )
+
+
+def test_remove_clears_every_scope_not_just_the_one_being_written():
+    """Precedence is local > project > user.
+
+    `claude mcp add` defaults to LOCAL scope, so every earlier version of
+    this script left a local-scoped `notion` behind. Removing only at user
+    scope leaves that entry in place, and because local outranks user it
+    silently wins over the pin this script just wrote — in the one directory
+    the user originally ran it from, which is the directory they will test
+    in. The documented verification reads only top-level `mcpServers`, so it
+    reports success while the shadowing entry is the one in force.
+    """
+    proc, log = _run()
+    assert proc.returncode == 0
+    removed_scopes = {
+        scope for scope in ("local", "project", "user")
+        for ln in log.splitlines()
+        if "mcp remove" in ln and f"--scope {scope}" in ln and "notion" in ln
+    }
+    assert removed_scopes == {"local", "project", "user"}, (
+        "every scope must be cleared before the add, or a higher-precedence "
+        f"leftover shadows it; cleared only {sorted(removed_scopes)}"
+    )
+
+
 def test_idempotent_remove_then_add():
     """Script does `claude mcp remove notion` (allowed to fail) then `add`."""
     proc, log = _run()
     assert proc.returncode == 0
-    # Both remove and add must have been invoked
-    assert "mcp remove notion" in log
+    # Both remove and add must have been invoked, in that order, and the
+    # remove must actually name notion — asserting the two words appear
+    # somewhere in the log is satisfied by the add line alone.
+    assert any("mcp remove" in ln and "notion" in ln for ln in log.splitlines())
     assert "mcp add" in log
+    assert log.index("mcp remove") < log.index("mcp add")
     # And only writes to ~/.claude.json (via claude CLI) — no other side effects.

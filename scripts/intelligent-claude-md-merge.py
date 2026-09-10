@@ -105,17 +105,44 @@ def serialize_sections(sections: list[dict]) -> str:
 
 
 def matches_owned(heading_line: str, depth: int, owned: list[dict]) -> dict | None:
-    """Return the owned-section entry matching this heading, else None."""
+    """Return the owned-section entry matching this heading, else None.
+
+    An entry's `renamed_from` also matches, so the user's copy of a section
+    that the kit has since retitled is still recognised as kit-owned.
+    """
     for entry in owned:
         if entry.get("depth") != depth:
             continue
-        h = entry["heading"]
         match = entry.get("match", "exact")
-        if match == "exact" and heading_line.strip() == h:
-            return entry
-        if match == "prefix" and heading_line.strip().startswith(h):
-            return entry
+        for h in (entry["heading"], entry.get("renamed_from")):
+            if not h:
+                continue
+            if match == "exact" and heading_line.strip() == h:
+                return entry
+            if match == "prefix" and heading_line.strip().startswith(h):
+                return entry
     return None
+
+
+def renamed_target(heading_line: str, owned_entry: dict | None) -> str | None:
+    """The heading this section should carry after the merge, if renamed.
+
+    Sections are paired between the template and the user's file by exact
+    heading text, so retitling one reads as "old section retired, unrelated
+    new section added": the old text is dropped and the new text is appended
+    at the END of the user's file, away from the siblings that give it
+    context. A user who changed nothing still ends up with a reordered
+    document. Declaring `renamed_from` in the manifest keeps the identity, so
+    the section is rewritten where it already sits.
+    """
+    if not owned_entry:
+        return None
+    old = owned_entry.get("renamed_from")
+    if not old:
+        return None
+    if heading_line.strip() != old:
+        return None
+    return owned_entry["heading"]
 
 
 def index_by_heading(sections: list[dict]) -> dict[str, dict]:
@@ -200,18 +227,28 @@ def merge(live_text: str, prev_text: str, new_text: str, manifest: dict,
             # User-owned section (or prelude) — preserve verbatim
             out.append(section)
             continue
-        # Kit-owned section in live: 3-way decide
+        # Kit-owned section in live: 3-way decide.
+        # A retitled section is looked up under its NEW heading in the
+        # template and rewritten in place under that heading, so the rename
+        # lands without moving the section to the end of the file.
+        new_heading = renamed_target(h, owned_entry)
+        lookup = new_heading or h
         live_body = section["body"]
         prev_body = prev_by_heading.get(h, {}).get("body", "")
-        new_body = new_by_heading.get(h, {}).get("body", "")
-        handled_new.add(h)
+        new_body = new_by_heading.get(lookup, {}).get("body", "")
+        handled_new.add(lookup)
+        if new_heading:
+            # Also mark the old name handled so the removal path below does
+            # not additionally drop it.
+            handled_new.add(h)
+            d = new_by_heading.get(lookup, {}).get("depth", d)
 
         # Removal: the kit used to ship this section and no longer does.
         # Dropping it is the whole point — leaving it behind means the user
         # keeps the replaced guidance alongside whatever replaced it. Detect
         # by heading presence, not by empty body, so a heading with no body
         # is not mistaken for a deletion.
-        if h not in new_by_heading:
+        if lookup not in new_by_heading:
             if h not in prev_by_heading:
                 # The kit never shipped this heading; it only matches an owned
                 # prefix rule (e.g. a user's own "### Berry extras"). Not ours
@@ -241,8 +278,8 @@ def merge(live_text: str, prev_text: str, new_text: str, manifest: dict,
             return "", conflicts, aborts
         decision = decide(live_body, prev_body, new_body)
         if decision == "take_new":
-            new_section = new_by_heading.get(h, section)
-            out.append({"heading_line": h, "depth": d, "body": new_section["body"],
+            new_section = new_by_heading.get(lookup, section)
+            out.append({"heading_line": lookup, "depth": d, "body": new_section["body"],
                         "has_body": new_section.get("has_body", False)})
         elif decision in ("keep_live", "noop"):
             out.append(section)

@@ -6,6 +6,18 @@ or chat scrollback. It runs on **two coupled artifacts**:
 1. **The Claude Code `Task` tool** — live, machine-readable task state
    (`TaskCreate` / `TaskUpdate` / `TaskList` / `TaskGet`) that every agent
    reads and writes during a session.
+
+   > **These tools are opt-in, and every protocol in this document depends
+   > on them.** Current Claude Code releases disable them by default for
+   > current model families; `CLAUDE_CODE_ENABLE_TODO_TOOLS=1` turns them
+   > on. Which versions and models that covers has changed between
+   > releases — check the tools reference for your CLI rather than a
+   > version number written here. `install.sh` writes that key into your `settings.json`
+   > `env` block, and it takes effect on the **next** session — so straight
+   > after installing, the Pre-Dispatch Protocol below is not yet runnable.
+   > If `TaskCreate` is unavailable, say so once and run everything on
+   > `docs/TRACKER.md` alone. The tracker is the durable half; the Task
+   > tools make it live, but the state survives in the file either way.
 2. **`docs/TRACKER.md` per project** — a human-readable, durable
    write-once-per-step Markdown document that records what happened, what's
    in flight, what's open, and what the quality loop has produced.

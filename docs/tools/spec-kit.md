@@ -103,13 +103,20 @@ If spec-kit isn't initialized and the user's request is small (bugfix, refactor,
 
 ```sh
 specify init --here --integration claude   # writes .claude/skills/speckit-* + .specify/
+# add --force to skip the confirmation prompt, which fires in any non-empty directory
 ```
 
-The commands appear after a Claude Code restart. Upstream documents ten core
-commands: `constitution` (run first, once), `specify`, `clarify`, `plan`,
-`tasks`, `taskstoissues`, `analyze`, `checklist`, `implement` and `converge`.
+The commands appear after a Claude Code restart. On `specify-cli 0.8.16` —
+the version this kit pins — `ls .claude/skills/ | grep -c speckit` reports
+**14**: nine core commands (`constitution`, `specify`, `clarify`, `plan`,
+`tasks`, `analyze`, `checklist`, `implement`, `taskstoissues`) plus five git
+helpers (`git-commit`, `git-feature`, `git-initialize`, `git-remote`,
+`git-validate`). Upstream's own docs describe a slightly different set, and
+the roster shifts between releases, so treat the count as a sanity check
+against your pinned version rather than a contract.
+
 The playbook above uses the seven that carry the kit's gates; `checklist`,
-`taskstoissues` and `converge` are optional and unchanged by kit policy.
+`taskstoissues` and the git helpers are optional and unchanged by kit policy.
 
 **Check the separator before you type one.** Upstream's README shows the core
 commands both as `/speckit.constitution` and as `/speckit-constitution`, and
