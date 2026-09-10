@@ -155,7 +155,8 @@ if [ "${MODE}" = "apply" ]; then
     BK="$(backup)"
 fi
 
-# CLAUDE.md merge
+# The legacy path, kept until every supported CLI is above the floor.
+kit_merge_claude_md_legacy() {
 log "CLAUDE.md merge..."
 # Expanded below as ${prev_arg[@]+"${prev_arg[@]}"}: under `set -u`, bash 3.2 —
 # still the system bash on macOS — treats "${prev_arg[@]}" on an EMPTY array as
@@ -175,6 +176,26 @@ rc=${rc:-0}
 if [ "${rc}" -ne 0 ]; then
     err "CLAUDE.md merge failed (rc=${rc}). Aborting upgrade."
     exit "${rc}"
+fi
+}
+
+# CLAUDE.md: on a CLI that supports ~/.claude/rules, the kit no longer writes
+# this file at all. Migrate its sections out once, ship the rules, and skip the
+# merge entirely. Only an older CLI still takes the merge path.
+if kit_rules_supported; then
+    if [ "${MODE}" = "apply" ]; then
+        log "CLAUDE.md: moving kit sections into rules/ (one-time)..."
+        kit_migrate_claude_md
+    else
+        log "(dry-run: would move any kit sections out of CLAUDE.md into rules/)"
+        python3 "${REPO_DIR}/scripts/migrate-claude-md-to-rules.py" \
+            "${CLAUDE_HOME}/CLAUDE.md" \
+            --manifest "${MANIFEST}" --dry-run 2>/dev/null || true
+    fi
+else
+    warn "claude < ${KIT_RULES_MIN_VERSION}: ~/.claude/rules is not supported here."
+    warn "  Falling back to merging CLAUDE.md. Upgrade the CLI to get rule files."
+    kit_merge_claude_md_legacy
 fi
 
 # settings.json merge
