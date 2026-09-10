@@ -43,6 +43,9 @@ KIT_SETTINGS="${REPO_DIR}/claude/settings.json"
 # Reference-doc install (TOP_LEVEL_DOCS, kit_copy_docs), shared with install.sh.
 # shellcheck source=scripts/_kit_docs.sh
 . "${REPO_DIR}/scripts/_kit_docs.sh"
+# Rule-file install (kit_copy_rules), shared with install.sh.
+# shellcheck source=scripts/_kit_rules.sh
+. "${REPO_DIR}/scripts/_kit_rules.sh"
 
 MODE="apply"
 ROLLBACK_TARGET=""
@@ -192,8 +195,9 @@ fi
 # not have, and kept the previous release's copy of every other one.
 if [ "${MODE}" = "apply" ]; then
     kit_copy_docs
+    kit_copy_rules
 else
-    log "(dry-run: would refresh ${CLAUDE_HOME}/docs/)"
+    log "(dry-run: would refresh ${CLAUDE_HOME}/docs/ and ${CLAUDE_HOME}/rules/)"
 fi
 
 # Update kit cache + version marker

@@ -17,6 +17,9 @@ err()  { printf '\033[1;31m[cck]\033[0m %s\n' "$*" >&2; }
 # Reference-doc install (TOP_LEVEL_DOCS, kit_copy_docs), shared with upgrade.sh.
 # shellcheck source=scripts/_kit_docs.sh
 . "${REPO_DIR}/scripts/_kit_docs.sh"
+# Rule-file install (kit_copy_rules), shared with upgrade.sh.
+# shellcheck source=scripts/_kit_rules.sh
+. "${REPO_DIR}/scripts/_kit_rules.sh"
 
 # Directories a prerequisite installer commonly writes to. `curl ... | sh`
 # installers export PATH for their own process only, so a tool installed in one
@@ -228,6 +231,7 @@ main() {
     backup_existing
     copy_templates
     kit_copy_docs
+    kit_copy_rules
     merge_settings
     install_memory_index
     register_marketplaces
