@@ -45,17 +45,23 @@ Intelligent upgrade of an existing claude-code-kit installation in `~/.claude/`.
 
 ## How to call from chat
 
-Run the script and present its output:
+`scripts/upgrade.sh` lives in the kit **checkout**, not in this plugin, and a
+slash command runs in whatever project the user happens to be in — so a
+relative path fails with `No such file or directory` everywhere except the
+clone. Resolve it once from the install marker:
 
 ```bash
-bash scripts/upgrade.sh --dry-run
+KIT="$(python3 -c "import json,pathlib;print(json.loads((pathlib.Path.home()/'.claude'/'.kit-version').read_text()).get('repo_dir',''))")"
+: "${KIT:?kit checkout not recorded — ask where the kit was cloned}"
+bash "$KIT/scripts/upgrade.sh" --dry-run
 ```
 
-Then read the output, summarize it for the user in chat, ask for
-confirmation, and on `[y]` run:
+Then read the output, summarize it for the user in chat — the dry run prints
+the structural `settings.json` delta, which is the thing they are being asked
+to approve — ask for confirmation, and on `[y]` run:
 
 ```bash
-bash scripts/upgrade.sh --apply
+bash "$KIT/scripts/upgrade.sh" --apply
 ```
 
 ## Conflict handling

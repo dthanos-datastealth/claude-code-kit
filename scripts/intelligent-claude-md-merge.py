@@ -111,11 +111,21 @@ def matches_owned(heading_line: str, depth: int, owned: list[dict]) -> dict | No
     that the kit has since retitled is still recognised as kit-owned.
     """
     for entry in owned:
-        if entry.get("depth") != depth:
-            continue
         match = entry.get("match", "exact")
-        for h in (entry["heading"], entry.get("renamed_from")):
-            if not h:
+        # Each name carries its own depth. A rename may change the heading
+        # level as well as the text, and a single `depth` field can only
+        # describe one of the two — so the old name would match nothing, be
+        # left behind as stale kit content, and the new one appended at the
+        # end of the user's file. `renamed_from_depth` defaults to `depth`,
+        # which is the common case where only the text changed.
+        candidates = [(entry["heading"], entry.get("depth"))]
+        if entry.get("renamed_from"):
+            candidates.append(
+                (entry["renamed_from"],
+                 entry.get("renamed_from_depth", entry.get("depth")))
+            )
+        for h, want_depth in candidates:
+            if want_depth != depth:
                 continue
             if match == "exact" and heading_line.strip() == h:
                 return entry

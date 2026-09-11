@@ -541,3 +541,44 @@ def test_a_renamed_kit_heading_is_replaced_in_place(tmp_path):
         "a renamed section must be rewritten in place, not appended:\n"
         f"{user.read_text()!r}"
     )
+
+
+def test_a_rename_that_also_changes_depth_is_replaced_in_place(tmp_path):
+    """Retitling a kit heading AND changing its level must still merge in place.
+
+    `matches_owned` filters candidate entries on a single `depth` field, which
+    can only describe one of the two names. So when a rename also changes the
+    heading level, the old section matches nothing, is left behind as stale kit
+    content, and the new section is appended at the end of the user's file —
+    the exact outcome `renamed_from` exists to prevent, with the added harm
+    that the user now has both versions.
+
+    `renamed_from_depth` lets the entry describe the old name's level too.
+    """
+    manifest = {
+        "format_version": 1,
+        "owned_sections": [
+            {"heading": "## Alpha", "depth": 2, "match": "exact"},
+            {"heading": "### Beta NEW", "depth": 3, "match": "exact",
+             "renamed_from": "#### Beta OLD", "renamed_from_depth": 4},
+            {"heading": "## Gamma", "depth": 2, "match": "exact"},
+        ],
+    }
+    prev = "## Alpha\n\nfirst\n\n#### Beta OLD\n\nmiddle\n\n## Gamma\n\nlast\n"
+    new = "## Alpha\n\nfirst\n\n### Beta NEW\n\nmiddle rewritten\n\n## Gamma\n\nlast\n"
+
+    kit_new, user, prev_f, mf = (tmp_path / n for n in
+                                 ("new.md", "user.md", "prev.md", "manifest.json"))
+    kit_new.write_text(new)
+    user.write_text(prev)
+    prev_f.write_text(prev)
+    mf.write_text(json.dumps(manifest))
+
+    res = _run(kit_new, user, prev=prev_f, manifest=mf)
+    assert res.returncode == 0, res.stderr
+    merged = user.read_text()
+    assert merged == new, (
+        "a depth-changing rename must be rewritten in place at its new level, "
+        f"not appended:\n{merged!r}"
+    )
+    assert "Beta OLD" not in merged, "the stale heading must not survive"

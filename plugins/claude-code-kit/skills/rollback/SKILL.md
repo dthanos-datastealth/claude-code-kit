@@ -44,8 +44,14 @@ Soft restore from a specific timestamped backup.
 ls ~/.claude/backups/
 ```
 
-Present the list, ask which to restore, then:
+Present the list, ask which to restore, then resolve the checkout from the
+install marker — `scripts/upgrade.sh` lives there, not in this plugin, and a
+slash command runs in whatever project the user is in:
 
 ```bash
-bash scripts/upgrade.sh --rollback <chosen-backup-id>
+KIT="$(python3 -c "import json,pathlib;print(json.loads((pathlib.Path.home()/'.claude'/'.kit-version').read_text()).get('repo_dir',''))")"
+bash "${KIT:?kit checkout not recorded — ask where the kit was cloned}/scripts/upgrade.sh" --rollback <chosen-backup-id>
 ```
+
+A backup taken by a current install also carries `rules/`, so the rollback
+restores the kit's instruction files as well as `settings.json`.

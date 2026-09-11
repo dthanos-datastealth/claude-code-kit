@@ -310,15 +310,17 @@ and JavaScript. The LSP backs the same set of structured queries for
 `.ts`, `.tsx`, `.js`, `.jsx`, `.mts`, and `.mjs` files.
 
 **Version requirement:** `typescript-language-server` current, and
-**`typescript` pinned to the 5.x line**. Do not take the npm default.
+**`typescript` pinned to a major version**. Do not take the npm default.
+`@6` is what upstream `typescript-language-server` pins and what this kit
+verifies against; `@5` also works.
 
 **Install (all platforms, Node from section 5b):**
 
 ```sh
-npm install -g typescript-language-server typescript@5
+npm install -g typescript-language-server typescript@6
 ```
 
-**Why the pin.** `typescript` now resolves to 7.x, the native port, and 7.x
+**Why the pin.** Unpinned, `typescript` resolves to 7.x, the native port, and 7.x
 does not ship `tsserver.js` — the file `typescript-language-server` loads.
 Install the default and the language server dies at startup with:
 

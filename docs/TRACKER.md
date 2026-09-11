@@ -66,9 +66,45 @@ Worth recording that two of three survivors were problems with the *mutants*,
 not the tests. That ratio is the argument for `tests/test_mutants.py`: a
 catalogue that rots silently is the same failure one level up.
 
-**Still open:** V2-3, the depth-changing rename bug. Next, and to be fixed
-mutation-first — the mutant `merge-ignores-renamed-from` already exists and is
-killed, so the new test can be checked against a depth-changing variant of it.
+### Iter-5 continued — the five remaining items, all closed
+
+| Item | Outcome |
+|---|---|
+| **V2-3 depth-changing rename** | FIXED mutation-first. `matches_owned` now pairs each name with its own depth via `renamed_from_depth`, defaulting to `depth`. Test written RED first; mutant `merge-ignores-renamed-from-depth` added and killed |
+| **`typescript@5` vs `@6`** | Moved to `@6`, by test not by reading: installed 6.0.3, confirmed `lib/tsserver.js` present and a `tsserver` bin entry, then drove the LSP against a real `.ts` file and got symbols back. Docs updated in three places; `@5` noted as also working |
+| **shellcheck pin skew** | CI bumped 0.10.0 → 0.11.0 to match what Homebrew ships, restoring the invariant its own comment claims ("pinning makes a local run authoritative"). CI also now lints `plugins/claude-code-kit/scripts/*.sh`, omitted until `fix-notion-mcp-port.sh` had already shipped a scope bug |
+| **`lint-plugin-marketplaces.py` never run** | Run with a token: **passes**. 22 plugins resolve against all 6 marketplaces |
+| **Four plugin skills never invoked** | Invoking `/claude-code-kit:status` found a real defect — see below |
+
+### The slash-command path bug
+
+All four skills instructed `bash scripts/upgrade.sh …` — a path relative to
+the working directory. A slash command runs in the user's project, not in the
+kit checkout, so every one of them failed there:
+
+```
+$ cd /tmp && bash scripts/upgrade.sh --status
+bash: scripts/upgrade.sh: No such file or directory
+```
+
+Testing the underlying scripts, from inside the repo, hid this completely:
+the scripts were correct and the path to them was not. It is the same shape
+as the isolation-harness bug — a check that never exercised the real entry
+point.
+
+Fixed at the root rather than per-skill: `install.sh` now records `repo_dir`
+in `~/.claude/.kit-version`, and the three checkout-driving skills resolve it
+from there. `fix-notion-mcp-port` uses `${CLAUDE_PLUGIN_ROOT}` instead, since
+that script ships inside the plugin. `tests/test_plugin_skill_paths.py`
+(4 cases) plus two mutants guard it.
+
+### Iter-5 final state
+
+- Suite **230 passed, 1 skipped** (231 total), 34.9s
+- Mutation **18/18 killed**
+- Six lint scripts + shellcheck: all exit 0, including
+  `lint-plugin-marketplaces.py` for the first time
+- Both isolated harnesses pass, install one including its leak check
 
 ---
 

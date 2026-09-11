@@ -60,8 +60,14 @@ kit_write_version_marker() {
     if [ -n "${rollback_target}" ]; then
         extra=",\n  \"rolled_back_to\": \"${rollback_target}\""
     fi
-    printf '{\n  "installed_at": "%s",\n  "channel": "%s",\n  "commit": "%s",\n  "manifest_sha256": "%s",\n  "claude_md_sha256": "%s",\n  "settings_sha256": "%s"%b\n}\n' \
-        "${ts}" "${channel}" "${commit}" "${sha_manifest}" "${sha_md}" "${sha_settings}" "${extra}" > "${CLAUDE_HOME}/.kit-version"
+    # Where the kit was installed FROM. The plugin's upgrade/rollback/status
+    # skills drive scripts that live in the checkout, not in the plugin, and a
+    # slash command runs in whatever project the user is in — so without this
+    # they resolve `scripts/upgrade.sh` relative to the wrong directory and
+    # fail with "No such file or directory". Recorded here because install.sh
+    # is the only thing that knows the answer.
+    printf '{\n  "installed_at": "%s",\n  "channel": "%s",\n  "commit": "%s",\n  "repo_dir": "%s",\n  "manifest_sha256": "%s",\n  "claude_md_sha256": "%s",\n  "settings_sha256": "%s"%b\n}\n' \
+        "${ts}" "${channel}" "${commit}" "${REPO_DIR}" "${sha_manifest}" "${sha_md}" "${sha_settings}" "${extra}" > "${CLAUDE_HOME}/.kit-version"
 }
 
 # Snapshot the kit's CLAUDE.md into ~/.claude/.kit-cache/ for future

@@ -28,9 +28,18 @@ Report install state, drift, and unresolved conflicts.
 
 ## How to call from chat
 
+`scripts/upgrade.sh` lives in the kit **checkout**, not in this plugin, and a
+slash command runs in whatever project the user happens to be in. A relative
+path therefore fails with `No such file or directory` everywhere except the
+clone itself. Resolve it from the install marker:
+
 ```bash
-bash scripts/upgrade.sh --status
+KIT="$(python3 -c "import json,pathlib;print(json.loads((pathlib.Path.home()/'.claude'/'.kit-version').read_text()).get('repo_dir',''))")"
+bash "${KIT:?kit checkout not recorded — re-run install.sh from your clone}/scripts/upgrade.sh" --status
 ```
+
+`repo_dir` is recorded by `install.sh`. If it is absent the install predates
+that field — ask the user where they cloned the kit rather than guessing.
 
 Present the output to the user, calling out:
 - Drift (if any) — proactively offer `:upgrade` to reconcile

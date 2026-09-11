@@ -31,16 +31,26 @@ jobs:
       # one. Pinning makes a local run authoritative. Bump deliberately.
       - name: Install shellcheck (pinned)
         env:
-          SHELLCHECK_VERSION: v0.10.0
+          # Match what Homebrew currently ships, so the invariant in the
+          # comment above actually holds. It did not: CI pinned v0.10.0 while
+          # `brew install shellcheck` gave developers v0.11.0, which is the
+          # same local-vs-CI skew the pin exists to prevent, just in the other
+          # direction. Bump this when Homebrew moves, and check the local run
+          # still passes first.
+          SHELLCHECK_VERSION: v0.11.0
         run: |
           curl -fsSL "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" \
             | tar -xJf - -C /tmp
           sudo install "/tmp/shellcheck-${SHELLCHECK_VERSION}/shellcheck" /usr/local/bin/shellcheck
           shellcheck --version
 
-      - name: shellcheck install.sh + uninstall.sh + scripts
+      - name: shellcheck install.sh + uninstall.sh + scripts + plugin scripts
         run: |
-          shellcheck install.sh uninstall.sh scripts/*.sh
+          # plugins/ was omitted until fix-notion-mcp-port.sh had already
+          # shipped a scope bug; it is shell the kit ships and runs, so it
+          # belongs in the same sweep.
+          shellcheck install.sh uninstall.sh scripts/*.sh \
+                     plugins/claude-code-kit/scripts/*.sh
 
       - name: Run scrubbing lint on every tracked file
         run: python3 scripts/lint-scrubbing.py

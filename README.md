@@ -36,7 +36,7 @@ flowchart LR
     mem[claude/memory/MEMORY.md<br/>auto-memory index]
     docs[docs/<br/>philosophy · workflow · verification-standards ·<br/>prereqs · corporate-tls · memory-system ·<br/>tracker-system · tools/ ×24]
     sc[scripts/<br/>merge-settings · intelligent-settings-merge · intelligent-claude-md-merge · upgrade ·<br/>lint-scrubbing · lint-tools-docs · lint-plugin-marketplaces · lint-mcp-hardcoded-paths · lint-plugin-skill-layout · lint-merge-policy ·<br/>diff-against-live · mutate · verify-install ·<br/>test-install-isolated · test-upgrade-isolated]
-    tests[tests/<br/>226 pytest cases ·<br/>isolated-HOME harness]
+    tests[tests/<br/>231 pytest cases ·<br/>isolated-HOME harness]
   end
 
   cmd -->|preflight| pre{All prereqs on PATH?}
@@ -464,7 +464,7 @@ responsibility. See [`docs/philosophy.md`](docs/philosophy.md).
 | **2. Configure the Berry verifier backend** | Berry verification is a MANDATORY gate; every Berry call fails closed without a reachable LLM backend | `/berry:berry-configure` — walks you through OpenRouter (default — `openai/gpt-4o-mini`) or a self-hosted llama.cpp endpoint. **Then add `BERRY_VERIFIER_MODEL` yourself**: the command does not write the model pin, and an unpinned verifier on OpenRouter resolves to an arbitrary model that probably lacks logprobs. See [`docs/tools/berry.md`](docs/tools/berry.md) |
 | **3. Install + register the dual-graph MCP** | The MANDATORY code-search order requires `graph_continue` as the FIRST call for every code lookup; without it the first leg silently no-ops and the kit falls back to the grep its own rules forbid | The reference implementation is `graperoot` on PyPI. Register with **`claude mcp add --scope user`** — without that flag it registers per-project and exists only in the directory you ran it from. [`docs/prereqs.md`](docs/prereqs.md) section 10 owns the recipe, the tool contract any substitute must satisfy, and the supply-chain profile (proprietary, self-updating, telemetry on by default) to read first |
 | **4a. Install the Go LSP binary (`gopls`)** | The kit's `gopls-lsp` plugin is an MCP wrapper; it does not auto-install the language server. Without `gopls` on `$PATH`, the Go LSP integration loads but every call falls through | `go install golang.org/x/tools/gopls@latest` (Go must be installed; see [`docs/prereqs.md`](docs/prereqs.md) section 7). The binary lands in `~/go/bin`, which is not on `PATH` by default — add it |
-| **4b. Install the TypeScript LSP binaries** | Same reason as 4a — `typescript-lsp` is a plugin wrapper; the actual language server is a separate npm package | `npm install -g typescript-language-server typescript@5`. **Pin the 5.x line.** TypeScript 7 is the native port and ships no `tsserver.js`, so the language server cannot start against it — while `tsc --version` still prints happily. See [`docs/prereqs.md`](docs/prereqs.md) section 8 |
+| **4b. Install the TypeScript LSP binaries** | Same reason as 4a — `typescript-lsp` is a plugin wrapper; the actual language server is a separate npm package | `npm install -g typescript-language-server typescript@6`. **Pin the major version.** TypeScript 7 is the native port and ships no `tsserver.js`, so the language server cannot start against it — while `tsc --version` still prints happily. See [`docs/prereqs.md`](docs/prereqs.md) section 8 |
 | **4c. Install the Java LSP binary (`jdtls`) + JDK 21+** | Same reason as 4a — `jdtls-lsp` is a plugin wrapper; the underlying Eclipse JDT.LS server requires Java 21+ at runtime | macOS: `brew install openjdk jdtls`, then `export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"` — Homebrew's openjdk is **keg-only**, so without that line `java` still resolves to the macOS stub and reports "Unable to locate a Java Runtime". Linux: OpenJDK 21+ via your package manager plus `jdtls` from the [official release page](https://download.eclipse.org/jdtls/snapshots/?d). See [`docs/prereqs.md`](docs/prereqs.md) section 9 |
 | **5. Authenticate the OAuth MCP servers** | `notion` and `huggingface-skills` are HTTP MCP servers that need an interactive OAuth grant. Until then both show `! Needs authentication` and their tools are unavailable | Run `/mcp` in a Claude Code session and complete the flow for each. Enterprise Notion workspaces with member-install allow-listing also need [`/claude-code-kit:fix-notion-mcp-port`](docs/notion-mcp-pinning.md) first |
 | **5b. (Optional) Context7 API key** | `context7` works anonymously but is rate-limited; the plugin reads `CONTEXT7_API_KEY` if present | Add `CONTEXT7_API_KEY` to the `env` block of `~/.claude/settings.json` |
@@ -737,7 +737,7 @@ claude-code-kit/
 ├── install.sh                         Bootstrap entry point
 ├── uninstall.sh                       Restore from latest backup
 ├── pyproject.toml                     pytest config
-├── .github/workflows/ci.yml           shellcheck + lints + 226 pytest cases
+├── .github/workflows/ci.yml           shellcheck + lints + 231 pytest cases
 ├── claude/                            Files copied/merged into ~/.claude/
 │   ├── CLAUDE.md                      Scrubbed opinionated template (legacy merge path)
 │   ├── rules/                         Kit instructions, owned; copied to ~/.claude/rules/

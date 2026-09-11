@@ -17,7 +17,15 @@ with member-install allow-list can approve a stable redirect_uri.
 
 ## What it does
 
-1. Runs `plugins/claude-code-kit/scripts/fix-notion-mcp-port.sh [port]`
+1. Runs `fix-notion-mcp-port.sh [port]`. Unlike the other skills here, this
+   script ships **inside the plugin**, so use `${CLAUDE_PLUGIN_ROOT}` rather
+   than a path relative to the working directory — a slash command runs in
+   whatever project the user is in:
+
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/fix-notion-mcp-port.sh" [port]
+   ```
+
 2. Captures the script output (admin URL + workflow instructions)
 3. Presents the admin URL to the user so they can forward it to their
    Notion workspace admin

@@ -131,12 +131,13 @@
     {
       "id": "merge-ignores-renamed-from",
       "file": "scripts/intelligent-claude-md-merge.py",
-      "find": "        for h in (entry[\"heading\"], entry.get(\"renamed_from\")):",
-      "replace": "        for h in (entry[\"heading\"],):",
+      "find": "        if entry.get(\"renamed_from\"):",
+      "replace": "        if False:",
       "tests": [
         "tests/test_intelligent_claude_md_merge.py"
       ],
-      "breaks": "A retitled kit section is treated as one section retired and an unrelated one added, so the user's copy is dropped and the replacement is appended at the end of their file."
+      "breaks": "A retitled kit section is treated as one section retired and an unrelated one added, so the user's copy is dropped and the replacement is appended at the end of their file.",
+      "history": "Anchor went stale when renamed_from_depth was added; the stale-anchor guard in mutate.py caught it on the next run, which is what that guard is for."
     },
     {
       "id": "notion-port-defaults-to-local-scope",
@@ -157,6 +158,34 @@
         "tests/test_fix_notion_port.py"
       ],
       "breaks": "A pre-existing local-scoped notion registration survives and outranks the user-scoped pin, silently shadowing the fix."
+    },
+    {
+      "id": "merge-ignores-renamed-from-depth",
+      "file": "scripts/intelligent-claude-md-merge.py",
+      "find": "                 entry.get(\"renamed_from_depth\", entry.get(\"depth\")))",
+      "replace": "                 entry.get(\"depth\"))",
+      "tests": [
+        "tests/test_intelligent_claude_md_merge.py"
+      ],
+      "breaks": "A rename that also changes heading level stops matching the old name, so the user keeps the stale kit section AND gets the new one appended at the end of their file \u2014 both versions, neither in the right place.",
+      "history": "Found by a verification agent as a latent gap: the shipped manifest's only rename is depth 4 to 4, so nothing triggered it."
+    },
+    {
+      "id": "install-forgets-repo-dir",
+      "file": "scripts/_kit_backup.sh",
+      "find": "\\n  \"repo_dir\": \"%s\",",
+      "replace": "",
+      "tests": ["tests/test_plugin_skill_paths.py"],
+      "breaks": "install.sh stops recording where the kit was cloned from, so the plugin's status/upgrade/rollback skills cannot locate scripts/upgrade.sh and fail with 'No such file or directory' in every project except the checkout itself.",
+      "history": "The skills originally used a working-directory-relative path. Testing the underlying scripts from inside the repo hid it completely \u2014 the scripts were right, the path to them was not."
+    },
+    {
+      "id": "skill-uses-relative-path",
+      "file": "plugins/claude-code-kit/skills/rollback/SKILL.md",
+      "find": "bash \"${KIT:?kit checkout not recorded \u2014 ask where the kit was cloned}/scripts/upgrade.sh\" --rollback <chosen-backup-id>",
+      "replace": "bash scripts/upgrade.sh --rollback <chosen-backup-id>",
+      "tests": ["tests/test_plugin_skill_paths.py"],
+      "breaks": "A skill tells the agent to run a script by a path relative to the user's working directory. Slash commands run in the user's project, not in the kit checkout, so the command fails there."
     }
   ]
 }
