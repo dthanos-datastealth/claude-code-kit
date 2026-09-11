@@ -12,10 +12,12 @@ or chat scrollback. It runs on **two coupled artifacts**:
    > current model families; `CLAUDE_CODE_ENABLE_TODO_TOOLS=1` turns them
    > on. Which versions and models that covers has changed between
    > releases — check the tools reference for your CLI rather than a
-   > version number written here. `install.sh` writes that key into your `settings.json`
-   > `env` block, and it takes effect on the **next** session — so straight
-   > after installing, the Pre-Dispatch Protocol below is not yet runnable.
-   > If `TaskCreate` is unavailable, say so once and run everything on
+   > version number written here. `install.sh` writes that key into your
+   > `settings.json` `env` block. Observed on a live upgrade: the Task tools
+   > became available in the same session the file was saved, with no
+   > restart — Claude Code applies changed `env` values on save. If they do
+   > not appear, restart before concluding something is broken. If
+   > `TaskCreate` is genuinely unavailable, say so once and run everything on
    > `docs/TRACKER.md` alone. The tracker is the durable half; the Task
    > tools make it live, but the state survives in the file either way.
 2. **`docs/TRACKER.md` per project** — a human-readable, durable
