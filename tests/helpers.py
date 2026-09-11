@@ -210,9 +210,17 @@ def run_install(
         if tool == "python3" and python3_version is not None:
             _write_fake_python(fake_bin / "python3", python3_version)
             continue
-        # python3 must be REAL python so the merge step works; symlink it
-        real = shutil.which(tool)
+        # node and npx are ALWAYS stubs, never the real binaries. install.sh's
+        # prewarm step runs `npx -y <pkg> --version` for three packages, so
+        # symlinking the real npx makes every isolated install perform live
+        # npm downloads: measured at 46 installs x 3 packages = 138 network
+        # fetches, ~177 MB into each throwaway HOME, 6.89 GB peak under
+        # tests/.tmp, and a suite that takes 351s instead of 25s. Preflight
+        # only checks these are present, and prewarm only needs a zero exit,
+        # so a stub satisfies both and tests nothing less.
+        real = None if tool in ("node", "npx") else shutil.which(tool)
         if real:
+            # python3 must be REAL python so the merge step works; symlink it
             (fake_bin / tool).symlink_to(real)
         else:
             # Stub: always succeed

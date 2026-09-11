@@ -91,6 +91,34 @@ For every finding the V agent produces, call `TaskCreate`. On its own task, call
 - **Best-practice sweep on changed code:** allocation patterns, naming, comment quality (no temporal/phase labels — those belong in TRACKER.md), idiomatic error wrapping.
 - **Tracker updates:** `TaskCreate` for every finding; `TaskUpdate(status="completed")` on own task. Verdict: `APPROVED` or `CHANGES-RECOMMENDED`. Phase closes only when V says PASS AND O says APPROVED on the SAME revision.
 
+### When to write to the tracker — the trigger list
+
+"Keep it current" has not proven to be an instruction anyone follows, including
+Claude: the common failure is doing the work, then writing the tracker up in one
+batch at the end, which loses exactly the intermediate state the file exists to
+hold. If the session dies mid-way, a batched tracker records nothing.
+
+So it is a trigger list, not a standard. **Write to `docs/TRACKER.md` immediately
+on each of these, before starting the next thing:**
+
+| Trigger | What goes in |
+|---|---|
+| Plan approved | The iteration row, the plan's location, the Berry run id for the plan gate |
+| A phase completes | Its Quality Loop State row — what shipped, the suite total, the lint result |
+| A V or O agent reports | Its verdict verbatim, and one row per finding with a disposition |
+| A finding is closed | That row moves to CLOSED, naming the fix |
+| A finding is deliberately not fixed | That row says OPEN and why — an unrecorded decision is indistinguishable from an oversight |
+| Any gate fails | What failed, with the output, before attempting the fix |
+| Work is handed back to the user | Everything above, current as of that moment |
+
+The test for whether you have done this: **if the session ended right now, could
+someone else pick up the work from the tracker alone?** If the answer needs
+anything from the chat scrollback, the tracker is behind.
+
+A finding you closed in the same turn you found it still gets a row. The row is
+the record that it was found, not just that it was fixed — and "we already
+checked that" is worth more to the next reader than a clean file.
+
 ### Hard rules around the tracker
 
 - **`docs/TRACKER.md` must never be more than one step out of date.** Anything not in the tracker is unknown to anyone who didn't run the session.

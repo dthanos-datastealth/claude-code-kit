@@ -50,8 +50,13 @@ def test_relative_order_of_the_inherited_path_is_preserved(tmp_path):
     """
     early, late = tmp_path / "early", tmp_path / "late"
     _stub(early, "python3")          # user put this first deliberately
-    _stub(late, "git")               # stands in for /usr/bin/git
     _stub(late, "python3")           # the older interpreter it shadows
+    # MUST be a tool processed AFTER python3 in KIT_RUNTIME_TOOLS. With `git`
+    # here — which is processed BEFORE python3 — a prepending implementation
+    # produces byte-identical output, because python3's own prepend puts
+    # `early` back in front. The first version of this test used `git` and
+    # therefore passed against the exact regression it is named for.
+    _stub(late, "npx")
 
     entries = compute(f"{early}:{late}", tmp_path)
     assert entries.index(str(early)) < entries.index(str(late)), (
@@ -61,11 +66,15 @@ def test_relative_order_of_the_inherited_path_is_preserved(tmp_path):
 
 
 def test_the_first_python3_on_the_inherited_path_still_wins(tmp_path):
-    """The property the ordering test exists to protect, stated directly."""
+    """The property the ordering test exists to protect, stated directly.
+
+    Same stub-choice constraint as above: the shadowing directory must hold a
+    tool processed after python3, or a prepending implementation passes.
+    """
     early, late = tmp_path / "early", tmp_path / "late"
     _stub(early, "python3")
-    _stub(late, "git")
     _stub(late, "python3")
+    _stub(late, "npx")
 
     entries = compute(f"{early}:{late}", tmp_path)
     first_with_python = next(e for e in entries if (Path(e) / "python3").exists())

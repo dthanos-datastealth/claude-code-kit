@@ -58,9 +58,23 @@ Berry is an MCP-backed hallucination detection system installed via the `berry@b
 - **Test output is evidence.** Always capture real test runner output as a Berry span via `add_span`. Never claim tests pass without a span that cites the actual output.
 - **RCA root cause must be verified before implementing a fix.** No exceptions.
 
+#### The default evidence flow: file-backed spans
+
+**Use this unless the evidence genuinely has no file.**
+
+1. `start_run(problem_statement, deliverable)` — creates the ledger. Everything attaches to it.
+2. `add_file_span(run_id, path, start_line, end_line)` — **the server reads the file itself** and returns `file_sha256`, `worktree_file_sha256`, byte offsets and git provenance. The evidence is pinned to the artifact's content hash, so a later edit marks the span stale instead of silently drifting.
+3. `audit_trace_budget_run(run_id, steps, require_citations=true)` — resolves spans from the ledger **server-side** rather than trusting text passed into the call. Returns an `evidence_pack` with its own `text_sha256` and the list of materialized sids, so someone else can reproduce the audit.
+
+**Why this is the default, concretely.** A hand-pasted span is verified against whatever was typed into the tool call. Get the transcription wrong and the audit passes happily, certifying a mistake — the gate returns green for evidence that does not exist in the artifact. `add_file_span` removes the transcription step: nothing sits between the file and the verifier.
+
+`add_file_span` reads only inside `allowed_roots` in `~/.berry/config.json`. If it refuses, fix the config. Do not fall back to pasting the file contents — that is the failure this flow exists to prevent.
+
+**Use `add_span` (free text) only when there is no file**: live command output, a tool result, an API response. Even then, when the claim is load-bearing, write the output to a file first and cite that.
+
 #### `audit_trace_budget` API usage (CRITICAL — a step without `cites` verifies nothing)
 
-Two things have to be right, and getting either wrong produces a `flagged` result that looks exactly like a failed claim.
+This is the inline form, for the no-file case. Two things have to be right, and getting either wrong produces a `flagged` result that looks exactly like a failed claim.
 
 **1. Every step must cite the spans that support it.** `context_mode` defaults to `"cited"`, which selects only the spans a step names in `cites`. A step with no `cites` gets an empty context, the verifier is never called, and the result comes back flagged.
 
@@ -87,9 +101,25 @@ spans=[{"S0": "<actual test runner output>"}]
 
 Passing `context_mode="all"` is the alternative to `cites` when every span is relevant to every claim. Prefer `cites`: it is what makes a citation `[S0]` in your prose mean something checkable.
 
+#### Writing claims that can actually be scored
+
+The verifier scores what you wrote, not what you meant. Four rules, each earned:
+
+- **One premise per claim.** A conjunction scores near zero and flags even when every part of it is true. "Six lint scripts and shellcheck all exited zero" is two claims; decompose and cite each.
+- **Assert no more than the span shows.** "The claude-code-kit suite reports 174 passed" scores lower than "the suite reports 174 passed" when the span is bare pytest output that never names the project. That is the gate working. Narrow the claim.
+- **Prefer measurements to representations.** `chunks: 26` verifies cleanly; a byte literal like `b'event: delta\n\n'` does not, because the verifier cannot reliably reconcile escaped control characters against prose describing them. For claims about whitespace, framing or control bytes, cite a counted scan — "the scan reported zero occurrences of two consecutive line feeds" — not a dump of the bytes.
+- **Low-prior and specific beats qualitative.** Exact route regex, exact field path, exact byte offset, exact count.
+
+And two about the span itself:
+
+- **Paste literal text, never a paraphrase or an excerpt with `...` in it.** An ellipsis leaves the verifier unable to rule out what it hides, and it will decline to entail a claim it would otherwise pass.
+- **Cite the code, not the comment above it.** A comment explaining a bug that was *fixed* describes the old behaviour in the same span as the new behaviour, and the verifier cannot tell which one your claim is about. Measured: a span covering `kit_compute_path` including its "an earlier version PREPENDED…" comment scored a true claim about appending at posterior **0.562**; narrowing the span to the code alone scored the same claim at **1.000**. Nothing about the code changed.
+
+Both are the same failure — a span that admits more than one reading. When a claim you believe is true comes back `not_entailed`, look at what else is inside the span before you touch the claim.
+
 #### Reading the result
 
-There is no `observed_bits` field. Each step returns a `status` and, where the verifier ran, posterior YES bounds against a `target` (default `0.95`):
+Each step returns a `status` and, where the verifier ran, posterior YES bounds against a `target` (default `0.95`):
 
 | `status` | Meaning | What to do |
 |---|---|---|

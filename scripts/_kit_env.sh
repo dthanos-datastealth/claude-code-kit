@@ -36,7 +36,17 @@ KIT_RUNTIME_TOOLS=(claude git gh python3 uv node npx)
 # four independently until a fifth key would have gone unnoticed by three of
 # them. scripts/kit-runtime-env-keys.txt is the single source; the two Python
 # scripts read the same file.
-KIT_RUNTIME_ENV_KEYS_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/kit-runtime-env-keys.txt"
+# Resolved with parameter expansion, not `dirname`. This runs at source time,
+# before anything has repaired PATH, and `dirname` lives in /usr/bin: on a
+# PATH without it the fork failed, `cd "" && pwd` silently yielded $PWD, and
+# the resulting path pointed at a file that does not exist — so
+# kit_write_runtime_env aborted the install without writing settings.json.
+# A Homebrew-only PATH reaches that state while still passing preflight.
+# The same reasoning as kit_compute_path below: this file has to work when
+# PATH is impoverished, because that is the situation it exists to repair.
+KIT_RUNTIME_ENV_KEYS_DIR="${BASH_SOURCE[0]%/*}"
+[ "${KIT_RUNTIME_ENV_KEYS_DIR}" = "${BASH_SOURCE[0]}" ] && KIT_RUNTIME_ENV_KEYS_DIR="."
+KIT_RUNTIME_ENV_KEYS_FILE="${KIT_RUNTIME_ENV_KEYS_DIR}/kit-runtime-env-keys.txt"
 
 # Echo the PATH to persist: the inherited PATH first and unchanged, then the
 # directories the prerequisites resolved from, then a floor of /usr/bin:/bin.

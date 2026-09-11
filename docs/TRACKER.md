@@ -25,6 +25,100 @@ defects are in what surrounds the installer.
 | Berry gates | plan `e479d16648ca4486`; completion `1b9ccf17b77d0b26` (5/5); e2e `b57a2318a05e9217` (7/7) |
 | Open conflicts | none |
 
+### Iter-4 round 2 — evidence-only V+O against `5b48c1f`
+
+Re-dispatched under a stricter bar: every finding must be EXECUTED (a command
+and its literal output) or CITED (an authoritative source fetched that run).
+Anything that could not meet it was to be dropped rather than reported.
+
+**V: `VERIFICATION: PASS`** — both prior blockers proven fixed by execution,
+each with a control run showing the reproduction still detects the original
+defect. Three new CONCERNs, all with a failing command attached.
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| V2-1 | CONCERN | `uninstall.sh` deleted user-set `PATH` / `CLAUDE_CODE_ENABLE_TODO_TOOLS` on key presence alone, destroying the exact values `install.sh` refuses to overwrite. Demonstrated: seeded `{"CLAUDE_CODE_ENABLE_TODO_TOOLS":"0","PATH":"/my/own/path"}`, install left them alone, uninstall emptied the file to `{}` | CLOSED — compares against `kit_compute_path` and the kit's `"1"`; non-matching values are kept and reported. `tests/test_uninstall.py` RED first |
+| V2-2 | CONCERN | `scripts/_kit_env.sh:39` forked `dirname` at **source time**, so on a PATH lacking it `KIT_RUNTIME_ENV_KEYS_FILE` silently resolved to `$PWD` and `kit_write_runtime_env` aborted the install without writing settings.json. Contradicted the file's own stated pure-shell invariant. Reachable from a Homebrew-only PATH that passes preflight | CLOSED — parameter expansion; reproduction now resolves correctly under `PATH=/bin` |
+| V2-3 | CONCERN | `renamed_target` does not handle a rename whose heading **depth** changes: the stale section is kept and the new one appended at end of file — the outcome `renamed_from` exists to prevent. Not triggered by the shipped manifest (its only rename is depth 4→4) | OPEN |
+| V2-4 | note | Local `shellcheck` is 0.11.0; `ci.yml` pins 0.10.0, undercutting that file's stated rationale that a local run is authoritative | OPEN |
+
+V also confirmed by citation: uv's deprecation of `UV_NATIVE_TLS`, TypeScript
+7.0.2 shipping no `lib/tsserver.js` (and `versionProvider.ts` loading exactly
+that path), Homebrew `python@3.12` **not** being keg-only while `openjdk` is,
+`claude mcp` scope precedence, and the `CLAUDE_CODE_ENABLE_TODO_TOOLS` gate.
+
+**Process finding, recorded against myself:** this tracker was updated in a
+batch at the end of the previous round rather than per step, which rule 40
+forbids and which V flagged as a CONCERN. Reinforced in the rule with an
+explicit trigger list rather than stronger wording.
+
+**O: `OPTIMIZATION: CHANGES-RECOMMENDED`** — three `worth-fixing`, every one
+proved by mutation or A/B measurement rather than inspection. O also ran a
+revert matrix (each changed file restored to `4d08e48`, suite rerun) showing
+every behavioural fix in the diff is covered by at least one test; the two
+gaps below were only findable by mutation, which is why the first review
+missed them.
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| O2-1 | worth-fixing | The harness change symlinked the **real** `npx` into the isolated PATH, so every isolated install performed live npm downloads. A/B on the same tree: **351s vs 25s**, 138 network fetches, ~177 MB per throwaway HOME, **6.89 GB** peak under `tests/.tmp` | CLOSED — `node`/`npx` are now always stubs. Measured after: **33.6s** |
+| O2-2 | worth-fixing | `tests/test_kit_compute_path.py` **passed against the exact prepend regression it is named for**. `git` is processed before `python3` in `KIT_RUNTIME_TOOLS`, so python3's own prepend restored `early` to the front and the output was byte-identical | CLOSED — shadowing stub changed to `npx` (processed after python3). Verified: 2 fail under mutation, 6 pass on real code |
+| O2-3 | worth-fixing | `test_install_succeeds_with_no_npx` asserted nothing — its `A or B` was satisfied by the pre-warm branch, and deleting the guard it named left all 3 tests green | CLOSED — replaced with a test that npx absence **stops** the install, plus a positive control |
+| O2-4 | worth-considering | `prewarm_npx_mcps`'s missing-npx guard became unreachable once preflight required npx | CLOSED — guard removed; an unreachable guard documents a fallback that cannot happen |
+
+O measured and explicitly **did not file**: `kit_compute_path` at 6.3 ms/call;
+122 process spawns per install with none redundant; settings.json read 2×
+written 2× per install at ~15 ms interpreter startup each. Recorded here so
+the numbers exist without becoming findings.
+
+**Correction against myself:** I initially disputed O2-2 from a manual
+reproduction that appeared to show both stub layouts detecting the prepend.
+My reproduction was wrong — it had a leftover `npx` stub from a second layout,
+which masked the effect. Running the actual test against the mutated function
+settled it: 6 passed. O was right; the reasoning I used to doubt it was not
+evidence.
+
+### Iter-4 round 2 — Berry validation via the MCP, file-backed
+
+Berry's MCP reconnected after a restart, so the round-2 fixes were validated
+through the documented path rather than the stdio workaround used earlier:
+`start_run` → `add_file_span` (server reads the file, pins to `sha256`) →
+`audit_trace_budget_run(require_citations: true)`.
+
+Run `7fa0b483b98dc03e`, spans S2–S5 and S7, all file-backed with
+`file_sha256 == worktree_file_sha256`.
+
+| Claim | Status | Posterior | Observed bits |
+|---|---|---|---|
+| `combined="${combined}:${dir}"` places dir after | `passed` | 1.000 | 23.80–39.86 |
+| appends `/usr/bin` and `/bin` | `passed` | 0.99999 | 22.18–39.86 |
+| uninstall deletes a runtime key only on value match | `passed` | 0.9989 | 24.48–39.80 |
+| ordering test stubs `npx` in the shadowing dir | `passed` | 0.99995 | 25.79–39.86 |
+| first statement of `prewarm_npx_mcps` is a `log` call | `passed` | 0.9997 | 24.87–39.85 |
+| **false control:** dir is prepended | `contradicted` | 1.3e-10 | ~0 |
+| **false control:** `combined="${dir}:${combined}"` | `contradicted` | 2.8e-10 | ~0 |
+
+Two false controls against the same spans as their true counterparts, both
+contradicted. A rubber-stamping verifier passes both halves of such a pair;
+this one did not.
+
+**Span hygiene lesson, and it cost two audit rounds.** The true "appends"
+claim first scored **0.562** (`not_entailed`) because the cited span ran from
+line 73 and therefore included the comment explaining that *an earlier version
+prepended*. The verifier saw both behaviours described in its evidence and
+declined to entail either. Narrowing the span to lines 74–89 — code, no
+comment — scored the identical claim at **1.000**. A comment documenting a
+fixed bug poisons the span for claims about current behaviour. Added to
+`50-kit-plugins.md`.
+
+**Correction to the kit, and to my earlier correction.** I had written into
+`claude/CLAUDE.md` and `docs/tools/berry.md` that "there is no `observed_bits`
+field". That is true of the inline `audit_trace_budget` and false of
+`audit_trace_budget_run`, which returns `observed`, `required` and
+`budget_gap` in bits plus prior and posterior. The user's override said bits
+were the signal; I contradicted it from incomplete measurement of only one of
+the two calls. Both documents corrected.
+
 ### Iter-4 Quality Loop State
 
 | Stage | Status | Findings | Notes |

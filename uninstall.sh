@@ -27,7 +27,15 @@ else
     log "No backup to restore from; removing what the kit installed."
 fi
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="${BASH_SOURCE[0]%/*}"
+[ "${REPO_DIR}" = "${BASH_SOURCE[0]}" ] && REPO_DIR="."
+REPO_DIR="$(cd "${REPO_DIR}" && pwd)"
+
+# kit_compute_path, so the settings subtraction below can tell a PATH the kit
+# wrote from one the user set. Without it every PATH looks like kit residue.
+# CLAUDE_HOME is already set above, which is what the sourced file expects.
+# shellcheck source=scripts/_kit_env.sh
+. "${REPO_DIR}/scripts/_kit_env.sh"
 
 for f in CLAUDE.md settings.json; do
     if [ -n "${src}" ] && [ -f "${src}/${f}" ]; then
@@ -46,9 +54,11 @@ done
 # plugin the user has since flipped to false, or an effortLevel they changed,
 # is a decision of theirs and stays.
 if [ -z "${src}" ] && [ -f "${CLAUDE_HOME}/settings.json" ]; then
-    if python3 - "${CLAUDE_HOME}/settings.json" "${REPO_DIR}/claude/settings.json" \
+    if KIT_COMPUTED_PATH="$(kit_compute_path)" \
+       python3 - "${CLAUDE_HOME}/settings.json" "${REPO_DIR}/claude/settings.json" \
                  "${REPO_DIR}/scripts/kit-runtime-env-keys.txt" <<'PY'
 import json
+import os
 import pathlib
 import sys
 
@@ -59,6 +69,7 @@ with open(kit_path, encoding="utf-8") as fh:
     kit = json.load(fh)
 
 removed = []
+kept = []
 for section in ("enabledPlugins", "extraKnownMarketplaces", "env"):
     live_section = live.get(section)
     if not isinstance(live_section, dict):
@@ -71,14 +82,33 @@ for section in ("enabledPlugins", "extraKnownMarketplaces", "env"):
 # The runtime env keys are written by scripts/_kit_env.sh after the merge
 # rather than shipped in the template, so the loop above never sees them.
 # Read from the shared list so this cannot fall behind the writer.
+#
+# Same rule as above: remove only what still matches what the kit would have
+# written. These keys are the ones install.sh explicitly declines to
+# overwrite when the user has set them, so deleting on key presence alone
+# would destroy exactly the values the installer protects — a user who set
+# CLAUDE_CODE_ENABLE_TODO_TOOLS=0 or their own PATH would lose both.
+#
+# KIT_COMPUTED_PATH is what kit_compute_path yields on this machine now. A
+# PATH written by an older install may no longer match it; leaving that
+# behind is the safe direction, since the alternative is deleting something
+# the user may have set.
+runtime_expected = {
+    "PATH": os.environ.get("KIT_COMPUTED_PATH"),
+    "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1",
+}
 runtime_keys = [
     ln.strip() for ln in pathlib.Path(keys_path).read_text().splitlines()
     if ln.strip() and not ln.lstrip().startswith("#")
 ] if pathlib.Path(keys_path).is_file() else []
 for key in runtime_keys:
-    if key in (live.get("env") or {}):
-        del live["env"][key]
+    env_block = live.get("env") or {}
+    expected = runtime_expected.get(key)
+    if key in env_block and expected is not None and env_block[key] == expected:
+        del env_block[key]
         removed.append(f"env.{key}")
+    elif key in env_block:
+        kept.append(f"env.{key}")
 
 if live.get("effortLevel") == kit.get("effortLevel"):
     del live["effortLevel"]
@@ -94,8 +124,11 @@ with open(live_path, "w", encoding="utf-8") as fh:
     json.dump(live, fh, indent=2)
     fh.write("\n")
 
-print(f"  Removed {len(removed)} kit key(s) from settings.json" if removed
-      else "  settings.json held no kit keys")
+msg = (f"  Removed {len(removed)} kit key(s) from settings.json" if removed
+       else "  settings.json held no kit keys")
+if kept:
+    msg += f"; kept {len(kept)} you had changed ({', '.join(kept)})"
+print(msg)
 PY
     then :; else
         warn "  Could not clean settings.json; leaving it untouched"

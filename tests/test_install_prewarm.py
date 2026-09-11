@@ -28,22 +28,36 @@ def test_prewarm_executes_after_install_plugins():
     )
 
 
-def test_install_succeeds_with_no_npx():
-    """Pre-warm step must be a soft-fail: if npx isn't on PATH, install.sh
-    still completes successfully and prints a warning."""
-    # The harness's PATH only includes the fake bin + /usr/bin + /bin.
-    # /usr/bin doesn't have npx on macOS or most Linux. So this test
-    # exercises the no-npx code path.
-    r = run_install()
-    assert r.returncode == 0, (
-        f"install.sh should succeed even without npx on PATH; got rc={r.returncode}\n"
+def test_install_stops_when_npx_is_missing():
+    """npx is a hard prerequisite, so its absence stops the install.
+
+    This test previously asserted the opposite — that install.sh completes
+    with a warning when npx is absent — on the stated basis that the harness
+    never put npx on PATH. Both halves stopped being true: preflight now
+    requires npx, and the harness stubs it. Its assertion
+    (`"npx not on PATH" in out or "Pre-warm complete" in out`) was satisfied
+    by the pre-warm branch, so it passed while testing nothing, and deleting
+    the guard it named left all three tests in this file green.
+
+    npx is required because playwright, chrome-devtools and context7 launch
+    through it. Failing at preflight, by name, beats installing cleanly and
+    leaving three MCP servers dead.
+    """
+    r = run_install(omit_tools=["npx"])
+    assert r.returncode != 0, (
+        f"install.sh must not complete without npx; got rc={r.returncode}\n"
         f"stdout: {r.stdout}\nstderr: {r.stderr}"
     )
-    combined = r.stdout + r.stderr
-    # The warning message is what we want when npx is absent
-    assert "npx not on PATH" in combined or "Pre-warm complete" in combined, (
-        f"prewarm should either pre-warm or skip with warning; saw neither in:\n{combined}"
-    )
+    assert "npx" in (r.stdout + r.stderr)
+
+
+def test_prewarm_runs_when_npx_is_present():
+    """Positive control: with npx present the pre-warm step actually runs,
+    so the test above is failing for the absence and not for some other
+    reason."""
+    r = run_install()
+    assert r.returncode == 0, r.stderr
+    assert "Pre-warm complete" in (r.stdout + r.stderr)
 
 
 def test_version_marker_records_the_release_channel():

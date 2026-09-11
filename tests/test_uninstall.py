@@ -1,3 +1,4 @@
+import json
 import subprocess
 from pathlib import Path
 
@@ -109,4 +110,42 @@ def test_uninstall_restores_the_users_own_rule_files_from_backup(tmp_path):
     assert (cd / "rules" / "99-mine.md").read_text() == "# also mine\n"
     assert not (cd / "rules" / "10-kit-core.md").exists(), (
         "kit rule files must not survive an uninstall, restored or otherwise"
+    )
+
+
+def test_uninstall_keeps_runtime_env_values_the_user_set_themselves(tmp_path):
+    """The subtraction rule is "remove only what still matches what the kit
+    ships". The runtime-key loop broke it: it deleted on key PRESENCE, so a
+    user who had deliberately set CLAUDE_CODE_ENABLE_TODO_TOOLS=0 or their
+    own PATH lost both — values install.sh goes out of its way to preserve.
+
+    That asymmetry is the bug: install refuses to touch these, uninstall
+    destroys them.
+    """
+    home = tmp_path
+    cd = home / ".claude"
+    cd.mkdir(parents=True)
+    mine = {
+        "env": {
+            "CLAUDE_CODE_ENABLE_TODO_TOOLS": "0",
+            "PATH": "/my/own/path:/usr/bin:/bin",
+        }
+    }
+    (cd / "settings.json").write_text(json.dumps(mine, indent=2))
+    (cd / ".kit-version").write_text('{"installed_at": "2026-09-11T00:00:00Z"}\n')
+
+    r = subprocess.run(
+        ["bash", str(UNINSTALL)],
+        env={"HOME": str(home), "PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"},
+        text=True, capture_output=True,
+    )
+    assert r.returncode == 0, r.stderr
+
+    after = json.loads((cd / "settings.json").read_text())
+    env = after.get("env", {})
+    assert env.get("CLAUDE_CODE_ENABLE_TODO_TOOLS") == "0", (
+        "a deliberate opt-out is the user's value, not kit residue"
+    )
+    assert env.get("PATH") == "/my/own/path:/usr/bin:/bin", (
+        "a user-set PATH must survive uninstall"
     )

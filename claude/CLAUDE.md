@@ -263,7 +263,9 @@ audit_trace_budget(steps=[{"claim": "..."}], spans=[{"sid": "S0", "text": "..."}
 spans=[{"S0": "<actual test runner output>"}]
 ```
 
-There is no `observed_bits` field. Each step returns a `status` — `passed`, `not_entailed`, `contradicted`, `empty_context`, `no_spans` — and, where the verifier ran, posterior YES bounds against a `target` (default `0.95`). `empty_context` and `no_spans` mean the gate did not run: fix the call, not the claim.
+Each step returns a `status` — `passed`, `not_entailed`, `contradicted`, `empty_context`, `no_spans` — and, where the verifier ran, posterior YES bounds against a `target` (default `0.95`). `empty_context` and `no_spans` mean the gate did not run: fix the call, not the claim.
+
+`audit_trace_budget_run` additionally returns `observed`, `required` and `budget_gap` in bits per step, plus an `evidence_pack` with its own `text_sha256`. The inline `audit_trace_budget` does not — another reason to prefer the run-backed form.
 
 #### Verifier backend
 

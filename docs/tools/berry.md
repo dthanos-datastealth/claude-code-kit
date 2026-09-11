@@ -174,8 +174,21 @@ first. `empty_context` (the step named no `cites`) and `no_spans` (the span
 was mis-shaped) both mean the verifier was never called at all — they are
 call bugs, not verdicts, and they should not count toward the three-strike
 rule. Only `not_entailed` and `contradicted` say anything about your
-evidence. There is no `observed_bits` field in this version; scoring is
-reported as posterior YES bounds against a `target`.
+evidence.
+
+**The two audit calls do not return the same detail.** `audit_trace_budget`
+(inline spans) reports `status` plus posterior YES bounds against a `target`,
+and nothing else. `audit_trace_budget_run` (server-resolved spans) also
+returns `observed`, `required` and `budget_gap` **in bits** per step, the
+prior as well as the posterior, and an `evidence_pack` carrying its own
+`text_sha256` and the list of materialized sids. Measured side by side on the
+same claims: the inline form gave a bare status; the run form gave
+`observed 23.80–39.86 bits` against `required 22.33–37.58`.
+
+The bits matter for reading a flag correctly. Zero observed bits with
+`contradicted` means the span refutes the claim. Zero bits with
+`not_entailed` means the span is simply silent on it. Same number, opposite
+diagnosis, and only one of them means you were wrong.
 
 To settle a model choice empirically, build a golden set of about twenty
 claim-and-span pairs — ten you know are supported, ten you know are not — run

@@ -197,12 +197,10 @@ NPX_MCP_PACKAGES=(
     "@upstash/context7-mcp"
 )
 
+# No missing-npx guard here: preflight requires npx and exits 1 long before
+# this runs, so a guard would be unreachable — and an unreachable guard is
+# worse than none, because it documents a fallback that cannot happen.
 prewarm_npx_mcps() {
-    if ! command -v npx >/dev/null 2>&1; then
-        warn "  npx not on PATH; skipping npx-MCP pre-warm (playwright,"
-        warn "  chrome-devtools, context7 will cold-start on first session)"
-        return 0
-    fi
     log "Pre-warming npm cache for npx-based MCP servers (parallel)..."
     local pids=()
     for pkg in "${NPX_MCP_PACKAGES[@]}"; do
