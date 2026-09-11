@@ -17,7 +17,7 @@
         "source": "git-subdir",
         "url": "https://github.com/dthanos-datastealth/claude-code-kit.git",
         "path": "plugins/claude-code-kit",
-        "ref": "prerelease"
+        "ref": "main"
       },
       "homepage": "https://github.com/dthanos-datastealth/claude-code-kit"
     }

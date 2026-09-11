@@ -4,7 +4,11 @@ All notable changes to this kit are documented here.
 Format: Keep a Changelog. Versioning: `vYYYY.MM.DD` when `install.sh`
 contract changes; untagged for CLAUDE.md/docs edits.
 
-## [Unreleased]
+## [2026-09-11] — promoted from prerelease
+
+Channel refs flipped to `main` and the kit plugin released as `1.0.1`. The
+stable channel now carries everything below; `v0.9` tags the last commit
+before this promote, for anyone who needs to go back.
 
 ### Fixed
 

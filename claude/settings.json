@@ -15,7 +15,7 @@
       "source": {
         "source": "github",
         "repo": "dthanos-datastealth/hallbayes",
-        "ref": "prerelease"
+        "ref": "main"
       }
     },
     "karpathy-skills": {
@@ -40,7 +40,7 @@
       "source": {
         "source": "github",
         "repo": "dthanos-datastealth/claude-code-kit",
-        "ref": "prerelease"
+        "ref": "main"
       }
     }
   },
