@@ -1,8 +1,23 @@
 # Changelog
 
 All notable changes to this kit are documented here.
-Format: Keep a Changelog. Versioning: `vYYYY.MM.DD` when `install.sh`
-contract changes; untagged for CLAUDE.md/docs edits.
+Format: Keep a Changelog.
+
+**Three version numbers live in this repo and they move independently.** That
+is not an accident, but it does surprise people, so:
+
+| What | Scheme | Example | Means |
+|---|---|---|---|
+| Repo tags | `vMAJOR.MINOR` | `v0.9` | A marked point in the repo's history — usually a release boundary or a pre-promote snapshot |
+| Kit plugin | semver, in `plugins/claude-code-kit/.claude-plugin/plugin.json` | `1.0.1` | The version Claude Code sees for the `claude-code-kit` plugin. Bumped when the plugin's own skills change; the `-rc.N` suffix is dropped on promote to `main` |
+| Doc-only edits | untagged | — | Rule and documentation changes that do not alter the `install.sh` contract |
+
+The repo tag being lower than the plugin version (`v0.9` against plugin
+`1.0.1`) is expected and does not mean the kit is pre-1.0 — they count
+different things.
+
+Earlier tags used a `vYYYY.MM.DD` date scheme (`v2026.05.27`). That is
+retired; existing tags are left alone rather than rewritten.
 
 ## [2026-09-11] — promoted from prerelease
 
