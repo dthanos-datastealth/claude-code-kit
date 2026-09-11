@@ -118,8 +118,14 @@ def test_registers_at_user_scope():
     """
     proc, log = _run()
     assert proc.returncode == 0
-    assert "--scope user" in log, (
-        f"registration must be user-scoped, not project-scoped; log was:\n{log}"
+    # Assert on the ADD line specifically. `"--scope user" in log` is
+    # satisfied by the three remove lines, which also carry the flag — so it
+    # passed with the add left at its default local scope. Found by
+    # scripts/mutate.py (mutant notion-port-defaults-to-local-scope).
+    add = next((ln for ln in log.splitlines() if ln.startswith("mcp add")), None)
+    assert add is not None, f"expected an mcp add; log was:\n{log}"
+    assert "--scope user" in add, (
+        f"the registration itself must be user-scoped, not project-scoped: {add}"
     )
 
 

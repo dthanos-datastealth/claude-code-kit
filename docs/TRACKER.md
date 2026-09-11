@@ -3,7 +3,76 @@
 > Per-project tracker per `~/.claude/docs/tracker-system.md`. Single source of
 > truth for in-flight work, V/O findings, and iteration state.
 
-## Last Updated: 2026-09-10 Iter-4 — IN PROGRESS
+## Last Updated: 2026-09-11 Iter-5 — IN PROGRESS
+
+**Phase: mutation testing.** Chosen over the depth-changing rename bug
+(V2-3), which stays open. Reasoning recorded because the trade-off is the
+interesting part: the rename bug is latent by construction — it needs a
+second `renamed_from` entry that also changes heading depth, in the legacy
+`CLAUDE.md` merge path, which only runs below Claude Code 2.0.64. Three
+conditions, none current, all under our control.
+
+Mutation testing is not one bug. It is the only check that found two of the
+bugs in Iter-4, and the only one that could have:
+
+| Check | Verdict on `tests/test_kit_compute_path.py` |
+|---|---|
+| Suite green | passed |
+| V+O round 1 | no finding |
+| O's revert matrix | "covered" — reverting the file does fail tests |
+| **Mutation** (append → prepend) | **214 passed, zero failures** |
+
+The revert matrix and mutation disagree, and mutation is right: reverting a
+whole file breaks enough that something fails, so the file looks covered,
+while flipping one operator leaves everything green. That test was the
+centrepiece of a BLOCKER fix, written while explicitly fixing unfalsifiable
+tests, and reviewed by a V agent.
+
+So the honest position before this phase: every fix has a test, and we cannot
+say which of those tests would catch a regression. Two checked could not.
+`docs/verification-standards.md` already says a check that cannot observe the
+failure it is meant to catch reports success and ends the investigation — the
+kit applies that to product code and has no way to apply it to its own tests.
+
+| Aspect | State |
+|---|---|
+| Active phase | Iter-5: mutation testing harness, then V2-3 fixed mutation-first |
+| Dev branch | `prerelease`, at `c779568` |
+| Plan | `scripts/mutate.py` + `mutants.json` + a test asserting every listed mutant is killed |
+| Quality Loop State | Dev complete; V+O not yet dispatched on this phase |
+| Open conflicts | none |
+
+### Iter-5 result
+
+`scripts/mutate.py` + `scripts/mutants.json` (15 mutants) + `tests/test_mutants.py`
+(7 catalogue-integrity tests). Wired into `.github/workflows/ci.yml` after the
+suite, because a surviving mutant only means anything when the tests otherwise
+pass. Documented in `docs/verification-standards.md` §5 and referenced from
+rule 30.
+
+**First run: 12/15 killed.** The three survivors are the useful part, and only
+one was a weak test:
+
+| Survivor | Cause | Resolution |
+|---|---|---|
+| `notion-port-defaults-to-local-scope` | **Genuinely weak test.** `test_registers_at_user_scope` asserted `"--scope user" in log`, which the three *remove* lines satisfy — so it passed with the add left at its default local scope | Assertion now targets the `mcp add` line specifically |
+| `uninstall-ignores-kit-value` | **Mis-targeted mutant.** Named `tests/test_uninstall.py`; the covering tests live in `tests/test_rollback.py` | Mutant retargeted. Kept as a note that uninstall coverage is split across two files |
+| `verify-install-accepts-missing-rules` | **Equivalent mutant.** Disabling the `is_dir()` check changed nothing observable — the kit-rule-prefix check immediately below catches the same condition and still exits 1 | Retargeted at the whole `expect == "rules"` branch |
+
+After resolution: **15/15 killed**. Suite 225 passed / 1 skipped (226 total),
+33.6s. Lints and shellcheck clean.
+
+Worth recording that two of three survivors were problems with the *mutants*,
+not the tests. That ratio is the argument for `tests/test_mutants.py`: a
+catalogue that rots silently is the same failure one level up.
+
+**Still open:** V2-3, the depth-changing rename bug. Next, and to be fixed
+mutation-first — the mutant `merge-ignores-renamed-from` already exists and is
+killed, so the new test can be checked against a depth-changing variant of it.
+
+---
+
+## 2026-09-10 Iter-4 — COMPLETE (pushed `5b48c1f`, `c779568`)
 
 A clean-machine install and full end-to-end test pass of `prerelease` @
 `4d08e48` (macOS 26.6.2 arm64, Claude Code 2.1.267) produced **30 findings**,

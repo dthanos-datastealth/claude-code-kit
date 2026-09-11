@@ -147,3 +147,66 @@ The fixes were correspondingly small — `java -version` instead of
 `sha256` comparison, and a version-aware artifact assertion. Finding them
 was the hard part, and what found them was running the checks against a
 machine that was genuinely broken, rather than reading them.
+
+---
+
+## 5. The same rule applied to tests: `scripts/mutate.py`
+
+Everything above is about checks on the product. A test is also a check, and
+it fails the same way — silently, while reporting success.
+
+A green suite says the code passes the tests. It does not say the tests would
+fail if the code were wrong. Those are different claims, and only the second
+one is worth anything.
+
+**This is not hypothetical here.** In one iteration, two tests written
+specifically to cover two specific bugs could not fail for those bugs. One of
+them was the centrepiece of a BLOCKER fix, written while explicitly fixing
+unfalsifiable tests, and reviewed by a verification agent. Neither the suite,
+nor review, nor reverting the file wholesale found it:
+
+| Check | Verdict on the test in question |
+|---|---|
+| Suite green | passed |
+| Verification agent | no finding |
+| Revert the whole file, rerun | "covered" — something does fail |
+| **Change one operator** | **214 passed, zero failures** |
+
+Reverting a file breaks enough that *something* fails, so every file looks
+covered. Moving a single `:` from one side of a variable to the other left
+the entire suite green.
+
+**So: break the code on purpose and require the tests to notice.**
+
+```sh
+python3 scripts/mutate.py list      # what is covered, and what each mutant breaks
+python3 scripts/mutate.py run-all   # CI form; exit 1 if any mutant survives
+python3 scripts/mutate.py run <id>  # one mutant, while iterating
+```
+
+Each entry in `scripts/mutants.json` is a specific defect the kit has either
+shipped before or would obviously regret, paired with the tests that must
+catch it. A mutant that **survives** is the finding: it names a test that
+cannot fail.
+
+Two things to know when you read a survivor, both encountered on the first
+run of this tool:
+
+- **A mis-targeted mutant looks like a weak test.** One survivor named
+  `tests/test_uninstall.py` while its covering tests were in
+  `tests/test_rollback.py`. Check the mutant's `tests` list before concluding
+  anything about the test.
+- **An equivalent mutant looks like a weak test too.** One survivor disabled
+  a directory check that a second, overlapping check immediately caught, so
+  the observable behaviour never changed. That is defence in depth in the
+  code, not a gap in the suite. Retarget the mutant at something that
+  actually changes behaviour.
+
+Neither is a reason to distrust the tool — both were resolved in minutes, and
+the same run found a genuinely unfalsifiable assertion that had survived a
+full V+O review.
+
+`tests/test_mutants.py` keeps the catalogue honest: a `find` string that no
+longer matches means the code moved and that mutant has been asserting
+nothing ever since. That is this same failure mode one level up, so it gets
+its own check rather than trust.

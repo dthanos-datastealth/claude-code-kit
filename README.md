@@ -35,8 +35,8 @@ flowchart LR
     sets[claude/settings.json<br/>22 plugins · 6 marketplaces<br/>effortLevel: xhigh]
     mem[claude/memory/MEMORY.md<br/>auto-memory index]
     docs[docs/<br/>philosophy · workflow · verification-standards ·<br/>prereqs · corporate-tls · memory-system ·<br/>tracker-system · tools/ ×24]
-    sc[scripts/<br/>merge-settings · intelligent-settings-merge · intelligent-claude-md-merge · upgrade ·<br/>lint-scrubbing · lint-tools-docs · lint-plugin-marketplaces · lint-mcp-hardcoded-paths · lint-plugin-skill-layout · lint-merge-policy ·<br/>diff-against-live · test-install-isolated · test-upgrade-isolated]
-    tests[tests/<br/>219 pytest cases ·<br/>isolated-HOME harness]
+    sc[scripts/<br/>merge-settings · intelligent-settings-merge · intelligent-claude-md-merge · upgrade ·<br/>lint-scrubbing · lint-tools-docs · lint-plugin-marketplaces · lint-mcp-hardcoded-paths · lint-plugin-skill-layout · lint-merge-policy ·<br/>diff-against-live · mutate · verify-install ·<br/>test-install-isolated · test-upgrade-isolated]
+    tests[tests/<br/>226 pytest cases ·<br/>isolated-HOME harness]
   end
 
   cmd -->|preflight| pre{All prereqs on PATH?}
@@ -737,7 +737,7 @@ claude-code-kit/
 ├── install.sh                         Bootstrap entry point
 ├── uninstall.sh                       Restore from latest backup
 ├── pyproject.toml                     pytest config
-├── .github/workflows/ci.yml           shellcheck + lints + 219 pytest cases
+├── .github/workflows/ci.yml           shellcheck + lints + 226 pytest cases
 ├── claude/                            Files copied/merged into ~/.claude/
 │   ├── CLAUDE.md                      Scrubbed opinionated template (legacy merge path)
 │   ├── rules/                         Kit instructions, owned; copied to ~/.claude/rules/
@@ -784,6 +784,9 @@ claude-code-kit/
 │   ├── lint-plugin-marketplaces.py    Verifies every plugin resolves against its upstream marketplace.json
 │   ├── lint-mcp-hardcoded-paths.py    Scans installed plugins' .mcp.json for owner-specific paths
 │   ├── lint-plugin-skill-layout.py    Catches skills at paths Claude Code never discovers
+│   ├── mutate.py                      Break the code on purpose; require the tests to notice
+│   ├── mutants.json                   The catalogue: one entry per defect, and the tests that must catch it
+│   ├── verify-install.py              Artifact assertions for the isolation harness
 │   └── test-install-isolated.sh       Parallel-test install.sh in a temp HOME with leak check + post-install lints
 └── tests/                             pytest with isolated-HOME harness
 ```

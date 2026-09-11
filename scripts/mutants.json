@@ -1,0 +1,162 @@
+{
+  "format_version": 1,
+  "description": "Mutation operators for the kit's own test suite. Each entry breaks one specific behaviour the kit depends on, in one specific way, and names the tests that must notice. A mutant that survives is a test that cannot fail \u2014 see docs/verification-standards.md.",
+  "rationale": "Two bugs in Iter-4 were found only by mutation. Reverting a whole file breaks enough that something fails, so every file looked covered; flipping one operator left the suite green. `scripts/mutate.py` makes 'our tests can actually fail' a checkable property rather than an assumption.",
+  "mutants": [
+    {
+      "id": "path-prepend",
+      "file": "scripts/_kit_env.sh",
+      "find": "combined=\"${combined}:${dir}\"",
+      "replace": "combined=\"${dir}:${combined}\"",
+      "tests": [
+        "tests/test_kit_compute_path.py"
+      ],
+      "breaks": "kit_compute_path prepends resolved tool directories instead of appending them, reordering the user's PATH. On a stock macOS box `git` is /usr/bin/git, so /usr/bin is hoisted above the Homebrew python@3.12 libexec directory and the persisted PATH resolves python3 to 3.9.",
+      "history": "Shipped in Iter-4 and found by V. The test written to cover it passed against this exact mutant, because the shadowing stub was `git` \u2014 processed before python3, whose own prepend restored the expected order."
+    },
+    {
+      "id": "path-no-floor",
+      "file": "scripts/_kit_env.sh",
+      "find": "combined=\"${combined}:/usr/bin:/bin\"",
+      "replace": "combined=\"${combined}\"",
+      "tests": [
+        "tests/test_kit_compute_path.py"
+      ],
+      "breaks": "The composed PATH loses its /usr/bin:/bin floor. settings.json `env` REPLACES the inherited variable rather than extending it, so a session would be unable to run anything."
+    },
+    {
+      "id": "path-keep-empties",
+      "file": "scripts/_kit_env.sh",
+      "find": "[ -n \"${part}\" ] || continue",
+      "replace": "true",
+      "tests": [
+        "tests/test_kit_compute_path.py"
+      ],
+      "breaks": "Empty PATH entries survive composition. An empty entry means 'current directory' to most shells, so this silently puts CWD on the PATH of every hook and MCP server."
+    },
+    {
+      "id": "uninstall-ignores-user-value",
+      "file": "uninstall.sh",
+      "find": "if key in env_block and expected is not None and env_block[key] == expected:",
+      "replace": "if key in env_block:",
+      "tests": [
+        "tests/test_uninstall.py"
+      ],
+      "breaks": "uninstall.sh deletes runtime env keys on presence alone, destroying a PATH or CLAUDE_CODE_ENABLE_TODO_TOOLS the user set themselves \u2014 the exact values install.sh refuses to overwrite.",
+      "history": "This was the shipped behaviour until V demonstrated the data loss in Iter-4 round 2."
+    },
+    {
+      "id": "uninstall-ignores-kit-value",
+      "file": "uninstall.sh",
+      "find": "if key in live_section and live_section[key] == kit_value:",
+      "replace": "if key in live_section:",
+      "tests": [
+        "tests/test_rollback.py"
+      ],
+      "breaks": "uninstall.sh removes plugins and marketplaces the user has since changed, rather than only those still matching what the kit ships.",
+      "history": "First run of this mutant listed tests/test_uninstall.py and it survived. The covering tests are in tests/test_rollback.py \u2014 the mutant was mis-targeted, not the test weak. Worth keeping as a note that uninstall coverage is split across two files."
+    },
+    {
+      "id": "backup-skips-rules",
+      "file": "scripts/_kit_backup.sh",
+      "find": "if [ -d \"${CLAUDE_HOME}/rules\" ] && [ -n \"$(ls -A \"${CLAUDE_HOME}/rules\" 2>/dev/null)\" ]; then",
+      "replace": "if false; then",
+      "tests": [
+        "tests/test_install_backup.py",
+        "tests/test_rollback.py"
+      ],
+      "breaks": "Backups stop capturing rules/, so the kit's own instructions have no revert path and a release shipping a bad rule cannot be rolled back."
+    },
+    {
+      "id": "preflight-skips-version-check",
+      "file": "install.sh",
+      "find": "    require_python_version 3 11",
+      "replace": "    true",
+      "tests": [
+        "tests/test_install_preflight.py"
+      ],
+      "breaks": "Preflight accepts any python3, including the macOS system 3.9, which then silently disables the security-guidance plugin's cross-file reviewer."
+    },
+    {
+      "id": "preflight-skips-tools",
+      "file": "install.sh",
+      "find": "        require \"${tool}\"",
+      "replace": "        true",
+      "tests": [
+        "tests/test_install_preflight.py"
+      ],
+      "breaks": "Preflight checks no prerequisites at all. node/npx absence then surfaces as an error on every prompt and three dead MCP servers."
+    },
+    {
+      "id": "diff-settings-reports-kit-env",
+      "file": "scripts/diff-settings.py",
+      "find": "        \"env_keys_only_in_live\": sorted(le - ke),",
+      "replace": "        \"env_keys_only_in_live\": sorted(le),",
+      "tests": [
+        "tests/test_diff_against_live.py"
+      ],
+      "breaks": "The drift report lists the kit's own env keys as user additions, so a stock install looks drifted and real user keys are buried."
+    },
+    {
+      "id": "diff-settings-ignores-env-in-exit",
+      "file": "scripts/diff-settings.py",
+      "find": "    has_delta = any(delta.values())",
+      "replace": "    has_delta = any(v for k, v in delta.items() if k != \"env_keys_only_in_live\")",
+      "tests": [
+        "tests/test_diff_against_live.py"
+      ],
+      "breaks": "An env-only difference reports in the body but exits 0, contradicting the README's 'exits 0 when nothing has drifted'."
+    },
+    {
+      "id": "verify-install-accepts-missing-rules",
+      "file": "scripts/verify-install.py",
+      "find": "    if expect == \"rules\":",
+      "replace": "    if False:",
+      "tests": [
+        "tests/test_verify_install.py"
+      ],
+      "breaks": "verify-install.py stops checking rules/ altogether, so the isolation harness accepts a HOME where the kit's instructions were never installed \u2014 the check that replaced the stale CLAUDE.md assertion.",
+      "history": "First written as `if not rules.is_dir():` -> `if False:`, which SURVIVED. That turned out to be an equivalent mutant rather than a weak test: the kit-rule-prefix check immediately below catches the same condition and still exits 1. Retargeted at the whole branch so it breaks something observable."
+    },
+    {
+      "id": "verify-install-stops-at-first-problem",
+      "file": "scripts/verify-install.py",
+      "find": "            problems.append(f\"missing file: {rel}\")",
+      "replace": "            raise SystemExit(f\"missing file: {rel}\")",
+      "tests": [
+        "tests/test_verify_install.py"
+      ],
+      "breaks": "verify-install.py reports only the first missing artifact. One stale assertion masking the rest is how the harness's leak check went unrun for a whole release."
+    },
+    {
+      "id": "merge-ignores-renamed-from",
+      "file": "scripts/intelligent-claude-md-merge.py",
+      "find": "        for h in (entry[\"heading\"], entry.get(\"renamed_from\")):",
+      "replace": "        for h in (entry[\"heading\"],):",
+      "tests": [
+        "tests/test_intelligent_claude_md_merge.py"
+      ],
+      "breaks": "A retitled kit section is treated as one section retired and an unrelated one added, so the user's copy is dropped and the replacement is appended at the end of their file."
+    },
+    {
+      "id": "notion-port-defaults-to-local-scope",
+      "file": "plugins/claude-code-kit/scripts/fix-notion-mcp-port.sh",
+      "find": "claude mcp add --scope user --transport http --callback-port \"$PORT\" notion \"$NOTION_MCP_URL\"",
+      "replace": "claude mcp add --transport http --callback-port \"$PORT\" notion \"$NOTION_MCP_URL\"",
+      "tests": [
+        "tests/test_fix_notion_port.py"
+      ],
+      "breaks": "The pinned OAuth callback port is registered per-project, so it applies only in the directory the script was run from and Notion reverts to a random port everywhere else."
+    },
+    {
+      "id": "notion-port-clears-one-scope",
+      "file": "plugins/claude-code-kit/scripts/fix-notion-mcp-port.sh",
+      "find": "for scope in local project user; do",
+      "replace": "for scope in user; do",
+      "tests": [
+        "tests/test_fix_notion_port.py"
+      ],
+      "breaks": "A pre-existing local-scoped notion registration survives and outranks the user-scoped pin, silently shadowing the fix."
+    }
+  ]
+}

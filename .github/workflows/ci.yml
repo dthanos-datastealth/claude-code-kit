@@ -59,6 +59,18 @@ jobs:
       - name: Run pytest suite
         run: python3 -m pytest tests/ -q -n auto
 
+      # Mutation testing: break the code on purpose, require the tests to
+      # notice. A green suite says the code passes the tests; it does not say
+      # the tests would fail if the code were wrong. Two tests in this repo
+      # were written to cover two specific bugs, reviewed, and could not fail
+      # for those bugs — the suite, the review and a whole-file revert all
+      # reported them covered. See docs/verification-standards.md section 5.
+      #
+      # Runs after the suite because a surviving mutant is only meaningful
+      # when the tests pass to begin with.
+      - name: Mutation testing (every mutant must be killed)
+        run: python3 scripts/mutate.py run-all
+
       # NOTE: lint-mcp-hardcoded-paths.py, lint-plugin-skill-layout.py and
       # scripts/test-upgrade-isolated.sh all need a populated plugin cache (an
       # actual install via the real `claude` CLI) and so are NOT in CI. In CI the
