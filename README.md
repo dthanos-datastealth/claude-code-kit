@@ -1,5 +1,7 @@
 # claude-code-kit
 
+https://github.com/user-attachments/assets/9f2d56ee-3e1f-4c06-b525-70b612300725
+
 Opinionated bootstrap kit for creating a complete, evidence-first Claude
 Code agentic development engineering environment on a clean macOS or Linux machine.
 
