@@ -170,7 +170,8 @@
       "parent": "## Installed Plugins"
     },
     {
-      "heading": "### TDD discipline",
+      "heading": "### TDD discipline (proportional to the change)",
+      "renamed_from": "### TDD discipline (always; no exceptions for \"small\" changes)",
       "depth": 3,
       "match": "prefix",
       "parent": "## MANDATORY Quality Loop"

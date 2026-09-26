@@ -27,8 +27,25 @@ retired; existing tags are left alone rather than rewritten.
   loop and every tool doc. `scripts/build-site.py` generates it from
   `docs/` and the README's Quick install block at deploy time and refuses to
   build if any of them cannot be read; `.github/workflows/pages.yml` deploys it.
-- The `site-media` tag and release hold the website's demo video. It is not a
-  version and follows neither tag scheme above.
+- The `site-media` tag and release store the website's demo video; the
+  Pages deploy copies it into the site so it is served as `video/mp4`. The
+  tag is not a version and follows neither tag scheme above.
+
+### Changed
+- TDD guidance is now proportional to the change and cites its sources:
+  - New features, new functions and behaviour changes get full TDD.
+  - Bug fixes get one regression test that reproduces the bug.
+  - Narrow fixes to edge cases are fixed and verified directly.
+  - Behaviour-neutral refactors, trivial code and docs need no new test.
+  - Good tests test behaviour through the public API and survive refactors.
+
+  The rule is in `claude/rules/30-kit-quality-loop.md` and the legacy
+  template, with the reasoning in `docs/philosophy.md` §2 and
+  `docs/workflow.md` step 4. Sources: Beck (Canon TDD, Test Desiderata),
+  Fowler (TestDrivenDevelopment, SelfTestingCode, Is TDD Dead?), The
+  Practical Test Pyramid, and *Software Engineering at Google* ch. 12. A
+  narrow fix for a V/O finding is verified directly rather than opening a
+  new full review round.
 
 ## [2026-09-11] — promoted from prerelease
 

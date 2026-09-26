@@ -42,13 +42,29 @@ For ANY code navigation, symbol lookup, or codebase exploration, use this order.
 
 This is the unconditional discipline that runs around **every substantive change** the kit ships, regardless of which workflow (default, `/feature-dev`, or spec-kit) framed it. The plugin catalogue below describes the *tools*; this section describes the *rules they enforce*. The reasoning and the incidents behind the prohibitions are in `~/.claude/docs/verification-standards.md`.
 
-### TDD discipline (always; no exceptions for "small" changes)
+### TDD discipline (proportional to the change)
 
-- Write the **failing test first** (RED). Run it; confirm it fails for the *right reason* — not for missing imports, typos, or fixture gaps.
-- Implement the minimum that makes the test pass (GREEN). Do not add unrequested features.
-- REFACTOR only with the test green. If you can't keep it green during refactor, stop and split the refactor into smaller steps.
+The goal is self-testing code: a suite you trust enough that when it passes, the code is free of substantial defects. TDD is the default way to get there for new behaviour, not a ritual for every edit. Fowler: "you can also produce self-testing code by writing tests after writing code - although you can't consider your work to be done until you have the tests". Beck, Fowler and Hansson agree TDD is "one (not the only) way" to that confidence, and that "decisions involving TDD were about trade-offs".
+
+- **New feature, new function, or deliberate change in behaviour: full TDD.** First list the scenarios the new behaviour must handle. Then take them one at a time: a failing test (RED), confirmed to fail for the *right reason* and not for a missing import, typo or fixture gap; the minimum code that makes it pass (GREEN), with no unrequested features; then refactor with everything green. Don't skip the refactor step, and don't mix refactoring into making the test pass. If you can't stay green while refactoring, split the refactor into smaller steps.
+- **Bug fix that changes behaviour: one regression test that reproduces the bug.** Write it first where you can, and confirm it fails without the fix. The fix ships with the test case that was missing. Put it at the lowest level that can see the bug.
+- **Narrow fix to an edge case or latent defect (typically one a review finds): fix it and verify that one fix.** Keep the existing suite green and check the fixed behaviour directly. Add a regression test only if the defect could plausibly come back. No RED-first ceremony.
+- **No new test** for a refactor that changes no behaviour and is already covered by the existing suite, for trivial code (plain getters, setters, config), or for docs and formatting. Test as much as the risk needs; concentrate on complicated conditional logic and on the places mistakes actually happen.
+- **A test worth keeping:**
+  - It checks behaviour through the public API, one test per behaviour rather than one per method.
+  - It asserts on resulting state rather than on the calls made to collaborators.
+  - It survives a refactor unchanged. A test that has to change when behaviour didn't is coupled to the implementation; fix the test.
+  - It contains no logic of its own.
+  - It exercises the real module, not a stub or an inline copy of the code.
 - **Lifecycle tests, not just function-centric ones.** For anything stateful (sessions, caches, queues, write paths), assert on the full create → use → close → reopen → cleanup cycle. Function-only tests miss the failures that matter.
 - Skill: `superpowers:test-driven-development`.
+- Sources:
+  - Beck, [Canon TDD](https://newsletter.kentbeck.com/p/canon-tdd).
+  - Fowler, [TestDrivenDevelopment](https://martinfowler.com/bliki/TestDrivenDevelopment.html) and [SelfTestingCode](https://martinfowler.com/bliki/SelfTestingCode.html).
+  - [Is TDD Dead?](https://martinfowler.com/articles/is-tdd-dead/)
+  - Vocke, [The Practical Test Pyramid](https://martinfowler.com/articles/practical-test-pyramid.html).
+  - Beck, [Test Desiderata](https://testdesiderata.com/).
+  - *Software Engineering at Google*, [ch. 12, Unit Testing](https://abseil.io/resources/swe-book/html/ch12.html).
 
 ### Berry verification (load-bearing — fails the build if skipped)
 
@@ -71,6 +87,7 @@ The kit's `superpowers:requesting-code-review` skill, `feature-dev:code-reviewer
 
 - Do not claim "tests pass" without a Berry span citing the actual test runner output.
 - Do not skip V+O on the grounds that "the change is small" — small changes are exactly where unaudited drift accumulates.
+- A narrow fix for a V or O finding is verified directly: the finding's reproduction now passes and the suite is green. It does not open a new full V+O round unless the fix is itself substantive, meaning a new function or a changed contract.
 - Do not invent answers when V flags a `[CONCERN]` — gather more evidence or escalate.
 - 3-strike rule applies (see the Berry section below for the canonical statement): if a Berry audit fails three times on the same claim set, STOP and surface partial results. No silent looping.
 - **Never verify a user-facing or protection feature with a synthetic proxy.** Driving your own element, reading back a value you set, dispatching an event straight to a handler, or treating a toast as proof all test a proxy you control. Drive the REAL widget and assert the GROUND TRUTH (for data protection: the outbound request carries zero raw values). If the harness cannot drive the real widget that is a BLOCKER — escalate, do not substitute.

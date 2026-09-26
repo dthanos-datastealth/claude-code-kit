@@ -166,34 +166,33 @@ write a failing test first, watch it fail for the right reason, then
 write the implementation that makes it pass, then refactor with the test
 as a guardrail.
 
-**Why TDD here:** A failing test is the only objective signal that the
-change you are about to make is necessary and that the change you made
-actually solved the problem. Manual verification tests what you remembered
-to check, in the configuration you happened to be in. A test that fails
-before and passes after is a falsifiable claim that the change did
-something specific.
+**Why TDD here:** For new behaviour, a test written first is a falsifiable
+claim that the change does something specific, and writing it forces you to
+design the interface before the implementation. Manual verification only
+tests what you remembered to check, in the configuration you happened to be
+in. The underlying goal is a suite you can trust; the rule behind this step,
+with sources, is principle 2 in [`philosophy.md`](philosophy.md).
 
-**When to skip:**
+**How much of this step a change needs:**
 
-- Pure documentation edits.
-- Formatting-only changes.
-- Trivial rename refactors handled by an LSP rename.
-- Throwaway exploration scripts you will delete in the same session.
-
-**When not to skip even though it is tempting:**
-
-- Bug fixes. A bug without a regression test is a bug waiting to come
-  back.
-- "Small" feature additions. Small features have edge cases too.
-- Internal helpers. They get called, often in unexpected ways; test the
-  contract.
+- **New feature, function or behaviour change:** full TDD. List the test
+  scenarios first, then red → green → refactor one at a time.
+- **Bug fix:** one regression test that reproduces the bug, written first
+  where you can and seen to fail without the fix.
+- **Narrow fix to an edge case (often one a review finds):** fix it and
+  verify that one fix. Add a regression test only if it could plausibly
+  come back.
+- **Skip entirely:** refactors that change no behaviour (the existing suite
+  is the check), trivial code, docs, formatting, and throwaway exploration
+  scripts you delete in the same session.
 
 **Common pitfalls:**
 
-- Writing the implementation first and the test second. That is a
-  retrofit, and the test will almost always pass on the first run because
-  it was shaped by the implementation. The point of RED is to prove the
-  test can fail.
+- Writing the implementation first and calling it TDD. The test will
+  almost always pass on the first run because the code shaped it; for new
+  behaviour, RED is what proves the test can fail.
+- Testing methods instead of behaviour, or reaching past the public API.
+  Those tests break on every refactor without catching more bugs.
 - Tests that exercise stubs or inline duplicate logic rather than the
   real module under test. They produce green output without exercising
   the code path the change actually modified.

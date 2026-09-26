@@ -58,56 +58,75 @@ fix than the original problem.
 
 ---
 
-## 2. Test-driven development for any non-trivial change
+## 2. Tests that prove behaviour, with TDD for new behaviour
 
-**The rule:** Before writing implementation code for a feature or a bug fix,
-write a failing test that captures the intended behaviour. The test must run
-and fail for the right reason. Only then write the implementation that makes
-it pass. Refactor with the test as a guardrail.
+**The rule:** Every behaviour the kit's user depends on is covered by an
+automated test that would fail if the behaviour broke. For new features,
+new functions and deliberate behaviour changes, get there test-first: list
+the scenarios, then write one failing test at a time, make it pass, and
+refactor. For a bug fix, ship a regression test that reproduces the bug. For
+a narrow fix to an edge case, fix it and verify that one fix.
 
-**Why TDD here:** Without a failing test, you have no objective signal that
-the change you are about to make is necessary or that the change you made
-actually solved the problem. Manual verification is unreliable: it tests what
-you remembered to check, in the configuration you happened to be in. A test
-that fails before and passes after is a falsifiable claim that the change did
-something specific. Anything weaker is a story.
+**Why:** The goal is self-testing code. Fowler defines it as a suite you can
+run "and be confident that, should the tests pass, your code is free of any
+substantial defects"
+([SelfTestingCode](https://martinfowler.com/bliki/SelfTestingCode.html)). TDD
+is the kit's default way to get there, because thinking about the test first
+forces you to think about the interface first
+([TestDrivenDevelopment](https://martinfowler.com/bliki/TestDrivenDevelopment.html)).
+It is not the only way. Beck, Fowler and Hansson described it as "one (not
+the only) way" to that confidence, and said "decisions involving TDD were
+about trade-offs" ([Is TDD Dead?](https://martinfowler.com/articles/is-tdd-dead/)).
+The kit sizes the ceremony to the change, not the other way round.
 
-**What counts as non-trivial:**
+**How much ceremony, by kind of change:**
 
-- Any new function, method, class, or module beyond a one-line trivial helper.
-- Any bug fix where the regression risk is non-zero.
-- Any change to logic in a hot path.
-- Any change to a public API.
+| Change | What's expected |
+|---|---|
+| New feature, new function, deliberate behaviour change | Full TDD: write a list of test scenarios, then red → green → refactor, one at a time ([Canon TDD](https://newsletter.kentbeck.com/p/canon-tdd)) |
+| Bug fix that changes behaviour | One regression test that reproduces the bug, written first where you can and seen to fail without the fix. "The bug fix should include that missing test case" ([SWE at Google, ch. 12](https://abseil.io/resources/swe-book/html/ch12.html)) |
+| Narrow fix to an edge case or latent defect | Fix it, keep the suite green, check the fixed behaviour directly. A regression test only if the defect could plausibly recur |
+| Refactor that changes no behaviour | No new test. The existing suite staying green is the check |
+| Trivial code (plain getters, setters, config), docs, formatting | No new test. "You won't gain anything from testing simple getters or setters" ([Practical Test Pyramid](https://martinfowler.com/articles/practical-test-pyramid.html)) |
 
-**What is exempt:**
+**What makes a test worth keeping:**
 
-- Pure documentation edits.
-- Formatting-only changes.
-- Trivial rename refactors where a type system or LSP rename does the work.
-- Throwaway exploration scripts you will delete in the same session.
+- **It tests behaviour, not methods.** "rather than writing a test for each
+  method, write a test for each behavior", invoked through the public API
+  the way callers use it ([SWE at Google, ch. 12](https://abseil.io/resources/swe-book/html/ch12.html)).
+- **It is insensitive to structure.** Tests "should not change their result
+  if the structure of the code changes" ([Test Desiderata](https://testdesiderata.com/)).
+  A test that breaks under a pure refactor is coupled to the implementation;
+  fix the test.
+- **It exercises the real module.** A test against a stub or an inline copy
+  of the logic produces green output without running the code the change
+  touched.
+- **It can fail.** For TDD, that means you watched it go red for the right
+  reason. For a test that guards a specific defect, it means you broke that
+  defect on purpose and the test noticed.
 
 **How the kit enforces it:**
 
-- The `superpowers:test-driven-development` skill walks you through
-  RED → GREEN → REFACTOR explicitly and refuses to proceed if the RED step
-  is skipped or the test fails for the wrong reason.
-- The `superpowers:verification-before-completion` skill closes the loop —
-  it will demand you re-run the test and capture passing output before any
-  "done" claim.
-- Berry's `berry-search-and-learn` skill makes the actual test output a
-  citable span, so the audit can verify the test really passed (and was the
-  test you claim it was).
+- The `superpowers:test-driven-development` skill walks through
+  red → green → refactor for new behaviour.
+- The `superpowers:verification-before-completion` skill demands a fresh
+  run and captured output before any "done" claim.
+- Berry's `berry-search-and-learn` skill turns that output into a citable
+  span.
 
 **Pitfalls:**
 
-- Writing the implementation first and the test second is not TDD. It is a
-  retrofit, and the test will almost always pass on the first run because it
-  was shaped by the implementation. The point of RED is to prove the test
-  can fail.
-- Tests that exercise stubs or inline duplicate logic rather than the real
-  module under test are not tests. They are reassuring fiction.
-- A test suite that "passes locally" but you have not personally watched
-  pass does not count. Capture the runner output.
+- **Treating TDD as a ritual for every edit.** A red-first test for a typo
+  or a one-line guard costs more than it protects. Test as much as the risk
+  needs, and concentrate on complicated conditional logic and on the places
+  mistakes actually happen.
+- **Skipping the refactor step.** Fowler: "The most common way that I hear
+  to screw up TDD is neglecting the third step."
+- **Retrofitting and calling it TDD.** A test written after the code
+  usually passes first time because the code shaped it. That can still be
+  a fine test, but it hasn't shown it can fail. Break the code and check
+  that it does.
+- **Trusting a suite you have not watched pass.** Capture the runner output.
 
 ---
 
