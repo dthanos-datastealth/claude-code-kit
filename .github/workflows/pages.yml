@@ -1,0 +1,46 @@
+name: pages
+
+# Builds the project website from the kit's own docs and publishes it to
+# GitHub Pages. Only files the page is built from trigger a deploy.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "docs/tools/**"
+      - "docs/philosophy.md"
+      - "docs/workflow.md"
+      - "README.md"
+      - "scripts/build-site.py"
+      - "scripts/lint-tools-docs.py"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; let a running deploy finish rather than cancel it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build site
+        run: python3 scripts/build-site.py --out _site
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v5

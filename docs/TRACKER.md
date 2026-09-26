@@ -3,6 +3,83 @@
 > Per-project tracker per `~/.claude/docs/tracker-system.md`. Single source of
 > truth for in-flight work, V/O findings, and iteration state.
 
+## 2026-09-26 Iter-6 — project website — READY FOR PR
+
+Branch `feature/pages-site`. Plan: `docs/plans/pages-site.md`. A GitHub
+Pages site generated from `docs/` + README Quick install, styled after the
+demo video; video hosted on the `site-media` release (user decision).
+
+### Iter-6 Quality Loop State
+
+| Stage | Revision | Result |
+|---|---|---|
+| Plan V round 1 | plan | FAIL — 1 BLOCKER (Slash command label plural/"none"), 7 CONCERNs; all applied to plan + code |
+| Plan O round 1 | plan | CHANGES-RECOMMENDED — 8 findings; 7 applied, 1 declined (below) |
+| TDD | working tree | 11 tests RED (script missing) → GREEN; full suite 241 passed / 1 skipped (`GITHUB_BASE_REF=main`) |
+| Mutation | working tree | 3 new mutants killed; `mutate.py run-all` 21/21 killed |
+| Real render | working tree | Chrome, 1280 px + 390 px, every section viewed; real clicks on rings, steps, filter, disclosure, Copy (clipboard read back), video play from release URL; Lighthouse a11y 100 (after raising 3 contrast failures) |
+| Code V round 1 | working tree | FAIL — no BLOCKER; 3 security CONCERNs, 3 TEST MISSING, 2 copy CONCERNs; all closed below |
+| Code O round 1 | working tree | CHANGES-RECOMMENDED — 4 must-fix + recommendations; closed below |
+| After fixes | working tree | 248 passed / 1 skipped; `mutate.py run-all` 21/21; ruff F/E9/EXE/SIM clean; re-rendered, console clean |
+| Code V round 2 | working tree | FAIL — no BLOCKER; 2 CONCERNs (source_url escape unpinned; emphasis applied inside hrefs); browser tabs/rail/hash checks all OK |
+| Code O round 2 | working tree | CHANGES-RECOMMENDED — 1 worth-fixing (same unpinned escape) + trivia |
+| After fixes | working tree | 249 passed / 1 skipped; `mutate.py run-all` 22/22; ruff clean; re-rendered, console clean |
+| Code V round 3 | working tree | FAIL — no BLOCKER; 2 CONCERNs (NUL in doc text crashes or hangs md_inline; multi-pass restore untested) |
+| Code O round 3 | working tree | CHANGES-RECOMMENDED — 1 worth-fixing (same restore gap), 2 worth-considering, 3 trivial |
+| After fixes | working tree | 252 passed / 1 skipped; `mutate.py run-all` 23/23; ruff + both lints clean (untracked files scrubbed explicitly) |
+| Code O round 4 | working tree | APPROVED — 3 trivial, declined (below) |
+| Code V round 4 | working tree | 1 CONCERN (V4-1) fixed narrowly and verified: suite 254 passed / 1 skipped, 24/24 mutants, real build byte-identical; plan deviations recorded in the plan (V4-4). No further round for this minor fix (user direction) |
+
+### Iter-6 V/O findings and disposition
+
+| ID | Finding | Disposition |
+|---|---|---|
+| V-P1 | Steps 2/6 say "Slash commands:", step 5 "none" | Parser matches `Slash commands?:`, multi-line; "none" rendered as written, amber bar |
+| V-P2 | Pages actions unpinned; no environment/concurrency/contents:read | `upload-pages-artifact@v5`, `deploy-pages@v5`, `github-pages` env, `concurrency: pages` |
+| V-P3 | Install line hand-copied would drift | Parsed from README `## Quick install`; README in trigger paths |
+| V-P4 | Tabs pattern incomplete | Full APG tabs: roles, aria-controls/labelledby, roving tabindex, arrows wrap, Home/End, vertical orientation < 640 px |
+| V-P5 | `:owner/:repo` not gh syntax | `{owner}/{repo}` |
+| O-P1 | Tool schema re-declared | Reuses `lint-tools-docs.py` `REQUIRED_SECTIONS`, `TITLE_RE`, `check()`, new `section_body()` |
+| O-P3 | Extra CI build step redundant | Dropped; `test_build_writes_site_and_is_idempotent` builds from real docs in CI |
+| O-P4 | Fail-closed checks not in mutation gate | 3 mutants added |
+| O-P6 | Pages paths too broad / missing workflow file | Narrowed to the page's inputs + `pages.yml` |
+| O-P7 | Shared script-loader helper | Declined: one new caller; a helper for a 4-line loader adds indirection without removing a copy |
+| V-C1 | Step titles via innerHTML unescaped | Built with `textContent` / text nodes |
+| V-C2 | Autolink `"` breakout; `javascript:` links; raw `source_url` | `_anchor()` quotes hrefs; schemes limited to http/https/mailto; `source_url` escaped; tests `test_link_hrefs_cannot_break_out_or_run_script`, `test_source_url_is_attribute_safe` |
+| V-C3 | `#1` hash threw in `querySelector`, killing the rail (reproduced) | `getElementById` after `decodeURIComponent`; re-rendered at `/#1`, rail live, console clean |
+| V-T1..3 | Lists / code fences / tables / empty install block unpinned | `test_block_rendering_of_lists_code_and_tables`, `test_install_fails_closed_on_empty_block` |
+| V-J1 | "Remove one link and the chain weakens" unsupported | Declined: `docs/philosophy.md:395` reads "Remove any one link and the chain weakens." |
+| V-J2 | "Every change runs the same loop" overstates scope | Now "Every non-trivial task runs the same loop" (`docs/workflow.md:3`) |
+| O-1 | Unused `source` field, 14% of tools JSON | Dropped; `test_page_embeds_only_the_fields_it_shows` |
+| O-2 | Double-escaped hrefs; autolink excluded `&` | Fixed; `test_link_urls_with_query_strings_survive` |
+| O-3 | `build-site.py` not executable | `chmod +x` |
+| O-4 | Unused `Path` import | Removed |
+| O-5 | Ring colours in CSS and JS | JS reads `--c` from the ring |
+| O-6 | Repo URL hard-coded in template | `__REPO_URL__` placeholder; per-tool `doc_url` from Python; one placeholder dict drives check + fill |
+| O-7 | Scroll handler forced layout per event | rAF-throttled, reads before writes |
+| O-8 | Trivia: SIM114, repeated `_ITEM.match`, table ValueError, tagline base, keydown orientation write, install escaping in JS, `.more` style, idempotency loop | All applied |
+| O-9 | FURB167 `re.M` aliases; PLW1510 `check=` | Declined: repo convention (39 pre-existing PLW1510 hits; FURB167 already mixed) |
+| O-10 | `Path()` re-wrapping, label passed twice | Declined: harmless, keeps the parsers callable with plain strings |
+| V2-1 / O2-1 | `source_url` escape never tested (no real URL has `"`) | Synthetic hostile Source URL in `test_source_url_is_attribute_safe`; mutant `site-source-url-unescaped` killed |
+| V2-2 | Bold/italic regexes ran inside href values | Code spans and finished links held aside before emphasis; `test_emphasis_markup_stays_out_of_link_urls` |
+| V2-3 / O-9 | Tracker PLW1510 count | Corrected to 39 pre-existing |
+| V2-4 / O2-2 | Repo link text hard-coded | `__REPO_LABEL__` placeholder |
+| O2-3 | Tool field names in three places | Test iterates `mod.TOOL_FIELDS`; page keeps its own display labels |
+| O2-4 | Import-time `assert` duplicates tests | Kept: it guards a direct build, which tests do not run |
+| O2-5..7 | `_anchor` comment placement, `base` in loop, re-scan for ordered lists, ring lookup, rail `querySelector` | All applied |
+| O2-P7 | Decline reason said "one new caller" | Correct as recorded: `build-site.py` is the one new caller; the test copy follows the existing per-test-file pattern |
+| V3-1 | NUL in doc text: IndexError, fragment copy, or infinite restore loop | `md_inline` raises `ParseError` on NUL; `test_nul_in_doc_text_is_a_parse_error` |
+| V3-2 / O3-1 | Repeated restore pass untested (59 links carry code in their label) | `test_code_span_inside_link_label_is_restored`; built page asserted free of NUL; mutant `site-restore-once` killed |
+| O3-2 | Repo label text never asserted | Build test asserts the rendered label |
+| O3-3 | Ordered-then-bullet list order untested | `test_ordered_list_then_bullet_list` |
+| O3-T1 | Two lookups bypassed `$` | Use `$` |
+| O3-T2 / T3 | Unused `i` in show callbacks; placeholder names repeated in test | Declined: `i` keeps the callback shape uniform; the test's own list is an independent check of the fill |
+| V4-1 | Code span inside a link URL / autolink escaped the href | URL holding a code span is left unlinked; mutant `site-link-url-holds-code` killed |
+| V4-2 | Link/autolink regexes quadratic on unterminated input | Patterns stop at bracket / `&lt;` boundaries: 72 KB worst case 5.9 s → 0.003 s |
+| V4-3 | Adjacent lists of different types merged | A list-type change starts a new list |
+| V4-4 | Palette, rail labels, ring pulse differ from plan | Recorded with reasons under "Deviations from this plan, as built" |
+| O4-T1..3 | `kit-data` read before `$`; per-call regex compile; no NUL-guard mutant | Declined: harmless ordering; `re` caches the pattern; that mutant would hang the suite rather than fail it |
+
 ## Last Updated: 2026-09-11 Iter-5 — IN PROGRESS
 
 **Phase: mutation testing.** Chosen over the depth-changing rename bug

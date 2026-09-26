@@ -13,6 +13,9 @@ uv.lock
 tests/.tmp/
 tests/.fake-home/
 
+# Built website (scripts/build-site.py)
+_site/
+
 # Don't accidentally commit live config
 .claude/
 
