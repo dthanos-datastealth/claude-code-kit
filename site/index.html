@@ -77,10 +77,10 @@ code { font: 0.88em var(--mono); color: var(--teal); }
   z-index: -1;
 }
 .crt {
-  position: relative; margin: clamp(24px, 5vh, 56px) auto 0; width: min(760px, 100% - 2 * var(--gutter));
-  font: 1.45rem/1.35 var(--crt); color: var(--phosphor);
+  position: relative; margin: clamp(12px, 5svh, 56px) auto 0; width: min(760px, 100% - 2 * var(--gutter));
+  font: clamp(0.95rem, min(3.4vw, 3.6svh), 1.45rem)/1.35 var(--crt); color: var(--phosphor);
   text-shadow: 0 0 6px color-mix(in srgb, var(--phosphor) 60%, transparent);
-  padding: 18px 22px; min-height: 9.5em;
+  padding: clamp(10px, 2.2svh, 18px) clamp(14px, 3vw, 22px); min-height: 9.5em;
   background: radial-gradient(120% 140% at 50% 40%, #0b1a10 0%, #05090a 70%);
   border-radius: 14px;
   box-shadow: inset 0 0 60px #000, 0 0 0 1px #12301b;
@@ -95,14 +95,14 @@ code { font: 0.88em var(--mono); color: var(--teal); }
 .crt .skip-boot { position: absolute; right: 12px; bottom: 8px; font: 0.8rem var(--mono); color: #5aa86d; background: none; border: 0; cursor: pointer; }
 .crt .skip-boot:hover { color: var(--phosphor); }
 
-.title { align-self: center; text-align: center; padding: 32px var(--gutter) 22vh; }
+.title { align-self: center; text-align: center; padding: clamp(16px, 4svh, 32px) var(--gutter) clamp(64px, 22svh, 240px); }
 .title h1 {
-  margin: 0; font: 700 clamp(2.9rem, 10.5vw, 8.4rem)/0.95 var(--display); letter-spacing: -0.035em;
+  margin: 0; font: 700 clamp(2.4rem, min(10.5vw, 15svh), 8.4rem)/0.95 var(--display); letter-spacing: -0.035em;
   background: linear-gradient(92deg, var(--teal) 0%, var(--violet) 52%, var(--magenta) 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
   filter: drop-shadow(0 0 22px color-mix(in srgb, var(--violet) 45%, transparent));
 }
-.title .tag { margin: 18px auto 0; max-width: 34ch; color: var(--ink); font-size: clamp(1.05rem, 2.2vw, 1.3rem); }
+.title .tag { margin: clamp(8px, 2svh, 18px) auto 0; max-width: 34ch; color: var(--ink); font-size: clamp(1.05rem, 2.2vw, 1.3rem); }
 .title .jump { display: inline-block; margin-top: 26px; font: 500 0.95rem var(--mono); color: var(--dim); text-decoration: none; }
 .title .jump:hover { color: var(--teal); }
 .hero .title > * { transition: opacity .9s ease, transform .9s ease; }
@@ -157,7 +157,7 @@ section { padding: clamp(72px, 12vh, 140px) 0; }
 
 /* ---------- The loop: ring of ten ---------------------------------------- */
 .loop { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(28px, 5vw, 72px); align-items: center; }
-.dial { position: relative; width: min(460px, 100%); aspect-ratio: 1; margin-inline: auto; container-type: inline-size; }
+.dial { position: relative; width: min(460px, 100%, 80svh); aspect-ratio: 1; margin-inline: auto; container-type: inline-size; }
 .dial::before { content: ""; position: absolute; inset: 12%; border-radius: 50%; border: 1px dashed color-mix(in srgb, var(--teal) 30%, transparent); }
 .dial-core { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
 .dial-core strong { font: 700 clamp(1.6rem, 4vw, 2.4rem) var(--display); }
@@ -240,13 +240,22 @@ section { padding: clamp(72px, 12vh, 140px) 0; }
   .ls .desc { grid-column: 1; grid-row: 2; }
   .ls .tw { grid-row: 1; grid-column: 2; }
 }
-@media (max-width: 640px) {
+@media (max-width: 640px), (max-height: 560px) {
   .dial { aspect-ratio: auto; }
   .dial::before, .dial-core { display: none; }
   .dial [role="tablist"] { position: static; display: grid; gap: 2px; }
   .node { position: static; transform: none; width: auto; margin: 0; display: flex; gap: 12px; padding: 8px 4px; text-align: left; font-size: 0.9rem; }
   .principle { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .crt { font-size: 1.15rem; }
+}
+@media (max-height: 560px) and (min-width: 641px) {
+  .loop { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); align-items: start; }
+  .dial { margin-inline: 0; }
+}
+@media (max-height: 560px) {
+  .crt { min-height: 0; }
+  .crt p:nth-child(-n+2) { display: none; }
+  section { padding: 48px 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -458,7 +467,7 @@ section { padding: clamp(72px, 12vh, 140px) 0; }
       $("p-rule").innerHTML = p.rule;
     });
 
-  const narrow = matchMedia("(max-width: 640px)");
+  const narrow = matchMedia("(max-width: 640px), (max-height: 560px)");
   const dial = $("dial");
   const syncOrientation = () => dial.setAttribute("aria-orientation", narrow.matches ? "vertical" : "horizontal");
   narrow.addEventListener("change", syncOrientation);
