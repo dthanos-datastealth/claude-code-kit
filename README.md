@@ -20,6 +20,9 @@ high-discipline setup with a single command:
    skill, and rule is in the kit, plus the workflow the kit assumes you want
    to adopt.
 
+**Website:** <https://dthanos-datastealth.github.io/claude-code-kit/> — the
+principles, the workflow loop and every installed tool, generated from these docs.
+
 > This is datastealth's productivity kit. It is
 > opinionated by design — adopting it means adopting the workflow, not just
 > the file list. If you only want a subset, fork it and trim.
@@ -37,8 +40,8 @@ flowchart LR
     sets[claude/settings.json<br/>22 plugins · 6 marketplaces<br/>effortLevel: xhigh]
     mem[claude/memory/MEMORY.md<br/>auto-memory index]
     docs[docs/<br/>philosophy · workflow · verification-standards ·<br/>prereqs · corporate-tls · memory-system ·<br/>tracker-system · tools/ ×24]
-    sc[scripts/<br/>merge-settings · intelligent-settings-merge · intelligent-claude-md-merge · upgrade ·<br/>lint-scrubbing · lint-tools-docs · lint-plugin-marketplaces · lint-mcp-hardcoded-paths · lint-plugin-skill-layout · lint-merge-policy ·<br/>diff-against-live · mutate · verify-install ·<br/>test-install-isolated · test-upgrade-isolated]
-    tests[tests/<br/>231 pytest cases ·<br/>isolated-HOME harness]
+    sc[scripts/<br/>merge-settings · intelligent-settings-merge · intelligent-claude-md-merge · upgrade ·<br/>lint-scrubbing · lint-tools-docs · lint-plugin-marketplaces · lint-mcp-hardcoded-paths · lint-plugin-skill-layout · lint-merge-policy ·<br/>diff-against-live · mutate · verify-install · build-site ·<br/>test-install-isolated · test-upgrade-isolated]
+    tests[tests/<br/>255 pytest cases ·<br/>isolated-HOME harness]
   end
 
   cmd -->|preflight| pre{All prereqs on PATH?}
@@ -739,7 +742,8 @@ claude-code-kit/
 ├── install.sh                         Bootstrap entry point
 ├── uninstall.sh                       Restore from latest backup
 ├── pyproject.toml                     pytest config
-├── .github/workflows/ci.yml           shellcheck + lints + 231 pytest cases
+├── .github/workflows/ci.yml           shellcheck + lints + 255 pytest cases
+├── .github/workflows/pages.yml        Builds site/ from the docs and deploys it to GitHub Pages
 ├── claude/                            Files copied/merged into ~/.claude/
 │   ├── CLAUDE.md                      Scrubbed opinionated template (legacy merge path)
 │   ├── rules/                         Kit instructions, owned; copied to ~/.claude/rules/
@@ -777,12 +781,14 @@ claude-code-kit/
 │       ├── andrej-karpathy-skills.md  LLM coding heuristics
 │       ├── caveman.md                 Terse-output token-savings skill
 │       └── explanatory-output-style.md Insight blocks after code
+├── site/                              Website template + poster; build-site.py fills it from docs/
 ├── scripts/
 │   ├── merge-settings.py              Atomic settings.json merge
 │   ├── diff-against-live.sh           Drift detector
 │   ├── diff-settings.py               Settings delta (JSON)
 │   ├── lint-scrubbing.py              Catches owner paths / company names
 │   ├── lint-tools-docs.py             Enforces 5-section schema
+│   ├── build-site.py                  Builds the website from docs/ and README; fails on any doc it cannot read
 │   ├── lint-plugin-marketplaces.py    Verifies every plugin resolves against its upstream marketplace.json
 │   ├── lint-mcp-hardcoded-paths.py    Scans installed plugins' .mcp.json for owner-specific paths
 │   ├── lint-plugin-skill-layout.py    Catches skills at paths Claude Code never discovers

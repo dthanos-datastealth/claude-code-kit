@@ -19,6 +19,17 @@ different things.
 Earlier tags used a `vYYYY.MM.DD` date scheme (`v2026.05.27`). That is
 retired; existing tags are left alone rather than rewritten.
 
+## [Unreleased]
+
+### Added
+- Project website at <https://dthanos-datastealth.github.io/claude-code-kit/>:
+  the demo video, the install commands, the seven principles, the ten-step
+  loop and every tool doc. `scripts/build-site.py` generates it from
+  `docs/` and the README's Quick install block at deploy time and refuses to
+  build if any of them cannot be read; `.github/workflows/pages.yml` deploys it.
+- The `site-media` tag and release hold the website's demo video. It is not a
+  version and follows neither tag scheme above.
+
 ## [2026-09-11] — promoted from prerelease
 
 Channel refs flipped to `main` and the kit plugin released as `1.0.1`. The

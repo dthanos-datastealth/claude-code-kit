@@ -186,6 +186,66 @@
       "replace": "bash scripts/upgrade.sh --rollback <chosen-backup-id>",
       "tests": ["tests/test_plugin_skill_paths.py"],
       "breaks": "A skill tells the agent to run a script by a path relative to the user's working directory. Slash commands run in the user's project, not in the kit checkout, so the command fails there."
+    },
+    {
+      "id": "site-count-unchecked",
+      "file": "scripts/build-site.py",
+      "find": "    if found != list(range(1, count + 1)):\n",
+      "replace": "    if False:\n",
+      "tests": [
+        "tests/test_build_site.py"
+      ],
+      "breaks": "The site builder stops checking that philosophy.md has principles 1..7 and workflow.md has steps 1..10, so a renamed or deleted heading silently drops that principle or step from the published page."
+    },
+    {
+      "id": "site-schema-unchecked",
+      "file": "scripts/build-site.py",
+      "find": "        errs = lint.check(path.name, text)\n",
+      "replace": "        errs = []\n",
+      "tests": [
+        "tests/test_build_site.py"
+      ],
+      "breaks": "The site builder no longer runs the tools-doc schema check, so a tool doc missing a section publishes a card with that section blank."
+    },
+    {
+      "id": "site-inline-unescaped",
+      "file": "scripts/build-site.py",
+      "find": "    text = html.escape(text, quote=False)\n",
+      "replace": "",
+      "tests": [
+        "tests/test_build_site.py"
+      ],
+      "breaks": "Doc text is inserted into the page without HTML escaping, so markup in a doc (a literal <script>, an angle-bracketed placeholder) becomes live HTML on the published site."
+    },
+    {
+      "id": "site-source-url-unescaped",
+      "file": "scripts/build-site.py",
+      "find": "        entry[\"source_url\"] = html.escape(url.group(0).rstrip(\".,\"))\n",
+      "replace": "        entry[\"source_url\"] = url.group(0).rstrip(\".,\")\n",
+      "tests": [
+        "tests/test_build_site.py"
+      ],
+      "breaks": "A tool doc's Source URL is inserted into the page's href without escaping, so a quote in it ends the attribute and the rest of the URL becomes live HTML."
+    },
+    {
+      "id": "site-restore-once",
+      "file": "scripts/build-site.py",
+      "find": "    while placeholder.search(text):\n",
+      "replace": "    if placeholder.search(text):\n",
+      "tests": [
+        "tests/test_build_site.py"
+      ],
+      "breaks": "Held fragments are restored in one pass, so a code span inside a link label stays a NUL placeholder in the published page (59 such links in the docs)."
+    },
+    {
+      "id": "site-link-url-holds-code",
+      "file": "scripts/build-site.py",
+      "find": "        if \"\\x00\" in url:\n            return m.group(0)\n",
+      "replace": "",
+      "tests": [
+        "tests/test_build_site.py"
+      ],
+      "breaks": "A link whose URL is a code span is turned into an anchor; the code text's quotes were never escaped, so a quote in it ends the href and the rest becomes attributes."
     }
   ]
 }

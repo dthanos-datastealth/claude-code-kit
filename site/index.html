@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>claude-code-kit</title>
+<meta name="description" content="Evidence-first agentic engineering for Claude Code, bootstrapped in one command.">
+<meta property="og:title" content="claude-code-kit">
+<meta property="og:description" content="Evidence-first agentic engineering for Claude Code, bootstrapped in one command.">
+<meta property="og:image" content="assets/poster.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g'%3E%3Cstop offset='0' stop-color='%2322e5b5'/%3E%3Cstop offset='1' stop-color='%23ff2e88'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='7' fill='%23080a10'/%3E%3Cellipse cx='16' cy='16' rx='11' ry='7' fill='none' stroke='url(%23g)' stroke-width='3.5'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;700&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void: #080a10;
+  --void-2: #0e1119;
+  --line: #1c2230;
+  --ink: #e6e9f0;
+  --dim: #8a92a6;
+  --phosphor: #3dff6e;
+  --teal: #22e5b5;
+  --violet: #8b6dff;
+  --magenta: #ff2e88;
+  --amber: #ffb03a;
+  --display: "Space Grotesk", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --crt: "VT323", ui-monospace, monospace;
+  --gutter: clamp(16px, 4vw, 48px);
+  --measure: 68ch;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--ink);
+  font: 400 1.0625rem/1.6 var(--display);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+a { color: var(--teal); text-underline-offset: 3px; }
+a:hover { color: var(--ink); }
+code { font: 0.88em var(--mono); color: var(--teal); }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+.wrap { width: min(1180px, 100% - 2 * var(--gutter)); margin-inline: auto; }
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: 16px; top: 16px; z-index: 10; background: var(--void-2); padding: 8px 12px; }
+
+/* ---------- Section label: the video's "0x05 ./install.sh" --------------- */
+.addr {
+  display: inline-flex; gap: 0.6em; align-items: baseline;
+  font: 600 0.8rem var(--mono); color: var(--teal);
+  padding-bottom: 6px; border-bottom: 1px solid color-mix(in srgb, var(--teal) 45%, transparent);
+  margin: 0 0 28px;
+}
+.addr span { color: var(--dim); font-weight: 400; }
+
+/* ---------- Boot + hero ---------------------------------------------------- */
+.hero { position: relative; min-height: 100svh; display: grid; grid-template-rows: auto 1fr; overflow: hidden; isolation: isolate; }
+.hero::after { /* synthwave floor */
+  content: ""; position: absolute; inset: auto -50% -2px; height: 46%;
+  background:
+    linear-gradient(to bottom, var(--void) 0%, transparent 35%),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--magenta) 55%, transparent) 0 1px, transparent 1px 64px),
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--magenta) 55%, transparent) 0 1px, transparent 1px 44px);
+  transform: perspective(420px) rotateX(62deg); transform-origin: top center;
+  z-index: -1; opacity: 0.55;
+  animation: floor 3.2s linear infinite;
+}
+@keyframes floor { to { background-position: 0 0, 0 0, 0 44px; } }
+.hero::before { /* horizon glow */
+  content: ""; position: absolute; left: 0; right: 0; bottom: 45%; height: 30%;
+  background: radial-gradient(60% 100% at 50% 100%, color-mix(in srgb, var(--magenta) 22%, transparent), transparent 70%);
+  z-index: -1;
+}
+.crt {
+  position: relative; margin: clamp(24px, 5vh, 56px) auto 0; width: min(760px, 100% - 2 * var(--gutter));
+  font: 1.45rem/1.35 var(--crt); color: var(--phosphor);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--phosphor) 60%, transparent);
+  padding: 18px 22px; min-height: 9.5em;
+  background: radial-gradient(120% 140% at 50% 40%, #0b1a10 0%, #05090a 70%);
+  border-radius: 14px;
+  box-shadow: inset 0 0 60px #000, 0 0 0 1px #12301b;
+}
+.crt::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,.28) 0 1px, transparent 1px 3px);
+}
+.crt p { margin: 0; white-space: pre-wrap; }
+.crt .cursor { display: inline-block; width: 0.55em; height: 1em; background: var(--phosphor); vertical-align: -0.12em; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.crt .skip-boot { position: absolute; right: 12px; bottom: 8px; font: 0.8rem var(--mono); color: #5aa86d; background: none; border: 0; cursor: pointer; }
+.crt .skip-boot:hover { color: var(--phosphor); }
+
+.title { align-self: center; text-align: center; padding: 32px var(--gutter) 22vh; }
+.title h1 {
+  margin: 0; font: 700 clamp(2.9rem, 10.5vw, 8.4rem)/0.95 var(--display); letter-spacing: -0.035em;
+  background: linear-gradient(92deg, var(--teal) 0%, var(--violet) 52%, var(--magenta) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 22px color-mix(in srgb, var(--violet) 45%, transparent));
+}
+.title .tag { margin: 18px auto 0; max-width: 34ch; color: var(--ink); font-size: clamp(1.05rem, 2.2vw, 1.3rem); }
+.title .jump { display: inline-block; margin-top: 26px; font: 500 0.95rem var(--mono); color: var(--dim); text-decoration: none; }
+.title .jump:hover { color: var(--teal); }
+.hero .title > * { transition: opacity .9s ease, transform .9s ease; }
+.hero.pre-boot .title > * { opacity: 0; transform: translateY(12px); }
+
+/* ---------- Watch + install ---------------------------------------------- */
+section { padding: clamp(72px, 12vh, 140px) 0; }
+.watch { display: grid; gap: 40px; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); align-items: center; }
+.monitor {
+  border-radius: 14px; padding: 10px; background: linear-gradient(145deg, #171b27, #0b0d14);
+  box-shadow: 0 0 0 1px var(--line), 0 30px 80px -30px color-mix(in srgb, var(--magenta) 45%, transparent);
+}
+.monitor video { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; background: #000; }
+.watch h2, .section-head h2 { font: 700 clamp(1.9rem, 4vw, 3rem)/1.05 var(--display); letter-spacing: -0.02em; margin: 0 0 14px; }
+.watch p { color: var(--dim); max-width: 42ch; margin: 0 0 22px; }
+.term { border-radius: 10px; background: var(--void-2); box-shadow: 0 0 0 1px var(--line); overflow: hidden; }
+.term-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 8px 14px; border-bottom: 1px solid var(--line); }
+.term-bar i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; background: var(--magenta); }
+.term-bar i:nth-child(2) { background: var(--amber); }
+.term-bar i:nth-child(3) { background: var(--teal); }
+.copy { font: 600 0.8rem var(--mono); color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+.copy:hover { border-color: var(--teal); color: var(--teal); }
+.term pre { margin: 0; padding: 16px 18px; font: 0.86rem/1.75 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.term pre span { display: block; padding-left: 2ch; text-indent: -2ch; }
+.term pre span::before { content: "$ "; color: var(--teal); }
+.term small { display: block; padding: 0 18px 14px; color: var(--dim); font: 0.8rem var(--mono); }
+
+/* ---------- Principles: chain of seven rings ----------------------------- */
+.section-head { max-width: var(--measure); margin-bottom: 44px; }
+.section-head p { color: var(--dim); margin: 0; }
+.chain { display: flex; justify-content: center; padding: 10px 0 34px; }
+.ring {
+  --c: var(--teal);
+  width: clamp(44px, 10vw, 92px); aspect-ratio: 1.55; margin-inline: clamp(-10px, -1.4vw, -4px);
+  border-radius: 999px; border: clamp(3px, 0.6vw, 6px) solid var(--c); background: transparent;
+  color: var(--ink); font: 700 clamp(0.8rem, 1.6vw, 1.05rem) var(--mono); cursor: pointer;
+  box-shadow: 0 0 14px -2px var(--c), inset 0 0 10px -4px var(--c);
+  transition: background .2s, transform .2s;
+}
+.ring:nth-child(2) { --c: #3df08a; } .ring:nth-child(3) { --c: #2bc8f0; } .ring:nth-child(4) { --c: var(--violet); }
+.ring:nth-child(5) { --c: var(--amber); } .ring:nth-child(6) { --c: var(--magenta); } .ring:nth-child(7) { --c: #ff4d5e; }
+.ring:hover { transform: translateY(-3px); }
+.ring[aria-selected="true"] { background: color-mix(in srgb, var(--c) 22%, transparent); box-shadow: 0 0 28px 0 var(--c), inset 0 0 14px -2px var(--c); z-index: 1; }
+.principle { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: clamp(20px, 4vw, 48px); align-items: start; max-width: 920px; margin-inline: auto; }
+.principle .num {
+  font: 700 clamp(5rem, 16vw, 11rem)/0.8 var(--display); letter-spacing: -0.06em; color: transparent;
+  -webkit-text-stroke: 2px color-mix(in srgb, var(--pc, var(--magenta)) 80%, transparent);
+}
+.principle h3 { font: 700 clamp(1.5rem, 3.2vw, 2.3rem)/1.1 var(--display); margin: 6px 0 14px; letter-spacing: -0.015em; }
+.principle p { margin: 0 0 16px; max-width: var(--measure); }
+.more { font: 0.85rem var(--mono); }
+
+/* ---------- The loop: ring of ten ---------------------------------------- */
+.loop { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(28px, 5vw, 72px); align-items: center; }
+.dial { position: relative; width: min(460px, 100%); aspect-ratio: 1; margin-inline: auto; container-type: inline-size; }
+.dial::before { content: ""; position: absolute; inset: 12%; border-radius: 50%; border: 1px dashed color-mix(in srgb, var(--teal) 30%, transparent); }
+.dial-core { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
+.dial-core strong { font: 700 clamp(1.6rem, 4vw, 2.4rem) var(--display); }
+.dial-core span { color: var(--dim); font: 0.85rem var(--mono); }
+.dial [role="tablist"] { position: absolute; inset: 0; margin: 0; padding: 0; }
+.node {
+  --a: calc(var(--i) * 36deg - 90deg);
+  position: absolute; left: 50%; top: 50%; width: 92px; margin: -18px 0 0 -46px;
+  transform: rotate(var(--a)) translate(38cqi) rotate(calc(-1 * var(--a)));
+  background: none; border: 0; cursor: pointer; color: var(--dim); font: 500 0.78rem/1.2 var(--mono); text-align: center;
+  display: grid; justify-items: center; gap: 6px;
+}
+.node b { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 0.68rem; color: var(--ink); background: #2a3142; transition: background .2s, box-shadow .2s; }
+.node:hover, .node[aria-selected="true"] { color: var(--ink); }
+.node[aria-selected="true"] b { color: var(--void); background: var(--teal); box-shadow: 0 0 0 5px color-mix(in srgb, var(--teal) 25%, transparent), 0 0 22px var(--teal); }
+.step-panel { max-width: 52ch; }
+.step-panel .k { font: 600 0.8rem var(--mono); color: var(--teal); }
+.step-panel h3 { font: 700 clamp(1.6rem, 3.4vw, 2.4rem)/1.1 var(--display); margin: 8px 0 18px; }
+.step-panel .cmd { font: 0.92rem/1.6 var(--mono); padding: 12px 14px; border-left: 3px solid var(--magenta); background: var(--void-2); margin: 0 0 18px; color: var(--ink); }
+.step-panel .cmd code { color: var(--magenta); }
+.step-panel .cmd.none { border-color: var(--amber); }
+.step-panel p { margin: 0 0 16px; }
+
+/* ---------- Catalog: a directory listing --------------------------------- */
+.filter { display: flex; gap: 12px; align-items: center; margin: 0 0 18px; font: 0.95rem var(--mono); }
+.filter label { color: var(--teal); }
+.filter input {
+  flex: 1; max-width: 380px; font: inherit; color: var(--ink); background: var(--void-2);
+  border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px;
+}
+.filter input:focus { border-color: var(--teal); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 25%, transparent); }
+.filter output { color: var(--dim); font-size: 0.85rem; }
+.ls { border-top: 1px solid var(--line); }
+.ls details { border-bottom: 1px solid var(--line); }
+.ls summary {
+  list-style: none; cursor: pointer; display: grid; grid-template-columns: 11ch minmax(14ch, 22ch) minmax(0, 1fr) 2ch;
+  gap: 18px; align-items: baseline; padding: 14px 6px; font: 0.95rem var(--mono);
+}
+.ls summary::-webkit-details-marker { display: none; }
+.ls summary:hover { background: color-mix(in srgb, var(--teal) 6%, transparent); }
+.ls .perm { color: #737c91; }
+.ls .name { color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+.ls .desc { color: var(--dim); font-family: var(--display); }
+.ls .tw { color: var(--teal); text-align: right; transition: transform .2s; }
+.ls details[open] .tw { transform: rotate(90deg); }
+.ls details[open] summary .name { color: var(--teal); }
+.tool-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 44px; padding: 6px 6px 30px calc(11ch + 24px); }
+.tool-body h4 { font: 600 0.8rem var(--mono); color: var(--magenta); margin: 18px 0 6px; }
+.tool-body div { font-size: 0.96rem; min-width: 0; }
+.tool-body p, .tool-body ul, .tool-body ol { margin: 0 0 10px; }
+.tool-body ul, .tool-body ol { padding-left: 1.2em; }
+.tool-body pre { overflow-x: auto; background: var(--void-2); padding: 10px 12px; border-radius: 6px; font-size: 0.85rem; }
+.tool-body table { border-collapse: collapse; font-size: 0.85rem; display: block; overflow-x: auto; }
+.tool-body th, .tool-body td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
+.tool-body .src { grid-column: 1 / -1; font: 0.85rem var(--mono); }
+.empty { color: var(--dim); padding: 22px 6px; font: 0.95rem var(--mono); }
+
+/* ---------- Closing -------------------------------------------------------- */
+.closing { text-align: center; padding-bottom: 140px; position: relative; }
+.closing h2 { font: 700 clamp(2rem, 5.5vw, 4rem)/1.1 var(--display); margin: 0; letter-spacing: -0.025em; }
+.closing h2 span { display: block; background: linear-gradient(92deg, var(--teal), var(--violet), var(--magenta)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.closing a.repo { display: inline-block; margin-top: 34px; font: 0.95rem var(--mono); color: var(--ink); text-decoration: none; padding: 12px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--void-2); }
+.closing a.repo:hover { border-color: var(--teal); color: var(--teal); }
+
+/* ---------- Rail: the video's timeline, used as page nav ----------------- */
+.rail { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: color-mix(in srgb, var(--void) 88%, transparent); backdrop-filter: blur(6px); border-top: 1px solid var(--line); }
+.rail nav { display: flex; justify-content: space-between; width: min(1180px, 100% - 2 * var(--gutter)); margin-inline: auto; position: relative; padding: 10px 0 8px; }
+.rail .bar { position: absolute; left: 0; top: 0; height: 2px; width: 100%; transform-origin: left; transform: scaleX(var(--p, 0)); background: linear-gradient(90deg, var(--teal), var(--violet), var(--magenta)); }
+.rail a { font: 0.72rem var(--mono); color: var(--dim); text-decoration: none; display: grid; justify-items: center; gap: 3px; }
+.rail a::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #2a3142; }
+.rail a.here { color: var(--ink); }
+.rail a.here::before { background: var(--teal); box-shadow: 0 0 10px var(--teal); }
+
+/* ---------- Narrow screens ------------------------------------------------ */
+@media (max-width: 900px) {
+  .watch, .loop { grid-template-columns: minmax(0, 1fr); }
+  .tool-body { grid-template-columns: minmax(0, 1fr); padding-left: 6px; }
+  .ls summary { grid-template-columns: minmax(0, 1fr) 2ch; gap: 4px 12px; }
+  .ls .perm { display: none; }
+  .ls .desc { grid-column: 1; grid-row: 2; }
+  .ls .tw { grid-row: 1; grid-column: 2; }
+}
+@media (max-width: 640px) {
+  .dial { aspect-ratio: auto; }
+  .dial::before, .dial-core { display: none; }
+  .dial [role="tablist"] { position: static; display: grid; gap: 2px; }
+  .node { position: static; transform: none; width: auto; margin: 0; display: flex; gap: 12px; padding: 8px 4px; text-align: left; font-size: 0.9rem; }
+  .principle { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .crt { font-size: 1.15rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#watch">Skip to content</a>
+
+<header class="hero pre-boot" id="top">
+  <div class="crt" aria-label="Boot sequence">
+    <div id="boot" aria-hidden="true"></div>
+    <button class="skip-boot" type="button" id="skip-boot">skip</button>
+  </div>
+  <div class="title">
+    <h1>claude-code-kit</h1>
+    <p class="tag">Evidence-first agentic engineering for Claude Code, bootstrapped in one command.</p>
+    <a class="jump" href="#watch">watch the three-minute tour</a>
+  </div>
+</header>
+
+<main>
+  <section id="watch" aria-labelledby="watch-h">
+    <div class="wrap">
+      <p class="addr">0x01 <span>./install.sh</span></p>
+      <div class="watch">
+        <div class="monitor">
+          <video controls playsinline preload="metadata" poster="assets/poster.jpg" src="__VIDEO_URL__">
+            <a href="__VIDEO_URL__">Download the demo video</a>
+          </video>
+        </div>
+        <div>
+          <h2 id="watch-h">One install. The whole discipline.</h2>
+          <p>Rule files Claude Code loads every session, a curated plugin set, and the docs that explain every choice. Your own <code>CLAUDE.md</code> stays yours.</p>
+          <div class="term">
+            <div class="term-bar"><span aria-hidden="true"><i></i><i></i><i></i></span><button class="copy" type="button" id="copy">Copy</button></div>
+            <pre id="install"></pre>
+            <small>Restart Claude Code afterwards. Re-running is safe.</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="principles" aria-labelledby="principles-h">
+    <div class="wrap">
+      <p class="addr">0x02 <span>docs/philosophy.md</span></p>
+      <div class="section-head">
+        <h2 id="principles-h">Seven principles, in dependency order.</h2>
+        <p>Each one is a precondition for the next. Remove one link and the chain weakens. Pick a link to read it.</p>
+      </div>
+      <div class="chain" role="tablist" aria-label="Principles" aria-orientation="horizontal" id="chain"></div>
+      <div class="principle" role="tabpanel" id="principle-panel" tabindex="0">
+        <div class="num" id="p-num" aria-hidden="true"></div>
+        <div>
+          <h3 id="p-title"></h3>
+          <p id="p-rule"></p>
+          <a class="more" href="__REPO_URL__/blob/main/docs/philosophy.md">Read the reasoning behind all seven</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="loop" aria-labelledby="loop-h">
+    <div class="wrap">
+      <p class="addr">0x03 <span>docs/workflow.md</span></p>
+      <div class="section-head">
+        <h2 id="loop-h">Every non-trivial task runs the same loop.</h2>
+        <p>Brainstorm to document, for bug fixes, refactors and ad-hoc work. New features take the longer <code>/feature-dev</code> route instead.</p>
+      </div>
+      <div class="loop">
+        <div class="dial">
+          <div class="dial-core" aria-hidden="true"><strong>10 steps</strong><span>one loop</span></div>
+          <div role="tablist" aria-label="Workflow steps" id="dial"></div>
+        </div>
+        <div class="step-panel" role="tabpanel" id="step-panel" tabindex="0">
+          <div class="k" id="s-k"></div>
+          <h3 id="s-title"></h3>
+          <div class="cmd" id="s-cmd"></div>
+          <p id="s-what"></p>
+          <a class="more" href="__REPO_URL__/blob/main/docs/workflow.md">Skip conditions and pitfalls for each step</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tools" aria-labelledby="tools-h">
+    <div class="wrap">
+      <p class="addr">0x04 <span>docs/tools/</span></p>
+      <div class="section-head">
+        <h2 id="tools-h">What gets installed, and why.</h2>
+        <p>Every plugin, server and CLI the kit sets up, with the case for it and the case against. Open one to read it.</p>
+      </div>
+      <div class="filter">
+        <label for="q">grep</label>
+        <input id="q" type="search" placeholder="berry, lsp, browser…" autocomplete="off">
+        <output id="count" for="q" aria-live="polite"></output>
+      </div>
+      <div class="ls" id="ls"></div>
+      <noscript><p><a href="__REPO_URL__/tree/main/docs/tools">Browse the tool docs on GitHub</a></p></noscript>
+    </div>
+  </section>
+
+  <section class="closing" id="run" aria-labelledby="run-h">
+    <div class="wrap">
+      <h2 id="run-h">The cadence is the kit.<span>The kit is the cadence.</span></h2>
+      <a class="repo" href="__REPO_URL__">__REPO_LABEL__</a>
+    </div>
+  </section>
+</main>
+
+<div class="rail">
+  <nav aria-label="Sections">
+    <div class="bar" id="bar"></div>
+    <a href="#top">boot</a><a href="#watch">install</a><a href="#principles">principles</a><a href="#loop">loop</a><a href="#tools">tools</a><a href="#run">run</a>
+  </nav>
+</div>
+
+<script type="application/json" id="kit-data">__KIT_DATA__</script>
+<script>
+(() => {
+  const DATA = JSON.parse(document.getElementById("kit-data").textContent);
+  const $ = (id) => document.getElementById(id);
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* Boot: the only unprompted motion on the page. */
+  const hero = document.querySelector(".hero");
+  const lines = [
+    "**** CLAUDE-CODE-KIT BASIC V1 ****",
+    "READY.",
+    'LOAD "CLAUDE-CODE-KIT",8,1',
+    "LOADING " + DATA.tools.length + " TOOLS, " + DATA.principles.length + " PRINCIPLES",
+    "READY.",
+    "RUN",
+  ];
+  const boot = $("boot");
+  let timer = null;
+  const finish = () => {
+    clearTimeout(timer);
+    boot.innerHTML = lines.map((l) => `<p>${l}</p>`).join("") + '<p><span class="cursor"></span></p>';
+    hero.classList.remove("pre-boot");
+    $("skip-boot").hidden = true;
+  };
+  if (reduced) finish();
+  else {
+    let li = 0, ci = 0;
+    const tick = () => {
+      if (li >= lines.length) return finish();
+      const done = lines.slice(0, li).map((l) => `<p>${l}</p>`).join("");
+      boot.innerHTML = done + `<p>${lines[li].slice(0, ++ci)}<span class="cursor"></span></p>`;
+      if (ci >= lines[li].length) { li++; ci = 0; timer = setTimeout(tick, 340); }
+      else timer = setTimeout(tick, 26);
+    };
+    tick();
+    $("skip-boot").addEventListener("click", finish);
+    addEventListener("keydown", (e) => { if (e.key === "Escape") finish(); }, { once: true });
+  }
+
+  /* Install */
+  for (const line of DATA.install) {
+    const span = document.createElement("span");
+    span.textContent = line;
+    $("install").appendChild(span);
+  }
+  $("copy").addEventListener("click", async (e) => {
+    try { await navigator.clipboard.writeText(DATA.install.join("\n")); e.target.textContent = "Copied"; }
+    catch { e.target.textContent = "Select and copy"; }
+    setTimeout(() => (e.target.textContent = "Copy"), 1800);
+  });
+
+  /* WAI-ARIA tabs: roving tabindex, arrows wrap, Home/End. */
+  function tabs(list, panel, items, label, show, vertical) {
+    const btns = items.map((item, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.setAttribute("role", "tab");
+      b.id = `${list.id}-tab-${i}`;
+      b.setAttribute("aria-controls", panel.id);
+      label(b, item, i);
+      b.addEventListener("click", () => select(i, false));
+      list.appendChild(b);
+      return b;
+    });
+    function select(i, focus) {
+      btns.forEach((b, j) => { b.setAttribute("aria-selected", String(i === j)); b.tabIndex = i === j ? 0 : -1; });
+      panel.setAttribute("aria-labelledby", btns[i].id);
+      show(items[i], i, btns[i]);
+      if (focus) btns[i].focus();
+    }
+    list.addEventListener("keydown", (e) => {
+      const cur = btns.indexOf(document.activeElement);
+      if (cur < 0) return;
+      const v = vertical && vertical();
+      const next = { [v ? "ArrowDown" : "ArrowRight"]: cur + 1, [v ? "ArrowUp" : "ArrowLeft"]: cur - 1, Home: 0, End: btns.length - 1 }[e.key];
+      if (next === undefined) return;
+      e.preventDefault();
+      select((next + btns.length) % btns.length, true);
+    });
+    select(0, false);
+  }
+
+  tabs($("chain"), $("principle-panel"), DATA.principles,
+    (b, p) => { b.className = "ring"; b.textContent = p.n; b.setAttribute("aria-label", `${p.n}. ${p.title}`); },
+    (p, i, ring) => {
+      $("p-num").textContent = String(p.n).padStart(2, "0");
+      $("principle-panel").style.setProperty("--pc", getComputedStyle(ring).getPropertyValue("--c"));
+      $("p-title").textContent = p.title;
+      $("p-rule").innerHTML = p.rule;
+    });
+
+  const narrow = matchMedia("(max-width: 640px)");
+  const dial = $("dial");
+  const syncOrientation = () => dial.setAttribute("aria-orientation", narrow.matches ? "vertical" : "horizontal");
+  narrow.addEventListener("change", syncOrientation);
+  syncOrientation();
+  tabs(dial, $("step-panel"), DATA.workflow,
+    (b, s, i) => {
+      b.className = "node";
+      b.style.setProperty("--i", i);
+      const n = document.createElement("b");
+      n.textContent = s.n;
+      b.append(n, s.title);
+    },
+    (s) => {
+      $("s-k").textContent = `step ${s.n} of ${DATA.workflow.length}`;
+      $("s-title").textContent = s.title;
+      const cmd = $("s-cmd");
+      cmd.innerHTML = s.command;
+      cmd.classList.toggle("none", /^none\b/.test(s.command));
+      $("s-what").innerHTML = s.what;
+    },
+    () => narrow.matches);
+
+  /* Catalog */
+  const ls = $("ls");
+  const sections = [["what", "What it does"], ["why", "Why it's in the kit"], ["disable", "When you'd turn it off"], ["cost", "Cost"]];
+  const rows = DATA.tools.map((t) => {
+    const d = document.createElement("details");
+    d.id = `tool-${t.slug}`;
+    d.innerHTML =
+      `<summary><span class="perm" aria-hidden="true">drwxr-xr-x</span><span class="name">${t.name}</span>` +
+      `<span class="desc">${t.tagline}</span><span class="tw" aria-hidden="true">›</span></summary>` +
+      `<div class="tool-body">${sections.map(([k, h]) => `<div><h4>${h}</h4>${t[k]}</div>`).join("")}` +
+      `<p class="src"><a href="${t.source_url}">${t.source_url.replace(/^https:\/\//, "")}</a> · <a href="${t.doc_url}">full doc</a></p></div>`;
+    ls.appendChild(d);
+    return { d, hay: [t.name, t.tagline, t.what, t.why].join(" ").replace(/<[^>]+>/g, " ").toLowerCase() };
+  });
+  const empty = document.createElement("p");
+  empty.className = "empty";
+  ls.appendChild(empty);
+  const filter = () => {
+    const q = $("q").value.trim().toLowerCase();
+    let n = 0;
+    rows.forEach((r) => { const hit = !q || r.hay.includes(q); r.d.hidden = !hit; n += hit; });
+    $("count").textContent = `${n} of ${rows.length}`;
+    empty.hidden = n > 0;
+    empty.textContent = n ? "" : `No tool mentions "${$("q").value}". Try a shorter word.`;
+  };
+  $("q").addEventListener("input", filter);
+  filter();
+  const openHash = () => {
+    let id = "";
+    try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
+    const el = id && $(id);
+    if (el && el.tagName === "DETAILS") el.open = true;
+  };
+  addEventListener("hashchange", openHash);
+  openHash();
+
+  /* Rail: scroll progress + current section */
+  const bar = $("bar");
+  const links = [...document.querySelectorAll(".rail a")];
+  const targets = links.map((a) => $(a.getAttribute("href").slice(1)));
+  let queued = false;
+  const onScroll = () => {
+    queued = false;
+    // All layout reads first, then the writes, so one scroll costs one layout.
+    const max = document.documentElement.scrollHeight - innerHeight;
+    const tops = targets.map((t) => t.getBoundingClientRect().top);
+    let cur = 0;
+    tops.forEach((top, i) => { if (top < innerHeight * 0.4) cur = i; });
+    if (max > 0 && scrollY >= max - 2) cur = targets.length - 1;
+    bar.style.setProperty("--p", max > 0 ? scrollY / max : 0);
+    links.forEach((a, i) => a.classList.toggle("here", i === cur));
+  };
+  addEventListener("scroll", () => { if (!queued) { queued = true; requestAnimationFrame(onScroll); } }, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>

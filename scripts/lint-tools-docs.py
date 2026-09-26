@@ -35,14 +35,27 @@ TITLE_RE = re.compile(r"^# \S.* — \S.*$", re.MULTILINE)
 LOCATOR_RE = re.compile(r"[\w-]+\.(?:com|org|io|dev|sh|ai)/\S")
 
 
-def source_body(text: str) -> str:
-    """Text between the `**Source:**` header and the next bold section header."""
-    start = text.find("**Source:**")
+def section_body(text: str, header: str, stops: "list[str] | None" = None) -> str:
+    """Text between the `**<header>**` line and the next section header.
+
+    With `stops`, only those headers end the section, so a bold sub-heading
+    inside it (spec-kit's "**Hard prohibitions ...:**") stays part of the body.
+    """
+    marker = f"**{header}**"
+    start = text.find(marker)
     if start == -1:
         return ""
-    rest = text[start + len("**Source:**") :]
-    nxt = re.search(r"^\*\*[^*]+:\*\*", rest, re.MULTILINE)
+    rest = text[start + len(marker) :]
+    if stops is None:
+        pattern = r"^\*\*[^*]+:\*\*"
+    else:
+        pattern = "^(?:" + "|".join(re.escape(f"**{s}**") for s in stops) + ")"
+    nxt = re.search(pattern, rest, re.MULTILINE)
     return rest[: nxt.start()] if nxt else rest
+
+
+def source_body(text: str) -> str:
+    return section_body(text, "Source:")
 
 
 def check(name: str, text: str) -> list[str]:
