@@ -132,8 +132,7 @@ def test_build_writes_site_and_is_idempotent():
     assert data["workflow"] == mod.parse_workflow(REPO / "docs" / "workflow.md")
     assert data["install"] == mod.parse_install(REPO / "README.md")
     assert f'src="{mod.VIDEO_URL}"' in html
-    assert mod.VIDEO_URL.startswith(
-        "https://github.com/dthanos-datastealth/claude-code-kit/releases/download/")
+    assert mod.VIDEO_URL == "assets/claude-code-kit-demo.mp4"
 
 
 def test_build_exits_nonzero_on_parse_error(tmp_path):

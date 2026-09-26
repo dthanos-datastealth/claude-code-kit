@@ -38,6 +38,13 @@ jobs:
       - name: Build site
         run: python3 scripts/build-site.py --out _site
 
+      # Served from the site's own origin: release downloads come back as
+      # application/octet-stream, which Safari refuses to play.
+      - name: Add the demo video from the site-media release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download site-media --pattern claude-code-kit-demo.mp4 --dir _site/assets
+
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _site

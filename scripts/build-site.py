@@ -21,7 +21,10 @@ REPO = Path(__file__).resolve().parents[1]
 SITE_SRC = REPO / "site"
 REPO_URL = "https://github.com/dthanos-datastealth/claude-code-kit"
 DOCS_URL = f"{REPO_URL}/blob/main/docs/"
-VIDEO_URL = f"{REPO_URL}/releases/download/site-media/claude-code-kit-demo.mp4"
+# The deploy workflow copies this file from the site-media release into the
+# built site. It is served from the page's own origin because GitHub serves
+# release downloads as application/octet-stream, which Safari will not play.
+VIDEO_URL = "assets/claude-code-kit-demo.mp4"
 
 PRINCIPLE_COUNT = 7
 STEP_COUNT = 10
