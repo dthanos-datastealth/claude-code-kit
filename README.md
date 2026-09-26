@@ -2,6 +2,9 @@
 
 https://github.com/user-attachments/assets/9f2d56ee-3e1f-4c06-b525-70b612300725
 
+**Website: [dthanos-datastealth.github.io/claude-code-kit](https://dthanos-datastealth.github.io/claude-code-kit/)**
+covers the principles, the workflow loop and every installed tool, and is generated from these docs.
+
 Opinionated bootstrap kit for creating a complete, evidence-first Claude
 Code agentic development engineering environment on a clean macOS or Linux machine.
 
@@ -19,9 +22,6 @@ high-discipline setup with a single command:
 3. **A complete documentation layer** explaining *why* every plugin, MCP,
    skill, and rule is in the kit, plus the workflow the kit assumes you want
    to adopt.
-
-**Website:** <https://dthanos-datastealth.github.io/claude-code-kit/> — the
-principles, the workflow loop and every installed tool, generated from these docs.
 
 > This is datastealth's productivity kit. It is
 > opinionated by design — adopting it means adopting the workflow, not just
